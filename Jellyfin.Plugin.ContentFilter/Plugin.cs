@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using Jellyfin.Plugin.MovieContentFilter.Configuration;
+using Jellyfin.Plugin.ContentFilter.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
-
-namespace Jellyfin.Plugin.MovieContentFilter;
+namespace Jellyfin.Plugin.ContentFilter;
 
 /// <summary>
 /// The main plugin.
@@ -26,10 +23,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     }
 
     /// <inheritdoc />
-    public override string Name => "Movie Content Filter";
+    public override string Name => "Jellyfin Content Filter";
 
     /// <inheritdoc />
-    public override Guid Id => Guid.Parse("2295313D-5292-4BDE-A845-C8F3A7C543EA");
+    public override Guid Id => Guid.Parse("A62B2473-77E1-45C1-8470-57FB95A85394");
 
     /// <summary>
     /// Gets the current plugin instance.
@@ -39,13 +36,18 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
     {
-        return new[]
-        {
+        return
+        [
             new PluginPageInfo
             {
                 Name = this.Name,
                 EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace)
+            },
+            new PluginPageInfo
+            {
+                Name = "Jellyfin Content Filter - Segments",
+                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.contentPage.html", GetType().Namespace)
             }
-        };
+        ];
     }
 }

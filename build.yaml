@@ -1,0 +1,14 @@
+---
+version: 1
+name: "Jellyfin Content Filter"
+guid: "a62b2473-77e1-45c1-8470-57fb95a85394"
+overview: "Scan and filter objectionable content using a local LLM"
+description: >
+  A Jellyfin plugin that scans media files for objectionable content categories
+  using a local Ollama LLM instance and stores results as JCF sidecar files.
+  During playback, flagged segments can be automatically skipped or muted
+  based on per-category preferences.
+owner: "gneely74"
+category: "General"
+artifacts:
+  - "Jellyfin.Plugin.ContentFilter.dll"

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Jellyfin Content Filter</title>
+    <style>
+        .tabButtons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tabPanel {
+            display: none;
+        }
+
+        .tabPanel.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="ContentFilterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="ContentFilterConfigForm">
+                    <div class="tabButtons">
+                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="filterSettingsTab">Filter Settings</button>
+                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="scanSettingsTab">Scan Settings</button>
+                    </div>
+
+                    <div id="filterSettingsTab" class="tabPanel active">
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="IsEnabled" type="checkbox" is="emby-checkbox">
+                                <span>Enable Content Filtering</span>
+                            </label>
+                        </div>
+
+                        <div id="groupSettingsContainer"></div>
+                    </div>
+
+                    <div id="scanSettingsTab" class="tabPanel">
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaBaseUrl">Ollama Base URL</label>
+                            <input id="OllamaBaseUrl" type="text" is="emby-input">
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaVisionModel">Ollama Vision Model</label>
+                            <input id="OllamaVisionModel" type="text" is="emby-input">
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaTextModel">Ollama Text Model</label>
+                            <input id="OllamaTextModel" type="text" is="emby-input">
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ScanFramesPerSecond">Scan Frames Per Second</label>
+                            <input id="ScanFramesPerSecond" type="number" step="0.1" min="0" is="emby-input">
+                        </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox">
+                                <span>Analyze Audio Transcript</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button is="emby-button" type="submit" class="raised button-submit emby-button">
+                            <span>Save</span>
+                        </button>
+                        <button is="emby-button" type="button" id="openSegmentsBtn" class="raised emby-button">
+                            <span>Manage Segments</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var ContentFilterConfig = {
+                pluginUniqueId: 'A62B2473-77E1-45C1-8470-57FB95A85394',
+                groups: [
+                    'Language',
+                    'SexualReferences',
+                    'SexAndNudity',
+                    'Violence',
+                    'Substances',
+                    'Medical',
+                    'Structural'
+                ]
+            };
+
+            function getEl(id) {
+                return document.getElementById(id);
+            }
+
+            function renderGroups() {
+                var container = getEl('groupSettingsContainer');
+                container.innerHTML = '';
+
+                ContentFilterConfig.groups.forEach(function (group) {
+                    var section = document.createElement('div');
+                    section.className = 'detailSection';
+                    section.innerHTML = ''
+                        + '<h3>' + group + '</h3>'
+                        + '<div class="checkboxContainer checkboxContainer-withDescription">'
+                        + '  <label class="emby-checkbox-label">'
+                        + '    <input id="' + group + 'Enabled" type="checkbox" is="emby-checkbox">'
+                        + '    <span>Enable ' + group + '</span>'
+                        + '  </label>'
+                        + '</div>'
+                        + '<div class="selectContainer">'
+                        + '  <label class="selectLabel" for="' + group + 'Action">Action</label>'
+                        + '  <select id="' + group + 'Action" is="emby-select" class="emby-select-withcolor emby-select">'
+                        + '    <option value="skip">skip</option>'
+                        + '    <option value="mute">mute</option>'
+                        + '  </select>'
+                        + '</div>';
+                    container.appendChild(section);
+                });
+            }
+
+            function setActiveTab(tabId) {
+                var panels = document.querySelectorAll('.tabPanel');
+                panels.forEach(function (panel) {
+                    panel.classList.toggle('active', panel.id === tabId);
+                });
+            }
+
+            function populateForm(config) {
+                getEl('IsEnabled').checked = !!config.IsEnabled;
+                getEl('OllamaBaseUrl').value = config.OllamaBaseUrl || '';
+                getEl('OllamaVisionModel').value = config.OllamaVisionModel || '';
+                getEl('OllamaTextModel').value = config.OllamaTextModel || '';
+                getEl('ScanFramesPerSecond').value = config.ScanFramesPerSecond ?? 1;
+                getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
+
+                ContentFilterConfig.groups.forEach(function (group) {
+                    getEl(group + 'Enabled').checked = !!config[group + 'Enabled'];
+                    getEl(group + 'Action').value = (config[group + 'Action'] || 'skip').toLowerCase();
+                });
+            }
+
+            function collectForm(config) {
+                config.IsEnabled = getEl('IsEnabled').checked;
+                config.OllamaBaseUrl = getEl('OllamaBaseUrl').value || '';
+                config.OllamaVisionModel = getEl('OllamaVisionModel').value || '';
+                config.OllamaTextModel = getEl('OllamaTextModel').value || '';
+                config.ScanFramesPerSecond = parseFloat(getEl('ScanFramesPerSecond').value || '0');
+                config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
+
+                ContentFilterConfig.groups.forEach(function (group) {
+                    config[group + 'Enabled'] = getEl(group + 'Enabled').checked;
+                    config[group + 'Action'] = getEl(group + 'Action').value;
+                });
+            }
+
+            renderGroups();
+
+            document.querySelectorAll('[data-tab-button]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    setActiveTab(button.getAttribute('data-tab-button'));
+                });
+            });
+
+            document.querySelector('#ContentFilterConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(ContentFilterConfig.pluginUniqueId).then(function (config) {
+                    populateForm(config);
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#openSegmentsBtn').addEventListener('click', function () {
+                Dashboard.navigate('configurationpage?name=' + encodeURIComponent('Jellyfin Content Filter - Segments'));
+            });
+
+            document.querySelector('#ContentFilterConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(ContentFilterConfig.pluginUniqueId).then(function (config) {
+                    collectForm(config);
+                    ApiClient.updatePluginConfiguration(ContentFilterConfig.pluginUniqueId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                });
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

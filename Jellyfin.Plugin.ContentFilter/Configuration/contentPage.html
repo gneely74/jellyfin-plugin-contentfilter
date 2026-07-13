@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Jellyfin Content Filter - Segments</title>
+    <style>
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progressContainer {
+            width: 100%;
+            height: 12px;
+            border: 1px solid #666;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progressBar {
+            height: 100%;
+            width: 0;
+            background: #52b54b;
+            transition: width 0.2s ease;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            vertical-align: middle;
+        }
+
+        tr.noneAction {
+            opacity: 0.45;
+        }
+    </style>
+</head>
+<body>
+    <div id="ContentFilterSegmentsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>Jellyfin Content Filter - Segments</h2>
+
+                <div class="row">
+                    <div class="inputContainer" style="flex:1;">
+                        <label class="inputLabel inputLabelUnfocused" for="itemIdInput">Item ID</label>
+                        <input id="itemIdInput" type="text" is="emby-input">
+                    </div>
+                    <button id="loadItemButton" is="emby-button" type="button" class="raised emby-button">Load</button>
+                </div>
+
+                <div id="itemSummary" style="margin-bottom:10px;">No item loaded.</div>
+                <div id="statusText" style="margin-bottom:10px;">Status: idle</div>
+                <div class="progressContainer">
+                    <div id="scanProgressBar" class="progressBar"></div>
+                </div>
+
+                <div class="row">
+                    <button id="scanButton" is="emby-button" type="button" class="raised emby-button">Scan</button>
+                    <button id="downloadButton" is="emby-button" type="button" class="raised emby-button">Download JCF</button>
+                    <input id="uploadFileInput" type="file" accept=".jcf,text/plain">
+                    <button id="uploadButton" is="emby-button" type="button" class="raised emby-button">Upload JCF</button>
+                </div>
+
+                <table id="segmentsTable">
+                    <thead>
+                        <tr>
+                            <th>Time Range</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Channel</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="segmentsBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var currentItemId = '';
+            var pollHandle = null;
+
+            function getQueryParam(name) {
+                var hash = window.location.hash || '';
+                var search = hash.includes('?') ? hash.slice(hash.indexOf('?')) : window.location.search;
+                return new URLSearchParams(search).get(name);
+            }
+
+            function getEl(id) {
+                return document.getElementById(id);
+            }
+
+            function apiUrl(path) {
+                return ApiClient.getUrl(path);
+            }
+
+            function toPercent(value) {
+                if (typeof value !== 'number' || isNaN(value)) {
+                    return 0;
+                }
+
+                var normalized = value <= 1 ? value * 100 : value;
+                return Math.max(0, Math.min(100, normalized));
+            }
+
+            function updateStatusUi(status) {
+                var state = status && status.state ? status.state : 'Idle';
+                var progress = toPercent(status ? status.progress : 0);
+                getEl('statusText').textContent = 'Status: ' + state + ' | Progress: ' + progress.toFixed(1) + '% | Cues: ' + ((status && status.cuesFound) || 0);
+                getEl('scanProgressBar').style.width = progress + '%';
+            }
+
+            function cueTimeRange(cue) {
+                return (cue.start || '') + ' - ' + (cue.end || '');
+            }
+
+            function renderSegments(cues) {
+                var body = getEl('segmentsBody');
+                body.innerHTML = '';
+
+                (cues || []).forEach(function (cue) {
+                    var row = document.createElement('tr');
+                    row.setAttribute('data-cue-key', cue.key);
+                    row.classList.toggle('noneAction', (cue.action || '').toLowerCase() === 'none');
+
+                    var timeCell = document.createElement('td');
+                    timeCell.textContent = cueTimeRange(cue);
+                    row.appendChild(timeCell);
+
+                    var descriptionCell = document.createElement('td');
+                    var descriptionInput = document.createElement('input');
+                    descriptionInput.type = 'text';
+                    descriptionInput.value = cue.description || '';
+                    descriptionInput.style.width = '100%';
+                    descriptionInput.addEventListener('blur', function () {
+                        var actionSelect = row.querySelector('select');
+                        updateCue(cue.key, actionSelect.value, descriptionInput.value);
+                    });
+                    descriptionCell.appendChild(descriptionInput);
+                    row.appendChild(descriptionCell);
+
+                    var categoryCell = document.createElement('td');
+                    categoryCell.textContent = cue.category || '';
+                    row.appendChild(categoryCell);
+
+                    var channelCell = document.createElement('td');
+                    channelCell.textContent = cue.channel || '';
+                    row.appendChild(channelCell);
+
+                    var actionCell = document.createElement('td');
+                    var actionSelect = document.createElement('select');
+                    ['skip', 'mute', 'none'].forEach(function (actionOption) {
+                        var option = document.createElement('option');
+                        option.value = actionOption;
+                        option.textContent = actionOption;
+                        actionSelect.appendChild(option);
+                    });
+                    actionSelect.value = (cue.action || 'none').toLowerCase();
+                    actionSelect.addEventListener('change', function () {
+                        updateCue(cue.key, actionSelect.value, descriptionInput.value);
+                        row.classList.toggle('noneAction', actionSelect.value === 'none');
+                    });
+                    actionCell.appendChild(actionSelect);
+                    row.appendChild(actionCell);
+
+                    body.appendChild(row);
+                });
+            }
+
+            function stopPolling() {
+                if (pollHandle) {
+                    clearInterval(pollHandle);
+                    pollHandle = null;
+                }
+            }
+
+            function refreshStatus() {
+                if (!currentItemId) return Promise.resolve();
+                return ApiClient.ajax({
+                    type: 'GET',
+                    url: apiUrl('ContentFilter/scan/' + currentItemId + '/status')
+                }).then(function (status) {
+                    updateStatusUi(status);
+                    if ((status.state || '').toLowerCase() !== 'scanning') {
+                        stopPolling();
+                    }
+                }).catch(function () {
+                    stopPolling();
+                });
+            }
+
+            function loadFilter() {
+                if (!currentItemId) return Promise.resolve();
+                return ApiClient.ajax({
+                    type: 'GET',
+                    url: apiUrl('ContentFilter/filters/' + currentItemId)
+                }).then(function (payload) {
+                    var yearText = payload && payload.year ? ' (' + payload.year + ')' : '';
+                    getEl('itemSummary').textContent = ((payload && payload.title) || 'Unknown Item') + yearText;
+                    renderSegments((payload && payload.cues) || []);
+                }).catch(function (err) {
+                    if (err && err.status === 404) {
+                        getEl('itemSummary').textContent = 'No filter found for this item.';
+                        renderSegments([]);
+                    } else {
+                        getEl('itemSummary').textContent = 'Failed to load filter.';
+                    }
+                });
+            }
+
+            function updateCue(cueKey, action, description) {
+                if (!currentItemId) return;
+                ApiClient.ajax({
+                    type: 'PUT',
+                    url: apiUrl('ContentFilter/filters/' + currentItemId + '/segments/action'),
+                    contentType: 'application/json',
+                    data: JSON.stringify({ cueKey: cueKey, action: action, description: description })
+                }).catch(function () {});
+            }
+
+            function startScan() {
+                if (!currentItemId) {
+                    getEl('statusText').textContent = 'Status: Enter an Item ID and click Load first.';
+                    return;
+                }
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: apiUrl('ContentFilter/scan/' + currentItemId)
+                }).then(function () {
+                    stopPolling();
+                    pollHandle = setInterval(refreshStatus, 2000);
+                    refreshStatus();
+                }).catch(function (err) {
+                    if (err && err.status === 409) {
+                        // already scanning
+                        stopPolling();
+                        pollHandle = setInterval(refreshStatus, 2000);
+                        refreshStatus();
+                    } else {
+                        getEl('statusText').textContent = 'Status: Scan failed (' + (err && err.status) + ')';
+                    }
+                });
+            }
+
+            function uploadFilter() {
+                if (!currentItemId) return;
+                var fileInput = getEl('uploadFileInput');
+                if (!fileInput.files || fileInput.files.length === 0) return;
+                var form = new FormData();
+                form.append('file', fileInput.files[0]);
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: apiUrl('ContentFilter/filters/' + currentItemId),
+                    data: form,
+                    contentType: false,
+                    processData: false
+                }).then(function () {
+                    loadFilter();
+                }).catch(function (err) {
+                    getEl('statusText').textContent = 'Status: Upload failed (' + (err && err.status) + ')';
+                });
+            }
+
+            // Auto-load item ID from URL parameter (?itemId=... or &itemId=...)
+            (function () {
+                var id = getQueryParam('itemId');
+                if (id) {
+                    getEl('itemIdInput').value = id;
+                    currentItemId = id.trim();
+                    loadFilter();
+                    refreshStatus();
+                }
+            })();
+
+            getEl('loadItemButton').addEventListener('click', function () {
+                currentItemId = (getEl('itemIdInput').value || '').trim();
+                if (!currentItemId) {
+                    getEl('statusText').textContent = 'Status: Item ID is required.';
+                    return;
+                }
+                stopPolling();
+                loadFilter();
+                refreshStatus();
+            });
+
+            getEl('scanButton').addEventListener('click', startScan);
+            getEl('uploadButton').addEventListener('click', uploadFilter);
+
+            getEl('downloadButton').addEventListener('click', function () {
+                if (!currentItemId) return;
+                window.location = apiUrl('ContentFilter/filters/' + currentItemId + '/download');
+            });
+        </script>
+    </div>
+</body>
+</html>

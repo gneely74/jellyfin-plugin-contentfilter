@@ -1,0 +1,19 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:10.11.11
+    container_name: jellyfin-dev
+    ports:
+      - "8096:8096"
+    volumes:
+      # Jellyfin config and cache (persisted between restarts)
+      - ./jellyfin-data/config:/config
+      - ./jellyfin-data/cache:/cache
+      # Plugin directory — rebuilt by `make package` and mounted at startup
+      - ./dist/ContentFilter_1.0.0.0:/config/plugins/ContentFilter_1.0.0.0
+      # Optional: mount a local media folder for testing
+      # Writable so WhisperSubs can write .generated.srt files alongside media
+      - ./test-media:/media
+    environment:
+      - TZ=America/New_York
+      - JELLYFIN_LOG_LEVEL=Debug
+    restart: unless-stopped

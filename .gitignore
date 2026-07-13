@@ -1,2 +1,8 @@
-/Jellyfin.Plugin.MovieContentFilter/bin
-/Jellyfin.Plugin.MovieContentFilter/obj
+# Build outputs
+**/bin/
+**/obj/
+dist/
+
+# Local Jellyfin dev server data
+jellyfin-data/
+test-media/
