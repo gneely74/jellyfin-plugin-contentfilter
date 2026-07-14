@@ -28,6 +28,90 @@ public class OllamaClient
     }
 
     /// <summary>
+    /// Sends a minimal request to verify the vision API is reachable and the model is loaded.
+    /// </summary>
+    /// <param name="model">Model name to test.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><see langword="true"/> if the model responded successfully.</returns>
+    public async Task<bool> CheckReadyAsync(string model, CancellationToken ct)
+    {
+        var request = new VisionChatRequest
+        {
+            Model = model,
+            Stream = false,
+            Messages =
+            [
+                new VisionChatMessage
+                {
+                    Role = "user",
+                    Content = [new VisionContentPart { Type = "text", Text = "ping" }]
+                }
+            ]
+        };
+
+        var baseUrl = GetVisionBaseUrl();
+        var endpoint = new Uri(new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute), "v1/chat/completions");
+
+        const int AttemptTimeoutSeconds = 20;  // per-ping request timeout
+        const int RetryIntervalSeconds = 5;
+        const int TimeoutSeconds = 180;          // total wait up to 3 min
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(TimeoutSeconds);
+        var attempt = 0;
+        var elapsed = 0;
+
+        _logger.LogInformation("Vision API: pinging model '{Model}' (will wait up to {Timeout}s for it to load)...", model, TimeoutSeconds);
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            ct.ThrowIfCancellationRequested();
+            attempt++;
+            elapsed = (int)(DateTimeOffset.UtcNow - (deadline - TimeSpan.FromSeconds(TimeoutSeconds))).TotalSeconds;
+
+            try
+            {
+                // Short per-attempt timeout so we don't silently hang if the model is still loading
+                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                attemptCts.CancelAfter(TimeSpan.FromSeconds(AttemptTimeoutSeconds));
+
+                using var client = _httpClientFactory.CreateClient(nameof(OllamaClient));
+                using var response = await client
+                    .PostAsJsonAsync(endpoint, request, JsonSerializerOptions, attemptCts.Token)
+                    .ConfigureAwait(false);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Vision API: model '{Model}' is ready (after {Elapsed}s).", model, elapsed);
+                    return true;
+                }
+
+                _logger.LogInformation(
+                    "Vision API: model '{Model}' not ready ({Status}) — {Elapsed}s elapsed, retrying...",
+                    model, (int)response.StatusCode, elapsed);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Per-attempt timeout — model still loading
+                _logger.LogInformation(
+                    "Vision API: model '{Model}' still loading — {Elapsed}s elapsed, retrying...",
+                    model, elapsed);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogInformation(
+                    "Vision API: attempt {Attempt} failed ({Type}) — {Elapsed}s elapsed, retrying...",
+                    attempt, ex.GetType().Name, elapsed);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(RetryIntervalSeconds), ct).ConfigureAwait(false);
+        }
+
+        _logger.LogWarning(
+            "Vision API: model '{Model}' did not become ready within {Timeout}s — skipping visual analysis.",
+            model, TimeoutSeconds);
+        return false;
+    }
+
+    /// <summary>
     /// Analyzes a JPEG frame and returns detected content categories and an optional description.
     /// </summary>
     /// <param name="jpeg">Frame image data.</param>
@@ -52,42 +136,56 @@ public class OllamaClient
         }
 
         var prompt = BuildPrompt(descriptions);
-        var request = new OllamaGenerateRequest
+        var request = new VisionChatRequest
         {
             Model = model,
-            Prompt = prompt,
-            Images = [Convert.ToBase64String(jpeg)],
             Stream = false,
-            Format = "json"
+            Messages =
+            [
+                new VisionChatMessage
+                {
+                    Role = "user",
+                    Content =
+                    [
+                        new VisionContentPart { Type = "text", Text = prompt },
+                        new VisionContentPart
+                        {
+                            Type = "image_url",
+                            ImageUrl = new VisionImageUrl
+                            {
+                                Url = $"data:image/jpeg;base64,{Convert.ToBase64String(jpeg)}"
+                            }
+                        }
+                    ]
+                }
+            ]
         };
 
         var knownCategories = FilterDictionary.Categories.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var baseUrl = GetOllamaBaseUrl();
-        var endpoint = new Uri(new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute), "api/generate");
-        _logger.LogDebug("Ollama: POST {Endpoint} model={Model}", endpoint, model);
+        var baseUrl = GetVisionBaseUrl();
+        var endpoint = new Uri(new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute), "v1/chat/completions");
+        _logger.LogDebug("Vision API: POST {Endpoint} model={Model}", endpoint, model);
 
         try
         {
             using var client = _httpClientFactory.CreateClient(nameof(OllamaClient));
 
-            // Use no per-frame timeout — inference on CPU can take several minutes per frame.
-            // The job cancellation token (ct) is the only limit.
+            // No per-frame timeout — inference can take minutes. Job CancellationToken is the only limit.
             using var response = await client.PostAsJsonAsync(endpoint, request, JsonSerializerOptions, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            // Read the raw body. Ollama may send chunked transfer that arrives as NDJSON lines
-            // even when stream=false; we parse each line and take the last done=true entry.
             var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            _logger.LogDebug("Ollama: response body length={Length} bytes", body.Length);
+            _logger.LogDebug("Vision API: response body length={Length} bytes", body.Length);
 
-            var payload = ParseOllamaBody(body);
-            if (payload?.Response is null)
+            var payload = JsonSerializer.Deserialize<VisionChatResponse>(body, JsonSerializerOptions);
+            var content = payload?.Choices?.FirstOrDefault()?.Message?.Content;
+            if (string.IsNullOrWhiteSpace(content))
             {
-                _logger.LogWarning("Ollama: no usable response in body (length={Length})", body.Length);
+                _logger.LogWarning("Vision API: no content in response (length={Length})", body.Length);
                 return ([], string.Empty);
             }
 
-            return ParseResponse(payload.Response, knownCategories);
+            return ParseResponse(content, knownCategories);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -100,38 +198,6 @@ public class OllamaClient
                 ex.GetType().Name, ex.Message);
             return ([], string.Empty);
         }
-    }
-
-    /// <summary>
-    /// Parses an Ollama response body that may be a single JSON object or NDJSON lines.
-    /// Returns the last entry where done=true, or the first parseable entry.
-    /// </summary>
-    private OllamaGenerateResponse? ParseOllamaBody(string body)
-    {
-        OllamaGenerateResponse? best = null;
-        foreach (var line in body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            try
-            {
-                var entry = JsonSerializer.Deserialize<OllamaGenerateResponse>(line, JsonSerializerOptions);
-                if (entry is null)
-                {
-                    continue;
-                }
-
-                best = entry;
-                if (entry.Done)
-                {
-                    return entry; // final streaming packet
-                }
-            }
-            catch (JsonException)
-            {
-                // partial / non-JSON line — skip
-            }
-        }
-
-        return best;
     }
 
     private static string BuildPrompt(IEnumerable<KeyValuePair<string, string[]>> visualDescriptions)
@@ -412,10 +478,10 @@ public class OllamaClient
         return false;
     }
 
-    private static string GetOllamaBaseUrl()
+    private static string GetVisionBaseUrl()
     {
         var url = Plugin.Instance?.Configuration.OllamaBaseUrl;
-        return string.IsNullOrWhiteSpace(url) ? "http://localhost:11434" : url;
+        return string.IsNullOrWhiteSpace(url) ? "http://localhost:8000" : url;
     }
 
 }

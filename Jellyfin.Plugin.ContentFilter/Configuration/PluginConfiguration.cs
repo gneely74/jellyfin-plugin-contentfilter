@@ -13,85 +13,43 @@ public class PluginConfiguration : BasePluginConfiguration
     {
     }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether language-related filtering is enabled.
-    /// </summary>
+    // --- Group-level enable ---
+
+    /// <summary>Gets or sets a value indicating whether language-related filtering is enabled.</summary>
     public bool LanguageEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the action to apply for language-related cues.
-    /// </summary>
-    public string LanguageAction { get; set; } = "mute";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether sexual reference filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether sexual reference filtering is enabled.</summary>
     public bool SexualReferencesEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the action to apply for sexual reference cues.
-    /// </summary>
-    public string SexualReferencesAction { get; set; } = "skip";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether sex and nudity filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether sex and nudity filtering is enabled.</summary>
     public bool SexAndNudityEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the action to apply for sex and nudity cues.
-    /// </summary>
-    public string SexAndNudityAction { get; set; } = "skip";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether violence filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether violence filtering is enabled.</summary>
     public bool ViolenceEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the action to apply for violence cues.
-    /// </summary>
-    public string ViolenceAction { get; set; } = "skip";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether substances filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether substances filtering is enabled.</summary>
     public bool SubstancesEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the action to apply for substance-related cues.
-    /// </summary>
-    public string SubstancesAction { get; set; } = "skip";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether medical event filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether medical filtering is enabled.</summary>
     public bool MedicalEnabled { get; set; } = false;
 
-    /// <summary>
-    /// Gets or sets the action to apply for medical event cues.
-    /// </summary>
-    public string MedicalAction { get; set; } = "skip";
-
-    /// <summary>
-    /// Gets or sets a value indicating whether structural timestamp filtering is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether structural filtering is enabled.</summary>
     public bool StructuralEnabled { get; set; } = false;
 
     /// <summary>
-    /// Gets or sets the action to apply for structural cues.
+    /// Gets or sets the set of individual filter items that have been explicitly disabled.
+    /// Each entry is formatted as <c>{CategoryKey}:{term}</c>, e.g. <c>Language.GeneralProfanity:ass</c>.
+    /// An empty list means all items within enabled groups are active.
     /// </summary>
-    public string StructuralAction { get; set; } = "skip";
+    public List<string> DisabledFilterItems { get; set; } = [];
 
-    /// <summary>
-    /// Gets or sets a value indicating whether content scanning is enabled.
-    /// </summary>
+    /// <summary>Gets or sets a value indicating whether content filtering is enabled.</summary>
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
     /// Gets or sets the Ollama base URL.
     /// </summary>
-    public string OllamaBaseUrl { get; set; } = "http://localhost:11434";
+    public string OllamaBaseUrl { get; set; } = "http://localhost:8000";
 
     /// <summary>
     /// Gets or sets the Ollama model used for vision analysis.
@@ -118,4 +76,10 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Used to select the right audio stream and to find WhisperSubs-generated subtitle files.
     /// </summary>
     public string PreferredAudioLanguage { get; set; } = "en";
+
+    /// <summary>
+    /// Gets or sets the maximum number of seconds of video to scan per item when debug logging is enabled.
+    /// A value of 0 disables the limit (full scan). Only respected when the server is at debug log level.
+    /// </summary>
+    public int DebugScanMaxSeconds { get; set; } = 0;
 }

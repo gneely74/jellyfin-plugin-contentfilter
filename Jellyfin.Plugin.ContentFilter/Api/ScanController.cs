@@ -2,6 +2,7 @@ using Jellyfin.Plugin.ContentFilter.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ContentFilter.Api;
 
@@ -14,14 +15,17 @@ namespace Jellyfin.Plugin.ContentFilter.Api;
 public class ScanController : ControllerBase
 {
     private readonly VideoScanner _videoScanner;
+    private readonly ILogger<ScanController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ScanController"/> class.
     /// </summary>
     /// <param name="videoScanner">The scanner service.</param>
-    public ScanController(VideoScanner videoScanner)
+    /// <param name="logger">The logger.</param>
+    public ScanController(VideoScanner videoScanner, ILogger<ScanController> logger)
     {
         _videoScanner = videoScanner;
+        _logger = logger;
     }
 
     /// <summary>
@@ -64,4 +68,25 @@ public class ScanController : ControllerBase
         _videoScanner.Cancel(itemId);
         return NoContent();
     }
+
+    /// <summary>
+    /// Returns whether the server is currently running at debug log level.
+    /// Used by the plugin UI to conditionally show debug configuration options.
+    /// </summary>
+    /// <returns>An object with a <c>debugEnabled</c> boolean.</returns>
+    [HttpGet("debug/loglevel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetDebugLogLevel()
+    {
+        var isDebug = _logger.IsEnabled(LogLevel.Debug)
+            || IsDebugEnvVar("JELLYFIN_LOG_LEVEL")
+            || IsDebugEnvVar("Logging__LogLevel__Default");
+        return Ok(new { debugEnabled = isDebug });
+    }
+
+    private static bool IsDebugEnvVar(string name)
+        => string.Equals(
+            Environment.GetEnvironmentVariable(name),
+            "Debug",
+            StringComparison.OrdinalIgnoreCase);
 }

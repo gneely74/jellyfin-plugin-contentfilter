@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Jellyfin.Plugin.ContentFilter.Configuration;
 using Jellyfin.Plugin.ContentFilter.Models;
@@ -229,7 +230,34 @@ public class VideoScanner : IHostedService
             var frameDuration = TimeSpan.FromSeconds(1d / fps);
             var partialFlushAt = DateTimeOffset.UtcNow + PartialFlushInterval;
 
-            for (var frameIndex = 0; frameIndex < frameFiles.Length; frameIndex++)
+            var debugMaxSeconds = (config?.DebugScanMaxSeconds ?? 0) > 0
+                ? config!.DebugScanMaxSeconds
+                : 0;
+            var debugMaxTimestamp = debugMaxSeconds > 0 ? TimeSpan.FromSeconds(debugMaxSeconds) : TimeSpan.MaxValue;
+            var debugFrameLimit = debugMaxSeconds > 0
+                ? (int)Math.Ceiling(debugMaxSeconds * fps)
+                : frameFiles.Length;
+            var frameLimit = Math.Min(frameFiles.Length, debugFrameLimit);
+
+            if (debugMaxSeconds > 0)
+            {
+                _logger.LogDebug("Debug scan limit active — capping at {Seconds}s ({Frames} frames)", debugMaxSeconds, frameLimit);
+            }
+
+            // Preflight: verify the vision model is reachable before processing all frames.
+            var visionReady = visualDescriptions.Length > 0 &&
+                              await _ollamaClient.CheckReadyAsync(model, ct).ConfigureAwait(false);
+            if (!visionReady && visualDescriptions.Length > 0)
+            {
+                _logger.LogWarning(
+                    "Vision API not reachable or model '{Model}' not loaded — skipping visual analysis. " +
+                    "Check the Vision API Base URL and ensure the model is loaded in the admin panel.", model);
+            }
+
+            var consecutiveFailures = 0;
+            const int MaxConsecutiveFailures = 5;
+
+            for (var frameIndex = 0; frameIndex < frameLimit && visionReady; frameIndex++)
             {
                 ct.ThrowIfCancellationRequested();
 
@@ -246,6 +274,22 @@ public class VideoScanner : IHostedService
                     .AnalyzeFrameAsync(jpeg, model, visualDescriptions, ct)
                     .ConfigureAwait(false);
 
+                if (detected.Count == 0 && string.IsNullOrEmpty(description))
+                {
+                    consecutiveFailures++;
+                    if (consecutiveFailures >= MaxConsecutiveFailures)
+                    {
+                        _logger.LogWarning(
+                            "Vision API: {Count} consecutive failures at frame {Frame} — aborting visual scan.",
+                            consecutiveFailures, frameIndex + 1);
+                        break;
+                    }
+                }
+                else
+                {
+                    consecutiveFailures = 0;
+                }
+
                 if (detected.Count > 0)
                 {
                     _logger.LogDebug("Frame {Frame}: detected {Categories} — {Description}",
@@ -260,14 +304,15 @@ public class VideoScanner : IHostedService
                         continue;
                     }
 
+                    var channel = FilterDictionary.GetDefaultChannel(category);
                     cues.Add(new FilterCue
                     {
                         Start = start,
                         End = start + frameDuration,
                         Description = description,
                         Category = category,
-                        Channel = FilterDictionary.GetDefaultChannel(category),
-                        Action = GetGroupAction(config, group)
+                        Channel = channel,
+                        Action = channel == "audio" ? "mute" : "skip"
                     });
                 }
 
@@ -285,7 +330,8 @@ public class VideoScanner : IHostedService
 
             if (config?.ScanAnalyzeAudio ?? true)
             {
-                cues.AddRange(ScanSrtWordMatches(item.Path, config));
+                cues.AddRange(ScanSrtWordMatches(item.Path, config, debugMaxTimestamp));
+                await WriteCensoredSrtAsync(item.Path, config, ct).ConfigureAwait(false);
             }
 
             var merged = MergeCues(cues);
@@ -379,11 +425,24 @@ public class VideoScanner : IHostedService
 
     private static IEnumerable<KeyValuePair<string, string[]>> GetEnabledVisualDescriptions(PluginConfiguration? config)
     {
+        var disabled = config?.DisabledFilterItems is { Count: > 0 }
+            ? new HashSet<string>(config.DisabledFilterItems, StringComparer.Ordinal)
+            : null;
+
         foreach (var pair in FilterDictionary.GetVisualDescriptions())
         {
-            if (IsGroupEnabled(config, FilterDictionary.GetGroup(pair.Key)))
+            if (!IsGroupEnabled(config, FilterDictionary.GetGroup(pair.Key)))
             {
-                yield return pair;
+                continue;
+            }
+
+            var enabled = disabled is null
+                ? pair.Value
+                : pair.Value.Where(d => !disabled.Contains($"{pair.Key}:{d}")).ToArray();
+
+            if (enabled.Length > 0)
+            {
+                yield return new KeyValuePair<string, string[]>(pair.Key, enabled);
             }
         }
     }
@@ -473,7 +532,7 @@ public class VideoScanner : IHostedService
         return candidates.FirstOrDefault(File.Exists);
     }
 
-    private static IEnumerable<FilterCue> ScanSrtWordMatches(string mediaPath, PluginConfiguration? config)
+    private static IEnumerable<FilterCue> ScanSrtWordMatches(string mediaPath, PluginConfiguration? config, TimeSpan maxTimestamp = default)
     {
         var preferredLanguage = config?.PreferredAudioLanguage ?? "en";
         var srtPath = FindSrtPath(mediaPath, preferredLanguage);
@@ -482,12 +541,26 @@ public class VideoScanner : IHostedService
             yield break;
         }
 
+        if (maxTimestamp == default)
+        {
+            maxTimestamp = TimeSpan.MaxValue;
+        }
+
+        var disabled = config?.DisabledFilterItems is { Count: > 0 }
+            ? new HashSet<string>(config.DisabledFilterItems, StringComparer.Ordinal)
+            : null;
+
         var content = File.ReadAllText(srtPath);
         foreach (var block in SplitSrtBlocks(content))
         {
             if (!TryParseSrtBlock(block, out var start, out var end, out var text))
             {
                 continue;
+            }
+
+            if (start > maxTimestamp)
+            {
+                break;
             }
 
             foreach (var (category, phrases) in FilterDictionary.GetWordLists())
@@ -500,22 +573,136 @@ public class VideoScanner : IHostedService
 
                 foreach (var phrase in phrases)
                 {
-                    if (!string.IsNullOrWhiteSpace(phrase) &&
-                        text.Contains(phrase, StringComparison.OrdinalIgnoreCase))
+                    if (string.IsNullOrWhiteSpace(phrase))
                     {
+                        continue;
+                    }
+
+                    if (disabled?.Contains($"{category}:{phrase}") == true)
+                    {
+                        continue;
+                    }
+
+                    // Find each occurrence and estimate its position within the subtitle block
+                    var searchFrom = 0;
+                    while (searchFrom < text.Length)
+                    {
+                        var matchIdx = text.IndexOf(phrase, searchFrom, StringComparison.OrdinalIgnoreCase);
+                        if (matchIdx < 0) break;
+
+                        // Proportional character position → estimated speech time
+                        var blockDuration = end - start;
+                        var charRatio = text.Length <= 1 ? 0.0 : (double)matchIdx / text.Length;
+                        var wordStart = start + TimeSpan.FromSeconds(charRatio * blockDuration.TotalSeconds);
+                        var wordEnd = wordStart + TimeSpan.FromMilliseconds(Math.Max(300, phrase.Length * 90));
+
+                        // 80 ms pre-roll, 120 ms post-roll, clamped to block
+                        var cueStart = TimeSpan.FromTicks(Math.Max((wordStart - TimeSpan.FromMilliseconds(80)).Ticks, start.Ticks));
+                        var cueEnd = TimeSpan.FromTicks(Math.Min((wordEnd + TimeSpan.FromMilliseconds(120)).Ticks, end.Ticks));
+
+                        var channel = FilterDictionary.GetDefaultChannel(category);
                         yield return new FilterCue
                         {
-                            Start = start,
-                            End = end,
+                            Start = cueStart,
+                            End = cueEnd,
                             Description = $"Matched phrase: {phrase}",
                             Category = category,
-                            Channel = FilterDictionary.GetDefaultChannel(category),
-                            Action = GetGroupAction(config, group)
+                            Channel = channel,
+                            Action = channel == "audio" ? "mute" : "skip"
                         };
+
+                        searchFrom = matchIdx + phrase.Length;
                     }
                 }
             }
         }
+    }
+
+    private async Task WriteCensoredSrtAsync(string mediaPath, PluginConfiguration? config, CancellationToken ct)
+    {
+        var preferredLanguage = config?.PreferredAudioLanguage ?? "en";
+        var srtPath = FindSrtPath(mediaPath, preferredLanguage);
+        if (string.IsNullOrWhiteSpace(srtPath))
+        {
+            return;
+        }
+
+        var disabled = config?.DisabledFilterItems is { Count: > 0 }
+            ? new HashSet<string>(config.DisabledFilterItems, StringComparer.Ordinal)
+            : null;
+
+        // Collect active phrases, longest first to prevent partial-match clobbering
+        var activePhrases = new List<string>();
+        foreach (var (category, phrases) in FilterDictionary.GetWordLists())
+        {
+            var group = FilterDictionary.GetGroup(category);
+            if (!IsGroupEnabled(config, group))
+            {
+                continue;
+            }
+
+            foreach (var phrase in phrases)
+            {
+                if (string.IsNullOrWhiteSpace(phrase))
+                {
+                    continue;
+                }
+
+                if (disabled?.Contains($"{category}:{phrase}") == true)
+                {
+                    continue;
+                }
+
+                if (!activePhrases.Any(p => string.Equals(p, phrase, StringComparison.OrdinalIgnoreCase)))
+                {
+                    activePhrases.Add(phrase);
+                }
+            }
+        }
+
+        if (activePhrases.Count == 0)
+        {
+            return;
+        }
+
+        activePhrases.Sort(static (a, b) => b.Length.CompareTo(a.Length));
+
+        var content = await File.ReadAllTextAsync(srtPath, ct).ConfigureAwait(false);
+        foreach (var phrase in activePhrases)
+        {
+            content = Regex.Replace(
+                content,
+                @"\b" + Regex.Escape(phrase) + @"\b",
+                m => BleepText(m.Value),
+                RegexOptions.IgnoreCase);
+        }
+
+        var dir = Path.GetDirectoryName(mediaPath) ?? Path.GetTempPath();
+        var stem = Path.GetFileNameWithoutExtension(mediaPath);
+        var censoredPath = Path.Combine(dir, $"{stem}.{preferredLanguage}.JCF-censored.srt");
+
+        try
+        {
+            await File.WriteAllTextAsync(censoredPath, content, ct).ConfigureAwait(false);
+            _logger.LogInformation("Censored subtitle written: {Path}", censoredPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write censored subtitle to {Path}", censoredPath);
+        }
+    }
+
+    private static string BleepText(string phrase)
+    {
+        return string.Join(' ', phrase.Split(' ').Select(static w =>
+        {
+            var n = w.Length;
+            if (n <= 2) return w;
+            var tail = n >= 6 ? 2 : 1;
+            var stars = n - 1 - tail;
+            if (stars < 1) stars = 1;
+            return $"{w[0]}{new string('*', stars)}{w[^tail..]}";
+        }));
     }
 
     private static bool TryParseSrtBlock(string block, out TimeSpan start, out TimeSpan end, out string text)
@@ -582,28 +769,6 @@ public class VideoScanner : IHostedService
             "Structural" => config.StructuralEnabled,
             _ => true
         };
-    }
-
-    private static string GetGroupAction(PluginConfiguration? config, string group)
-    {
-        if (config is null)
-        {
-            return "skip";
-        }
-
-        var action = group switch
-        {
-            "Language" => config.LanguageAction,
-            "SexualReferences" => config.SexualReferencesAction,
-            "SexAndNudity" => config.SexAndNudityAction,
-            "Violence" => config.ViolenceAction,
-            "Substances" => config.SubstancesAction,
-            "Medical" => config.MedicalAction,
-            "Structural" => config.StructuralAction,
-            _ => "skip"
-        };
-
-        return action is "skip" or "mute" ? action : "skip";
     }
 
     private static JcfFilter BuildFilter(BaseItem item, List<FilterCue> cues, string source)

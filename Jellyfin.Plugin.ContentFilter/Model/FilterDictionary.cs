@@ -10,7 +10,7 @@ public static class FilterDictionary
     /// </summary>
     public static IReadOnlyDictionary<string, string[]> Categories { get; } = new Dictionary<string, string[]>
     {
-        // --- 1. LANGUAGE & PROFANITY (word/phrase match against subtitles) ---
+        // --- 1. LANGUAGE & PROFANITY (subtitle word match) ---
         ["Language.GeneralProfanity"] =
         [
             "arse", "ass", "bastard", "bitch", "bloody", "bollocks", "bugger",
@@ -20,7 +20,7 @@ public static class FilterDictionary
 
         ["Language.Blasphemy"] =
         [
-            "Jesus Christ", " Oh God",
+            "Jesus Christ", "Oh God",
         ],
 
         ["Language.RacialAndBigotedSlurs"] =
@@ -40,7 +40,7 @@ public static class FilterDictionary
             "crap", "damn", "fuck", "fucking", "fucker", "hell", "shit",
         ],
 
-        // --- 2. SEXUAL REFERENCES & ANATOMY (word/phrase match against subtitles) ---
+        // --- 2. SEXUAL REFERENCES (subtitle word match + Ollama visual) ---
         ["SexualReferences.ExplicitWords"] =
         [
             "anus", "balls", "beastial", "blowjob", "clit", "cock", "condom", "cum",
@@ -51,24 +51,20 @@ public static class FilterDictionary
             "testicle", "tits", "twat", "vagina", "wank", "whore",
         ],
 
-        // Contextual sexual dialogue — matched against transcript, not sent to vision model.
         ["SexualReferences.ContextualDialogue"] =
         [
-            "sexy", "horny", "aroused", "turned on", "get laid", "getting laid",
-            "hook up", "hooked up", "one night stand", "sleep together", "slept together",
-            "sleeping with", "make love", "making love", "in bed with",
-            "come on to", "hitting on", "hit on", "come-on",
-            "booty call", "booty", "sexually", "naughty", "kinky", "fetish",
-            "sexual remark", "sexual reference", "dirty joke",
+            "A man makes a sexual remark to a man.",
+            "A man makes a sexual remark to a woman.",
+            "A woman makes a sexual remark to a man.",
+            "A woman makes a sexual remark to a woman.",
         ],
-
-        // --- 3. VISUAL CATEGORIES (descriptions sent to Ollama vision model) ---
 
         ["SexualReferences.Visuals"] =
         [
             "Vulgar Gestures",
         ],
 
+        // --- 3. SEX & NUDITY (Ollama visual) ---
         ["SexAndNudity.OnscreenActivity"] =
         [
             "Sex with Nudity",
@@ -97,6 +93,7 @@ public static class FilterDictionary
             "Homosexual Kissing (Passionate)",
         ],
 
+        // --- 4. VIOLENCE & HORROR (Ollama visual) ---
         ["Violence.Tiers"] =
         [
             "Gore",
@@ -107,23 +104,15 @@ public static class FilterDictionary
             "Objectionable, Disturbing, or Scary",
         ],
 
-        // Substance use — matched against transcript, not sent to vision model.
+        // --- 5. SUBSTANCE USE (Ollama visual) ---
         ["Substances.Usage"] =
         [
-            // Illegal drugs
-            "joint", "blunt", "weed", "pot", "marijuana", "cannabis",
-            "cocaine", "coke", "crack", "heroin", "meth", "methamphetamine",
-            "ecstasy", "molly", "mdma", "ketamine", "opioid", "fentanyl",
-            "xanax", "adderall", "oxy", "syringe", "shoot up", "overdose",
-            "stoned", "blazed", "strung out", "drug deal", "dealer", "bong",
-            // Alcohol
-            "drunk", "wasted", "hammered", "plastered", "sloshed", "booze",
-            "hangover", "blackout", "tequila", "vodka", "whiskey", "whisky",
-            "bourbon", "scotch", "rum", "gin", "champagne", "beer", "ale", "lager",
-            // Tobacco / smoking
-            "cigarette", "cigar", "tobacco", "nicotine", "vape", "vaping",
+            "Illegal Usage",
+            "Legal Usage",
+            "Implied Usage",
         ],
 
+        // --- 6. MEDICAL & BIOLOGICAL (Ollama visual) ---
         ["Medical.Events"] =
         [
             "Medical Graphic",
@@ -132,6 +121,7 @@ public static class FilterDictionary
             "Bodily Functions/Jokes",
         ],
 
+        // --- 7. STRUCTURAL TIMESTAMPS (Ollama visual) ---
         ["Structural.Timestamps"] =
         [
             "Opening Credits",
@@ -140,6 +130,8 @@ public static class FilterDictionary
         ],
     };
 
+    // Only Language.* and SexualReferences.ExplicitWords are subtitle word-match categories.
+    // Everything else (including ContextualDialogue and Substances.Usage) is sent to Ollama.
     private static readonly HashSet<string> WordListKeys =
     [
         "Language.GeneralProfanity",
@@ -148,28 +140,25 @@ public static class FilterDictionary
         "Language.ChildishLanguage",
         "Language.CaptionsWithProfanity",
         "SexualReferences.ExplicitWords",
-        // Moved from vision — better detected in transcript than from video frames
-        "SexualReferences.ContextualDialogue",
-        "Substances.Usage",
     ];
 
     private static readonly IReadOnlyDictionary<string, string> DefaultChannels = new Dictionary<string, string>
     {
-        ["Language.GeneralProfanity"]           = "audio",
-        ["Language.Blasphemy"]                  = "audio",
-        ["Language.RacialAndBigotedSlurs"]      = "audio",
-        ["Language.ChildishLanguage"]           = "audio",
-        ["Language.CaptionsWithProfanity"]      = "both",
-        ["SexualReferences.ExplicitWords"]      = "audio",
-        ["SexualReferences.ContextualDialogue"] = "audio",
-        ["SexualReferences.Visuals"]            = "video",
-        ["SexAndNudity.OnscreenActivity"]       = "video",
-        ["SexAndNudity.NudityProfiles"]         = "video",
-        ["SexAndNudity.PhysicalIntimacy"]       = "video",
-        ["Violence.Tiers"]                      = "video",
-        ["Substances.Usage"]                    = "audio",
-        ["Medical.Events"]                      = "both",
-        ["Structural.Timestamps"]               = "both",
+        ["Language.GeneralProfanity"]              = "audio",
+        ["Language.Blasphemy"]                     = "audio",
+        ["Language.RacialAndBigotedSlurs"]         = "audio",
+        ["Language.ChildishLanguage"]              = "audio",
+        ["Language.CaptionsWithProfanity"]         = "both",
+        ["SexualReferences.ExplicitWords"]         = "audio",
+        ["SexualReferences.ContextualDialogue"]    = "video",
+        ["SexualReferences.Visuals"]               = "video",
+        ["SexAndNudity.OnscreenActivity"]          = "video",
+        ["SexAndNudity.NudityProfiles"]            = "video",
+        ["SexAndNudity.PhysicalIntimacy"]          = "video",
+        ["Violence.Tiers"]                         = "video",
+        ["Substances.Usage"]                       = "video",
+        ["Medical.Events"]                         = "both",
+        ["Structural.Timestamps"]                  = "both",
     };
 
     /// <summary>

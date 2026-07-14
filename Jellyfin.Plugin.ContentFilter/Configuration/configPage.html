@@ -3,46 +3,59 @@
 <head>
     <meta charset="utf-8">
     <title>Jellyfin Content Filter</title>
-    <style>
-        .tabButtons {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .tabPanel {
-            display: none;
-        }
-
-        .tabPanel.active {
-            display: block;
-        }
-    </style>
 </head>
 <body>
     <div id="ContentFilterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <style>
+            .tabButtons { display:flex; gap:8px; margin-bottom:16px; }
+            .tabPanel { display:none; }
+            .tabPanel.active { display:block; }
+            /* Shared checkbox sizing */
+            .cf-g input[type=checkbox] { width:14px; height:14px; margin:0; cursor:pointer; flex-shrink:0; }
+            /* Level 1: Group */
+            .cf-g { margin-bottom:16px; border:1px solid #3a3a55; border-radius:6px; overflow:hidden; }
+            .cf-g-hdr { background:#1a1a2e; padding:10px 14px; border-bottom:1px solid #2a2a44; }
+            .cf-g-hdr > label { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+            .cf-num { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px;
+                      border-radius:50%; background:#5555aa; color:#fff; font-size:0.75em; font-weight:bold; flex-shrink:0; }
+            .cf-g-title { font-weight:bold; font-size:0.88em; letter-spacing:0.08em; color:#ddd; }
+            .cf-g-body { padding:8px 14px 14px; background:#111118; }
+            /* Level 2: Category */
+            .cf-c { margin-top:12px; padding-left:14px; border-left:3px solid #4a4a88; }
+            .cf-c-header { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:3px 0; }
+            .cf-cname { font-family:monospace; background:#1e1e32; padding:2px 8px; border-radius:3px;
+                        font-size:0.88em; color:#aaaae0; border:1px solid #2e2e4e; }
+            .cf-badge { font-size:0.68em; padding:1px 5px; border-radius:2px; letter-spacing:0.04em; }
+            .cf-badge-word   { background:#152015; color:#6abf6a; border:1px solid #2a4a2a; }
+            .cf-badge-visual { background:#201520; color:#bf6abf; border:1px solid #4a2a4a; }
+            /* Level 3: Items */
+            .cf-items { padding-left:22px; border-left:2px dashed #252535; margin-top:4px; }
+            .cf-item > label { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+                               padding:2px 0; font-size:0.83em; color:#77778a; }
+            /* Disabled / greyed-out */
+            .cf-off { opacity:0.35; pointer-events:none; }
+        </style>
         <div data-role="content">
             <div class="content-primary">
                 <form id="ContentFilterConfigForm">
                     <div class="tabButtons">
-                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="filterSettingsTab">Filter Settings</button>
+                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="filtersTab">Filters</button>
                         <button is="emby-button" type="button" class="raised emby-button" data-tab-button="scanSettingsTab">Scan Settings</button>
                     </div>
 
-                    <div id="filterSettingsTab" class="tabPanel active">
-                        <div class="checkboxContainer checkboxContainer-withDescription">
+                    <div id="filtersTab" class="tabPanel active">
+                        <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom:16px;">
                             <label class="emby-checkbox-label">
                                 <input id="IsEnabled" type="checkbox" is="emby-checkbox">
                                 <span>Enable Content Filtering</span>
                             </label>
                         </div>
-
-                        <div id="groupSettingsContainer"></div>
+                        <div id="filterHierarchyContainer"></div>
                     </div>
 
                     <div id="scanSettingsTab" class="tabPanel">
                         <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaBaseUrl">Ollama Base URL</label>
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaBaseUrl">Vision API Base URL (oMLX: http://localhost:8000 · Ollama: http://localhost:11434)</label>
                             <input id="OllamaBaseUrl" type="text" is="emby-input">
                         </div>
                         <div class="inputContainer">
@@ -57,15 +70,32 @@
                             <label class="inputLabel inputLabelUnfocused" for="ScanFramesPerSecond">Scan Frames Per Second</label>
                             <input id="ScanFramesPerSecond" type="number" step="0.1" min="0" is="emby-input">
                         </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="PreferredAudioLanguage">Preferred Audio Language (ISO 639-1, e.g. en)</label>
+                            <input id="PreferredAudioLanguage" type="text" is="emby-input">
+                        </div>
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
                                 <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox">
                                 <span>Analyze Audio Transcript</span>
                             </label>
                         </div>
+
                     </div>
 
-                    <div style="display:flex;gap:8px;margin-top:8px;">
+                    <div id="debugConfigSection" style="margin-top:16px;border:1px solid #f0ad4e;border-radius:4px;padding:16px;">
+                        <h3 style="color:#f0ad4e;margin-top:0;">&#x1F41E; Debug Options</h3>
+                        <p style="color:#aaa;margin:0 0 12px;font-size:0.9em;">
+                            Visible because the server is at <strong>Debug</strong> log level
+                            (<code>JELLYFIN_LOG_LEVEL=Debug</code>).
+                        </p>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DebugScanMaxSeconds">Max Scan Duration per File (seconds, 0 = full scan)</label>
+                            <input id="DebugScanMaxSeconds" type="number" min="0" step="1" is="emby-input">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-top:16px;">
                         <button is="emby-button" type="submit" class="raised button-submit emby-button">
                             <span>Save</span>
                         </button>
@@ -77,110 +107,258 @@
             </div>
         </div>
         <script type="text/javascript">
-            var ContentFilterConfig = {
-                pluginUniqueId: 'A62B2473-77E1-45C1-8470-57FB95A85394',
-                groups: [
-                    'Language',
-                    'SexualReferences',
-                    'SexAndNudity',
-                    'Violence',
-                    'Substances',
-                    'Medical',
-                    'Structural'
-                ]
-            };
+            var PLUGIN_ID = 'A62B2473-77E1-45C1-8470-57FB95A85394';
 
-            function getEl(id) {
-                return document.getElementById(id);
+            // 3-level: Group → Category → Individual items
+            // item key stored in DisabledFilterItems = categoryKey + ':' + itemLabel
+            var FH = [
+                { g:'Language', label:'Language & Profanity', cats:[
+                    { key:'Language.GeneralProfanity',    label:'General Profanity',      badge:'word',
+                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','cock','crap','cunt','damn','dick','douche','fuck','fucking','fucker','hell','piss','prick','pussy','screw','shit','twat','wank'] },
+                    { key:'Language.Blasphemy',           label:'Blasphemy',              badge:'word',
+                      items:['Jesus Christ','Oh God'] },
+                    { key:'Language.RacialAndBigotedSlurs', label:'Racial & Bigoted Slurs', badge:'word',
+                      items:['chink','cracker','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
+                    { key:'Language.ChildishLanguage',    label:'Childish Language',      badge:'word',
+                      items:['bum','butt','dumb','fart','stupid'] },
+                    { key:'Language.CaptionsWithProfanity', label:'Captions with Profanity', badge:'word',
+                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','damn','fuck','fucking','fucker','hell','shit'] }
+                ]},
+                { g:'SexualReferences', label:'Sexual References & Anatomy', cats:[
+                    { key:'SexualReferences.ExplicitWords', label:'Explicit Words', badge:'word',
+                      items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunillingus','dick','dildo','dink','douche','ejaculate','fag','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','picker','penis','porn','prick','piss','pussy','queer','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
+                    { key:'SexualReferences.ContextualDialogue', label:'Contextual Dialogue', badge:'visual',
+                      items:['A man makes a sexual remark to a man.','A man makes a sexual remark to a woman.','A woman makes a sexual remark to a man.','A woman makes a sexual remark to a woman.'] },
+                    { key:'SexualReferences.Visuals', label:'Visuals', badge:'visual',
+                      items:['Vulgar Gestures'] }
+                ]},
+                { g:'SexAndNudity', label:'Sex & Nudity', cats:[
+                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity', badge:'visual',
+                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
+                    { key:'SexAndNudity.NudityProfiles',  label:'Nudity Profiles',    badge:'visual',
+                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] },
+                    { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
+                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)'] }
+                ]},
+                { g:'Violence', label:'Violence & Horror', cats:[
+                    { key:'Violence.Tiers', label:'Tiers', badge:'visual',
+                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
+                ]},
+                { g:'Substances', label:'Substance Use', cats:[
+                    { key:'Substances.Usage', label:'Usage', badge:'visual',
+                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
+                ]},
+                { g:'Medical', label:'Medical & Biological Processes', cats:[
+                    { key:'Medical.Events', label:'Events', badge:'visual',
+                      items:['Medical Graphic','Medical Procedures','Life Events','Bodily Functions/Jokes'] }
+                ]},
+                { g:'Structural', label:'Structural Timestamps', cats:[
+                    { key:'Structural.Timestamps', label:'Timestamps', badge:'visual',
+                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
+                ]}
+            ];
+
+            function esc(s) {
+                return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
             }
 
-            function renderGroups() {
-                var container = getEl('groupSettingsContainer');
-                container.innerHTML = '';
+            function getEl(id) { return document.getElementById(id); }
 
-                ContentFilterConfig.groups.forEach(function (group) {
-                    var section = document.createElement('div');
-                    section.className = 'detailSection';
-                    section.innerHTML = ''
-                        + '<h3>' + group + '</h3>'
-                        + '<div class="checkboxContainer checkboxContainer-withDescription">'
-                        + '  <label class="emby-checkbox-label">'
-                        + '    <input id="' + group + 'Enabled" type="checkbox" is="emby-checkbox">'
-                        + '    <span>Enable ' + group + '</span>'
-                        + '  </label>'
-                        + '</div>'
-                        + '<div class="selectContainer">'
-                        + '  <label class="selectLabel" for="' + group + 'Action">Action</label>'
-                        + '  <select id="' + group + 'Action" is="emby-select" class="emby-select-withcolor emby-select">'
-                        + '    <option value="skip">skip</option>'
-                        + '    <option value="mute">mute</option>'
-                        + '  </select>'
-                        + '</div>';
-                    container.appendChild(section);
+            function findItemCb(key) {
+                var all = document.querySelectorAll('[data-ik]');
+                for (var i = 0; i < all.length; i++) {
+                    if (all[i].getAttribute('data-ik') === key) return all[i];
+                }
+                return null;
+            }
+
+            // Bleep a word-list term: show first char + last 1 (short) or 2 (long) chars
+            function bleep(str) {
+                return str.split(' ').map(function(w) {
+                    var n = w.length;
+                    if (n <= 2) return w;
+                    var tail = n >= 6 ? 2 : 1;   // last 2 chars for longer words
+                    var stars = n - 1 - tail;
+                    if (stars < 1) stars = 1;
+                    return w[0] + '*'.repeat(stars) + w.slice(n - tail);
+                }).join(' ');
+            }
+
+            function renderHierarchy() {
+                var container = getEl('filterHierarchyContainer');
+                container.innerHTML = '';
+                FH.forEach(function(gDef, gIdx) {
+                    var catsHtml = '';
+                    gDef.cats.forEach(function(cat) {
+                        var subName = cat.key.split('.')[1];
+                        var isWord = cat.badge === 'word';
+                        var badgeCls = isWord ? 'cf-badge-word' : 'cf-badge-visual';
+                        var badgeTxt = isWord ? 'word' : 'visual';
+                        var itemsHtml = '';
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var display = isWord ? bleep(item) : item;
+                            itemsHtml +=
+                                '<div class="cf-item">' +
+                                '<label><input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
+                                '<span>' + esc(display) + '</span></label></div>';
+                        });
+                        catsHtml +=
+                            '<div class="cf-c" data-fc="' + esc(cat.key) + '">' +
+                            '<label class="cf-c-header"><input type="checkbox" data-fck="' + esc(cat.key) + '">' +
+                            '<span class="cf-cname">' + esc(subName) + '</span>' +
+                            '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span></label>' +
+                            '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
+                            '</div>';
+                    });
+                    var html =
+                        '<div class="cf-g" data-fg="' + esc(gDef.g) + '">' +
+                        '<div class="cf-g-hdr"><label><input type="checkbox" id="' + gDef.g + 'Enabled">' +
+                        '<span class="cf-num">' + (gIdx+1) + '</span>' +
+                        '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
+                        '</label></div>' +
+                        '<div class="cf-g-body">' + catsHtml + '</div>' +
+                        '</div>';
+
+                    var wrap = document.createElement('div');
+                    wrap.innerHTML = html;
+                    var groupEl = wrap.firstElementChild;
+                    var groupCb = groupEl.querySelector('#' + gDef.g + 'Enabled');
+
+                    // Category checkbox → check/uncheck all its items
+                    groupEl.querySelectorAll('[data-fck]').forEach(function(catCb) {
+                        var catKey = catCb.getAttribute('data-fck');
+                        catCb.addEventListener('change', function() {
+                            var fiList = groupEl.querySelector('[data-fil="' + catKey + '"]');
+                            if (fiList) fiList.classList.toggle('cf-off', !catCb.checked);
+                            groupEl.querySelectorAll('[data-cat="' + catKey + '"]').forEach(function(cb) {
+                                cb.checked = catCb.checked;
+                            });
+                        });
+                    });
+
+                    // Item checkbox → sync parent category state
+                    groupEl.querySelectorAll('[data-ik]').forEach(function(itemCb) {
+                        itemCb.addEventListener('change', function() {
+                            updateCatCb(groupEl, itemCb.getAttribute('data-cat'));
+                        });
+                    });
+
+                    // Group checkbox → cascade to all categories and items
+                    groupCb.addEventListener('change', function() {
+                        var on = groupCb.checked;
+                        groupEl.querySelectorAll('[data-fck],[data-ik]').forEach(function(cb) { cb.checked = on; });
+                        groupEl.querySelectorAll('.cf-c,.cf-items').forEach(function(el) {
+                            el.classList.toggle('cf-off', !on);
+                        });
+                    });
+
+                    container.appendChild(groupEl);
                 });
             }
 
+            function updateCatCb(groupEl, catKey) {
+                var catCb = groupEl.querySelector('[data-fck="' + catKey + '"]');
+                if (!catCb) return;
+                var items = groupEl.querySelectorAll('[data-cat="' + catKey + '"]');
+                var allOn = true, allOff = true;
+                items.forEach(function(cb) { if (cb.checked) allOff = false; else allOn = false; });
+                catCb.checked = allOn;
+                catCb.indeterminate = !allOn && !allOff;
+            }
+
             function setActiveTab(tabId) {
-                var panels = document.querySelectorAll('.tabPanel');
-                panels.forEach(function (panel) {
-                    panel.classList.toggle('active', panel.id === tabId);
+                document.querySelectorAll('.tabPanel').forEach(function(p) {
+                    p.classList.toggle('active', p.id === tabId);
                 });
             }
 
             function populateForm(config) {
-                getEl('IsEnabled').checked = !!config.IsEnabled;
-                getEl('OllamaBaseUrl').value = config.OllamaBaseUrl || '';
-                getEl('OllamaVisionModel').value = config.OllamaVisionModel || '';
-                getEl('OllamaTextModel').value = config.OllamaTextModel || '';
-                getEl('ScanFramesPerSecond').value = config.ScanFramesPerSecond ?? 1;
-                getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
+                getEl('IsEnabled').checked            = !!config.IsEnabled;
+                getEl('OllamaBaseUrl').value          = config.OllamaBaseUrl || '';
+                getEl('OllamaVisionModel').value      = config.OllamaVisionModel || '';
+                getEl('OllamaTextModel').value        = config.OllamaTextModel || '';
+                getEl('ScanFramesPerSecond').value    = config.ScanFramesPerSecond ?? 0.5;
+                getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
+                getEl('ScanAnalyzeAudio').checked     = !!config.ScanAnalyzeAudio;
+                getEl('DebugScanMaxSeconds').value    = config.DebugScanMaxSeconds ?? 0;
 
-                ContentFilterConfig.groups.forEach(function (group) {
-                    getEl(group + 'Enabled').checked = !!config[group + 'Enabled'];
-                    getEl(group + 'Action').value = (config[group + 'Action'] || 'skip').toLowerCase();
+                var disabled = new Set(config.DisabledFilterItems || []);
+
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    if (groupCb) groupCb.checked = !!config[gDef.g + 'Enabled'];
+                    var groupOn = groupCb ? groupCb.checked : true;
+                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
+
+                    gDef.cats.forEach(function(cat) {
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var cb = findItemCb(ik);
+                            if (cb) cb.checked = !disabled.has(ik);
+                        });
+                        if (groupEl) {
+                            updateCatCb(groupEl, cat.key);
+                            if (!groupOn) {
+                                var fiList = groupEl.querySelector('[data-fil="' + cat.key + '"]');
+                                if (fiList) fiList.classList.add('cf-off');
+                                var fc = groupEl.querySelector('[data-fc="' + cat.key + '"]');
+                                if (fc) fc.classList.add('cf-off');
+                            }
+                        }
+                    });
                 });
             }
 
             function collectForm(config) {
-                config.IsEnabled = getEl('IsEnabled').checked;
-                config.OllamaBaseUrl = getEl('OllamaBaseUrl').value || '';
-                config.OllamaVisionModel = getEl('OllamaVisionModel').value || '';
-                config.OllamaTextModel = getEl('OllamaTextModel').value || '';
-                config.ScanFramesPerSecond = parseFloat(getEl('ScanFramesPerSecond').value || '0');
-                config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
+                config.IsEnabled             = getEl('IsEnabled').checked;
+                config.OllamaBaseUrl         = getEl('OllamaBaseUrl').value || '';
+                config.OllamaVisionModel     = getEl('OllamaVisionModel').value || '';
+                config.OllamaTextModel       = getEl('OllamaTextModel').value || '';
+                config.ScanFramesPerSecond   = parseFloat(getEl('ScanFramesPerSecond').value || '0');
+                config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
+                config.ScanAnalyzeAudio      = getEl('ScanAnalyzeAudio').checked;
+                config.DebugScanMaxSeconds   = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
 
-                ContentFilterConfig.groups.forEach(function (group) {
-                    config[group + 'Enabled'] = getEl(group + 'Enabled').checked;
-                    config[group + 'Action'] = getEl(group + 'Action').value;
+                var disabled = [];
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    if (groupCb) config[gDef.g + 'Enabled'] = groupCb.checked;
+                    gDef.cats.forEach(function(cat) {
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var cb = findItemCb(ik);
+                            if (cb && !cb.checked) disabled.push(ik);
+                        });
+                    });
                 });
+                config.DisabledFilterItems = disabled;
             }
 
-            renderGroups();
+            renderHierarchy();
 
-            document.querySelectorAll('[data-tab-button]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    setActiveTab(button.getAttribute('data-tab-button'));
-                });
+            document.querySelectorAll('[data-tab-button]').forEach(function(btn) {
+                btn.addEventListener('click', function() { setActiveTab(btn.getAttribute('data-tab-button')); });
             });
 
-            document.querySelector('#ContentFilterConfigPage').addEventListener('pageshow', function () {
+            document.querySelector('#ContentFilterConfigPage').addEventListener('pageshow', function() {
                 Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(ContentFilterConfig.pluginUniqueId).then(function (config) {
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
                     populateForm(config);
                     Dashboard.hideLoadingMsg();
                 });
             });
 
-            document.querySelector('#openSegmentsBtn').addEventListener('click', function () {
+            getEl('openSegmentsBtn').addEventListener('click', function() {
                 Dashboard.navigate('configurationpage?name=' + encodeURIComponent('Jellyfin Content Filter - Segments'));
             });
 
-            document.querySelector('#ContentFilterConfigForm').addEventListener('submit', function (e) {
+            document.querySelector('#ContentFilterConfigForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(ContentFilterConfig.pluginUniqueId).then(function (config) {
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
                     collectForm(config);
-                    ApiClient.updatePluginConfiguration(ContentFilterConfig.pluginUniqueId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then(Dashboard.processPluginConfigurationUpdateResult);
                 });
                 return false;
             });
