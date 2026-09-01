@@ -257,74 +257,105 @@ public class VideoScanner : IHostedService
             var consecutiveFailures = 0;
             const int MaxConsecutiveFailures = 5;
 
-            for (var frameIndex = 0; frameIndex < frameLimit && visionReady; frameIndex++)
+            if (visionReady)
             {
-                ct.ThrowIfCancellationRequested();
-
-                var start = TimeSpan.FromSeconds(frameIndex / fps);
-
-                if (frameIndex % 10 == 0)
+                var maxConcurrent = Math.Max(1, config?.MaxConcurrentVisionRequests ?? 1);
+                if (maxConcurrent > 1)
                 {
-                    _logger.LogDebug("Ollama: analyzing frame {Frame}/{Total} at {Time}",
-                        frameIndex + 1, frameFiles.Length, FormatTs(start));
+                    _logger.LogInformation("Vision scan: {Concurrent} concurrent requests enabled", maxConcurrent);
                 }
 
-                var jpeg = await File.ReadAllBytesAsync(frameFiles[frameIndex], ct).ConfigureAwait(false);
-                var (detected, description) = await _ollamaClient
-                    .AnalyzeFrameAsync(jpeg, model, visualDescriptions, ct)
-                    .ConfigureAwait(false);
-
-                if (detected.Count == 0 && string.IsNullOrEmpty(description))
+                // Pre-launch all frame tasks bounded by a semaphore.
+                // With maxConcurrent > 1 (cloud APIs), multiple frames are in-flight simultaneously
+                // while results are still consumed in frame order for sequential cue building.
+                var visionSem = new SemaphoreSlim(maxConcurrent, maxConcurrent);
+                var frameTasks = new Task<(HashSet<string> Detected, string Description)>[frameLimit];
+                for (var i = 0; i < frameLimit; i++)
                 {
-                    consecutiveFailures++;
-                    if (consecutiveFailures >= MaxConsecutiveFailures)
+                    var idx = i;
+                    frameTasks[idx] = Task.Run(async () =>
                     {
-                        _logger.LogWarning(
-                            "Vision API: {Count} consecutive failures at frame {Frame} — aborting visual scan.",
-                            consecutiveFailures, frameIndex + 1);
-                        break;
-                    }
-                }
-                else
-                {
-                    consecutiveFailures = 0;
-                }
-
-                if (detected.Count > 0)
-                {
-                    _logger.LogDebug("Frame {Frame}: detected {Categories} — {Description}",
-                        frameIndex + 1, string.Join(", ", detected), description);
+                        await visionSem.WaitAsync(ct).ConfigureAwait(false);
+                        try
+                        {
+                            var jpeg = await File.ReadAllBytesAsync(frameFiles[idx], ct).ConfigureAwait(false);
+                            return await _ollamaClient
+                                .AnalyzeFrameAsync(jpeg, model, visualDescriptions, ct)
+                                .ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            visionSem.Release();
+                        }
+                    }, ct);
                 }
 
-                foreach (var category in detected)
+                for (var frameIndex = 0; frameIndex < frameLimit; frameIndex++)
                 {
-                    var group = FilterDictionary.GetGroup(category);
-                    if (!IsGroupEnabled(config, group))
+                    ct.ThrowIfCancellationRequested();
+
+                    var start = TimeSpan.FromSeconds(frameIndex / fps);
+
+                    if (frameIndex % 10 == 0)
                     {
-                        continue;
+                        _logger.LogInformation("Vision scan: frame {Frame}/{Limit} ({Pct:0}%) at {Time}",
+                            frameIndex + 1, frameLimit, (frameIndex + 1d) / frameLimit * 100, FormatTs(start));
                     }
 
-                    var channel = FilterDictionary.GetDefaultChannel(category);
-                    cues.Add(new FilterCue
+                    var (detected, description) = await frameTasks[frameIndex].ConfigureAwait(false);
+
+                    if (detected.Count == 0 && string.IsNullOrEmpty(description))
                     {
-                        Start = start,
-                        End = start + frameDuration,
-                        Description = description,
-                        Category = category,
-                        Channel = channel,
-                        Action = channel == "audio" ? "mute" : "skip"
-                    });
-                }
+                        consecutiveFailures++;
+                        if (consecutiveFailures >= MaxConsecutiveFailures)
+                        {
+                            _logger.LogWarning(
+                                "Vision API: {Count} consecutive failures at frame {Frame} — aborting visual scan.",
+                                consecutiveFailures, frameIndex + 1);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        consecutiveFailures = 0;
+                    }
 
-                status.Progress = frameFiles.Length == 0 ? 0 : Math.Clamp((frameIndex + 1d) / frameFiles.Length, 0, 0.999);
-                status.CurrentTime = FormatTs(start);
-                status.CuesFound = cues.Count;
+                    if (detected.Count > 0)
+                    {
+                        _logger.LogDebug("Frame {Frame}: detected {Categories} — {Description}",
+                            frameIndex + 1, string.Join(", ", detected), description);
+                    }
 
-                if (DateTimeOffset.UtcNow >= partialFlushAt)
-                {
-                    var partialFilter = BuildFilter(item, cues, "JCF scan partial");
-                    await _filterStore.SaveFilterAsync(itemId, partialFilter, ct).ConfigureAwait(false);
-                    partialFlushAt = DateTimeOffset.UtcNow + PartialFlushInterval;
+                    foreach (var category in detected)
+                    {
+                        var group = FilterDictionary.GetGroup(category);
+                        if (!IsGroupEnabled(config, group))
+                        {
+                            continue;
+                        }
+
+                        var channel = FilterDictionary.GetDefaultChannel(category);
+                        cues.Add(new FilterCue
+                        {
+                            Start = start,
+                            End = start + frameDuration,
+                            Description = description,
+                            Category = category,
+                            Channel = channel,
+                            Action = channel == "audio" ? "mute" : "skip"
+                        });
+                    }
+
+                    status.Progress = frameFiles.Length == 0 ? 0 : Math.Clamp((frameIndex + 1d) / frameFiles.Length, 0, 0.999);
+                    status.CurrentTime = FormatTs(start);
+                    status.CuesFound = cues.Count;
+
+                    if (DateTimeOffset.UtcNow >= partialFlushAt)
+                    {
+                        var partialFilter = BuildFilter(item, cues, "JCF scan partial");
+                        await _filterStore.SaveFilterAsync(itemId, partialFilter, ct).ConfigureAwait(false);
+                        partialFlushAt = DateTimeOffset.UtcNow + PartialFlushInterval;
+                    }
                 }
             }
 
@@ -376,7 +407,8 @@ public class VideoScanner : IHostedService
 
     private async Task ExtractFramesAsync(string mediaPath, string tempDir, double fps, CancellationToken ct)
     {
-        var args = $"-i \"{mediaPath}\" -vf fps={fps:0.###} -q:v 3 \"{Path.Combine(tempDir, "%06d.jpg")}\" -y";
+        var outputPattern = Path.Combine(tempDir, "%06d.jpg");
+        var args = $"-i \"{mediaPath}\" -vf fps={fps:0.###},scale=640:-2 -q:v 3 \"{outputPattern}\" -y";
         _logger.LogInformation("ffmpeg command: {Bin} {Args}", _mediaEncoder.EncoderPath, args);
 
         var startInfo = new ProcessStartInfo

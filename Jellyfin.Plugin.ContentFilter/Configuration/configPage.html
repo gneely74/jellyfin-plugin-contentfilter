@@ -59,8 +59,16 @@
                             <input id="OllamaBaseUrl" type="text" is="emby-input">
                         </div>
                         <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaVisionModel">Ollama Vision Model</label>
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaVisionModel">Vision Model (local: Qwen2.5-VL-7B-Instruct-8bit · OpenRouter: qwen/qwen2.5-vl-72b-instruct)</label>
                             <input id="OllamaVisionModel" type="text" is="emby-input">
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="OllamaApiKey">Vision API Key (OpenRouter: sk-or-v1-... · leave blank for local oMLX/Ollama)</label>
+                            <input id="OllamaApiKey" type="password" is="emby-input" autocomplete="new-password">
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MaxConcurrentVisionRequests">Concurrent Vision Requests (1 for local GPU · 8–10 for OpenRouter)</label>
+                            <input id="MaxConcurrentVisionRequests" type="number" min="1" max="20" step="1" is="emby-input">
                         </div>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="OllamaTextModel">Ollama Text Model</label>
@@ -277,6 +285,8 @@
                 getEl('IsEnabled').checked            = !!config.IsEnabled;
                 getEl('OllamaBaseUrl').value          = config.OllamaBaseUrl || '';
                 getEl('OllamaVisionModel').value      = config.OllamaVisionModel || '';
+                getEl('OllamaApiKey').value           = config.OllamaApiKey || '';
+                getEl('MaxConcurrentVisionRequests').value = config.MaxConcurrentVisionRequests ?? 1;
                 getEl('OllamaTextModel').value        = config.OllamaTextModel || '';
                 getEl('ScanFramesPerSecond').value    = config.ScanFramesPerSecond ?? 0.5;
                 getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
@@ -314,6 +324,8 @@
                 config.IsEnabled             = getEl('IsEnabled').checked;
                 config.OllamaBaseUrl         = getEl('OllamaBaseUrl').value || '';
                 config.OllamaVisionModel     = getEl('OllamaVisionModel').value || '';
+                config.OllamaApiKey          = getEl('OllamaApiKey').value || '';
+                config.MaxConcurrentVisionRequests = parseInt(getEl('MaxConcurrentVisionRequests').value || '1', 10);
                 config.OllamaTextModel       = getEl('OllamaTextModel').value || '';
                 config.ScanFramesPerSecond   = parseFloat(getEl('ScanFramesPerSecond').value || '0');
                 config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';

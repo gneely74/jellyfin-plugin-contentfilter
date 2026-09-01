@@ -62,6 +62,20 @@ public class PluginConfiguration : BasePluginConfiguration
     public string OllamaTextModel { get; set; } = "llama3.2";
 
     /// <summary>
+    /// Gets or sets the optional API key sent as <c>Authorization: Bearer {key}</c>.
+    /// Required for cloud providers such as OpenRouter (<c>sk-or-v1-...</c>).
+    /// Leave empty for local servers (oMLX, Ollama).
+    /// </summary>
+    public string OllamaApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the maximum number of concurrent vision analysis requests.
+    /// Use 1 for local servers (oMLX/Ollama — GPU-bound, sequential).
+    /// Use 8-10 for cloud APIs (OpenRouter) to parallelize frame analysis.
+    /// </summary>
+    public int MaxConcurrentVisionRequests { get; set; } = 1;
+
+    /// <summary>
     /// Gets or sets the number of frames analyzed per second.
     /// </summary>
     public double ScanFramesPerSecond { get; set; } = 0.5;

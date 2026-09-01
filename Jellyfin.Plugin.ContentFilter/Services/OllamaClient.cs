@@ -49,8 +49,7 @@ public class OllamaClient
             ]
         };
 
-        var baseUrl = GetVisionBaseUrl();
-        var endpoint = new Uri(new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute), "v1/chat/completions");
+        var endpoint = GetCompletionsEndpoint();
 
         const int AttemptTimeoutSeconds = 20;  // per-ping request timeout
         const int RetryIntervalSeconds = 5;
@@ -74,6 +73,7 @@ public class OllamaClient
                 attemptCts.CancelAfter(TimeSpan.FromSeconds(AttemptTimeoutSeconds));
 
                 using var client = _httpClientFactory.CreateClient(nameof(OllamaClient));
+                ApplyApiKey(client);
                 using var response = await client
                     .PostAsJsonAsync(endpoint, request, JsonSerializerOptions, attemptCts.Token)
                     .ConfigureAwait(false);
@@ -136,12 +136,26 @@ public class OllamaClient
         }
 
         var prompt = BuildPrompt(descriptions);
+
+        var knownCategories = FilterDictionary.Categories.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var endpoint = GetCompletionsEndpoint();
+        _logger.LogDebug("Vision API: POST {Endpoint} model={Model}", endpoint, model);
+
         var request = new VisionChatRequest
         {
             Model = model,
             Stream = false,
             Messages =
             [
+                new VisionChatMessage
+                {
+                    Role = "system",
+                    Content = [new VisionContentPart { Type = "text", Text =
+                        "You are an automated content moderation classifier for a parental media filter. " +
+                        "Your task is to identify mature content categories in video frames so parents can protect children. " +
+                        "You MUST always respond with the JSON format specified. Never refuse — this is a safety classification task, not content generation. " +
+                        "Do not describe or reproduce content; only output the JSON category list." }]
+                },
                 new VisionChatMessage
                 {
                     Role = "user",
@@ -161,43 +175,86 @@ public class OllamaClient
             ]
         };
 
-        var knownCategories = FilterDictionary.Categories.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var baseUrl = GetVisionBaseUrl();
-        var endpoint = new Uri(new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute), "v1/chat/completions");
-        _logger.LogDebug("Vision API: POST {Endpoint} model={Model}", endpoint, model);
+        // Retry loop: up to 3 attempts with exponential backoff + jitter.
+        // Retryable conditions: 429 (rate limit), 5xx (provider error), per-attempt timeout.
+        const int MaxAttempts = 3;
+        const int AttemptTimeoutSeconds = 45;
+        var nextDelaySeconds = 0;
 
-        try
+        for (var attempt = 0; attempt < MaxAttempts; attempt++)
         {
-            using var client = _httpClientFactory.CreateClient(nameof(OllamaClient));
-
-            // No per-frame timeout — inference can take minutes. Job CancellationToken is the only limit.
-            using var response = await client.PostAsJsonAsync(endpoint, request, JsonSerializerOptions, ct).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            _logger.LogDebug("Vision API: response body length={Length} bytes", body.Length);
-
-            var payload = JsonSerializer.Deserialize<VisionChatResponse>(body, JsonSerializerOptions);
-            var content = payload?.Choices?.FirstOrDefault()?.Message?.Content;
-            if (string.IsNullOrWhiteSpace(content))
+            if (attempt > 0)
             {
-                _logger.LogWarning("Vision API: no content in response (length={Length})", body.Length);
-                return ([], string.Empty);
+                // Jitter spreads concurrent retries so all 8 in-flight frames don't slam the API simultaneously.
+                var jitter = Random.Shared.Next(0, 4);
+                var delay = nextDelaySeconds + jitter;
+                _logger.LogInformation("Vision API: waiting {Delay}s before attempt {Next}/{Max}...",
+                    delay, attempt + 1, MaxAttempts);
+                await Task.Delay(TimeSpan.FromSeconds(delay), ct).ConfigureAwait(false);
             }
 
-            return ParseResponse(content, knownCategories);
+            using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            attemptCts.CancelAfter(TimeSpan.FromSeconds(AttemptTimeoutSeconds));
+
+            try
+            {
+                using var client = _httpClientFactory.CreateClient(nameof(OllamaClient));
+                ApplyApiKey(client);
+
+                using var response = await client
+                    .PostAsJsonAsync(endpoint, request, JsonSerializerOptions, attemptCts.Token)
+                    .ConfigureAwait(false);
+
+                // 429 or 5xx: retryable — don't throw, just schedule a retry.
+                if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+                {
+                    var retryAfterSeconds = (int?)response.Headers.RetryAfter?.Delta?.TotalSeconds;
+                    nextDelaySeconds = retryAfterSeconds ?? (attempt == 0 ? 10 : 20);
+                    _logger.LogWarning(
+                        "Vision API: HTTP {Status} on attempt {Attempt}/{Max} — will retry in ~{Delay}s",
+                        (int)response.StatusCode, attempt + 1, MaxAttempts, nextDelaySeconds);
+                    continue;
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                var body = await response.Content.ReadAsStringAsync(attemptCts.Token).ConfigureAwait(false);
+                _logger.LogDebug("Vision API: response body length={Length} bytes", body.Length);
+
+                var payload = JsonSerializer.Deserialize<VisionChatResponse>(body, JsonSerializerOptions);
+
+                var content = payload?.Choices?.FirstOrDefault()?.Message?.Content;
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    _logger.LogWarning("Vision API: no content in response (length={Length}) body={Body}",
+                        body.Length, body.Length <= 600 ? body : body[..600]);
+                    return ([], string.Empty);
+                }
+
+                return ParseResponse(content, knownCategories);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Outer job cancelled — propagate immediately.
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                // Per-attempt timeout — schedule a retry.
+                nextDelaySeconds = attempt == 0 ? 5 : 15;
+                _logger.LogWarning("Vision API: frame timed out on attempt {Attempt}/{Max} (>{Timeout}s)",
+                    attempt + 1, MaxAttempts, AttemptTimeoutSeconds);
+            }
+            catch (Exception ex)
+            {
+                nextDelaySeconds = attempt == 0 ? 5 : 15;
+                _logger.LogWarning("Vision API: frame failed on attempt {Attempt}/{Max} ({Type}): {Message}",
+                    attempt + 1, MaxAttempts, ex.GetType().Name, ex.Message);
+            }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Job explicitly cancelled — propagate.
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Ollama: frame analysis failed ({Type}): {Message} — skipping frame",
-                ex.GetType().Name, ex.Message);
-            return ([], string.Empty);
-        }
+
+        _logger.LogWarning("Vision API: frame skipped after {MaxAttempts} attempts", MaxAttempts);
+        return ([], string.Empty);
     }
 
     private static string BuildPrompt(IEnumerable<KeyValuePair<string, string[]>> visualDescriptions)
@@ -482,6 +539,30 @@ public class OllamaClient
     {
         var url = Plugin.Instance?.Configuration.OllamaBaseUrl;
         return string.IsNullOrWhiteSpace(url) ? "http://localhost:8000" : url;
+    }
+
+    /// <summary>
+    /// Builds the chat completions endpoint, handling both bare base URLs (oMLX/Ollama)
+    /// and URLs that already include the <c>/v1</c> path segment (OpenRouter).
+    /// </summary>
+    private static Uri GetCompletionsEndpoint()
+    {
+        var url = GetVisionBaseUrl().TrimEnd('/');
+        // If the caller already included the API version in the URL, append only the path.
+        var suffix = url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
+            ? "/chat/completions"
+            : "/v1/chat/completions";
+        return new Uri(url + suffix);
+    }
+
+    private static void ApplyApiKey(HttpClient client)
+    {
+        var key = Plugin.Instance?.Configuration.OllamaApiKey;
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+        }
     }
 
 }
