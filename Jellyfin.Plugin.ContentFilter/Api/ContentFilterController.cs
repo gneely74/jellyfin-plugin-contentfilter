@@ -1,4 +1,5 @@
 using System.Globalization;
+using Jellyfin.Plugin.ContentFilter.Models;
 using Jellyfin.Plugin.ContentFilter.Services;
 using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
@@ -82,20 +83,40 @@ public class ContentFilterController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An action result.</returns>
     [HttpPost("filters/{itemId:guid}")]
+    [Consumes("multipart/form-data", "text/plain", "application/octet-stream", "text/vtt")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UploadFilterAsync(Guid itemId, IFormFile? file, CancellationToken cancellationToken)
     {
-        if (file is null)
+        try
         {
-            return BadRequest("A JCF file is required.");
-        }
+            JcfFilter filter;
+            if (file is not null && file.Length > 0)
+            {
+                await using var stream = file.OpenReadStream();
+                using var reader = new StreamReader(stream);
+                filter = JcfParser.Parse(reader);
+            }
+            else if (Request.ContentLength is > 0 &&
+                     Request.ContentType is not null &&
+                     !Request.ContentType.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Fallback: raw body upload (text/plain) for clients that cannot send multipart.
+                using var reader = new StreamReader(Request.Body);
+                filter = JcfParser.Parse(reader);
+            }
+            else
+            {
+                return BadRequest("A JCF file is required. Send multipart form field 'file' or a raw text body starting with WEBVTT.");
+            }
 
-        await using var stream = file.OpenReadStream();
-        using var reader = new StreamReader(stream);
-        var filter = JcfParser.Parse(reader);
-        await _filterStore.SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
-        return Ok();
+            await _filterStore.SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+            return Ok(new { itemId, cues = filter.Cues.Count, title = filter.Title });
+        }
+        catch (FormatException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>

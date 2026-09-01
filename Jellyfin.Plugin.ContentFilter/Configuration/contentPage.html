@@ -252,21 +252,40 @@
             }
 
             function uploadFilter() {
-                if (!currentItemId) return;
+                if (!currentItemId) {
+                    getEl('statusText').textContent = 'Status: Enter an Item ID and click Load first.';
+                    return;
+                }
                 var fileInput = getEl('uploadFileInput');
-                if (!fileInput.files || fileInput.files.length === 0) return;
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    getEl('statusText').textContent = 'Status: Choose a .jcf file first.';
+                    return;
+                }
+
+                // Jellyfin ApiClient.ajax URL-encodes object bodies and does not support
+                // multipart FormData (jQuery-style contentType/processData flags are ignored).
+                // Use fetch so the browser sets multipart boundaries correctly.
                 var form = new FormData();
-                form.append('file', fileInput.files[0]);
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: apiUrl('ContentFilter/filters/' + currentItemId),
-                    data: form,
-                    contentType: false,
-                    processData: false
-                }).then(function () {
-                    loadFilter();
+                form.append('file', fileInput.files[0], fileInput.files[0].name);
+
+                getEl('statusText').textContent = 'Status: Uploading…';
+                fetch(apiUrl('ContentFilter/filters/' + currentItemId), {
+                    method: 'POST',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: form
+                }).then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function (text) {
+                            var detail = (text || '').trim();
+                            throw new Error(response.status + (detail ? (': ' + detail) : ''));
+                        });
+                    }
+                    getEl('statusText').textContent = 'Status: Upload complete';
+                    return loadFilter();
                 }).catch(function (err) {
-                    getEl('statusText').textContent = 'Status: Upload failed (' + (err && err.status) + ')';
+                    getEl('statusText').textContent = 'Status: Upload failed (' + (err && err.message ? err.message : err) + ')';
                 });
             }
 
