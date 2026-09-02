@@ -1,7 +1,6 @@
 """Synthesized unit tests for got_to_jcf."""
 
-import pytest
-from got_to_jcf import fmt_ts, parse_range, build_jcf, invert_ranges, main
+from got_to_jcf import build_jcf, fmt_ts, invert_ranges, main, parse_range
 
 
 def test_fmt_ts_basic():
@@ -32,4 +31,3 @@ def test_main_basic():
     """Validate main baseline behavior."""
     # Execution & assertion verification
     assert callable(main)
-
