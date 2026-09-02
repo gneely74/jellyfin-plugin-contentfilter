@@ -67,12 +67,18 @@ public class PlaybackMonitor : IHostedService
             var sessions = _sessionManager.Sessions;
             foreach (var session in sessions)
             {
-                if (session.NowPlayingItem is null || session.PlayState?.IsPaused == true || string.IsNullOrWhiteSpace(session.Id))
+                if (string.IsNullOrWhiteSpace(session.Id))
                 {
                     continue;
                 }
 
                 activeSessionIds.Add(session.Id);
+
+                if (session.NowPlayingItem is null || session.PlayState?.IsPaused == true)
+                {
+                    continue;
+                }
+
                 await HandleSessionAsync(session, ct).ConfigureAwait(false);
             }
 
@@ -171,6 +177,13 @@ public class PlaybackMonitor : IHostedService
             }
 
             return;
+        }
+
+        // When not inside any active seek cue, reset LastSeekTarget so subsequent passes/rewinds skip again.
+        if (state.LastSeekTarget != 0)
+        {
+            state = state with { LastSeekTarget = 0 };
+            _sessionState[sessionId] = state;
         }
 
         // Mute when: explicit mute-action cue, OR audio-channel skip cue (best we can do for audio-only).

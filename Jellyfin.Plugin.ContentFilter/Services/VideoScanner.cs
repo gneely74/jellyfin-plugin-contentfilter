@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Jellyfin.Plugin.ContentFilter.Configuration;
@@ -53,7 +54,7 @@ public class VideoScanner : IHostedService
         _ollamaClient = ollamaClient;
         _queue = Channel.CreateBounded<ScanJob>(new BoundedChannelOptions(10)
         {
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.DropWrite,
             SingleReader = true,
             SingleWriter = false
         });
@@ -265,29 +266,30 @@ public class VideoScanner : IHostedService
                     _logger.LogInformation("Vision scan: {Concurrent} concurrent requests enabled", maxConcurrent);
                 }
 
-                // Pre-launch all frame tasks bounded by a semaphore.
+                // Pre-launch all frame tasks bounded by a semaphore and linked token source.
                 // With maxConcurrent > 1 (cloud APIs), multiple frames are in-flight simultaneously
                 // while results are still consumed in frame order for sequential cue building.
-                var visionSem = new SemaphoreSlim(maxConcurrent, maxConcurrent);
+                using var scanCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                using var visionSem = new SemaphoreSlim(maxConcurrent, maxConcurrent);
                 var frameTasks = new Task<(HashSet<string> Detected, string Description)>[frameLimit];
                 for (var i = 0; i < frameLimit; i++)
                 {
                     var idx = i;
                     frameTasks[idx] = Task.Run(async () =>
                     {
-                        await visionSem.WaitAsync(ct).ConfigureAwait(false);
+                        await visionSem.WaitAsync(scanCts.Token).ConfigureAwait(false);
                         try
                         {
-                            var jpeg = await File.ReadAllBytesAsync(frameFiles[idx], ct).ConfigureAwait(false);
+                            var jpeg = await File.ReadAllBytesAsync(frameFiles[idx], scanCts.Token).ConfigureAwait(false);
                             return await _ollamaClient
-                                .AnalyzeFrameAsync(jpeg, model, visualDescriptions, ct)
+                                .AnalyzeFrameAsync(jpeg, model, visualDescriptions, scanCts.Token)
                                 .ConfigureAwait(false);
                         }
                         finally
                         {
                             visionSem.Release();
                         }
-                    }, ct);
+                    }, scanCts.Token);
                 }
 
                 for (var frameIndex = 0; frameIndex < frameLimit; frameIndex++)
@@ -302,7 +304,18 @@ public class VideoScanner : IHostedService
                             frameIndex + 1, frameLimit, (frameIndex + 1d) / frameLimit * 100, FormatTs(start));
                     }
 
-                    var (detected, description) = await frameTasks[frameIndex].ConfigureAwait(false);
+                    (HashSet<string> Detected, string Description) frameResult;
+                    try
+                    {
+                        frameResult = await frameTasks[frameIndex].ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested && scanCts.IsCancellationRequested)
+                    {
+                        // Aborted due to consecutive failures
+                        break;
+                    }
+
+                    var (detected, description) = frameResult;
 
                     if (detected.Count == 0 && string.IsNullOrEmpty(description))
                     {
@@ -312,6 +325,7 @@ public class VideoScanner : IHostedService
                             _logger.LogWarning(
                                 "Vision API: {Count} consecutive failures at frame {Frame} — aborting visual scan.",
                                 consecutiveFailures, frameIndex + 1);
+                            scanCts.Cancel();
                             break;
                         }
                     }
@@ -408,7 +422,7 @@ public class VideoScanner : IHostedService
     private async Task ExtractFramesAsync(string mediaPath, string tempDir, double fps, CancellationToken ct)
     {
         var outputPattern = Path.Combine(tempDir, "%06d.jpg");
-        var args = $"-i \"{mediaPath}\" -vf fps={fps:0.###},scale=640:-2 -q:v 3 \"{outputPattern}\" -y";
+        var args = FormattableString.Invariant($"-i \"{mediaPath}\" -vf fps={fps:0.###},scale=640:-2 -q:v 3 \"{outputPattern}\" -y");
         _logger.LogInformation("ffmpeg command: {Bin} {Args}", _mediaEncoder.EncoderPath, args);
 
         var startInfo = new ProcessStartInfo
@@ -551,11 +565,12 @@ public class VideoScanner : IHostedService
         }
 
         // Check WhisperSubs naming first (stem.{lang}.WhisperSubs.srt),
-        // then the generated.srt convention, then a plain .srt fallback.
+        // then the generated.srt convention, then language-tagged .srt, then plain .srt fallback.
         string[] candidates =
         [
             Path.Combine(dir, $"{stem}.{preferredLanguage}.WhisperSubs.srt"),
             Path.Combine(dir, $"{stem}.{preferredLanguage}.generated.srt"),
+            Path.Combine(dir, $"{stem}.{preferredLanguage}.srt"),
             Path.Combine(dir, $"{stem}.WhisperSubs.srt"),
             Path.Combine(dir, $"{stem}.generated.srt"),
             Path.Combine(dir, $"{stem}.srt"),
@@ -615,18 +630,19 @@ public class VideoScanner : IHostedService
                         continue;
                     }
 
-                    // Find each occurrence and estimate its position within the subtitle block
-                    var searchFrom = 0;
-                    while (searchFrom < text.Length)
+                    // Find each occurrence with whole word boundary matching
+                    var regex = new Regex($@"\b{Regex.Escape(phrase)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                    var matches = regex.Matches(text);
+                    foreach (Match match in matches)
                     {
-                        var matchIdx = text.IndexOf(phrase, searchFrom, StringComparison.OrdinalIgnoreCase);
-                        if (matchIdx < 0) break;
+                        var matchIdx = match.Index;
+                        var matchLength = match.Length;
 
                         // Proportional character position → estimated speech time
                         var blockDuration = end - start;
                         var charRatio = text.Length <= 1 ? 0.0 : (double)matchIdx / text.Length;
                         var wordStart = start + TimeSpan.FromSeconds(charRatio * blockDuration.TotalSeconds);
-                        var wordEnd = wordStart + TimeSpan.FromMilliseconds(Math.Max(300, phrase.Length * 90));
+                        var wordEnd = wordStart + TimeSpan.FromMilliseconds(Math.Max(300, matchLength * 90));
 
                         // 80 ms pre-roll, 120 ms post-roll, clamped to block
                         var cueStart = TimeSpan.FromTicks(Math.Max((wordStart - TimeSpan.FromMilliseconds(80)).Ticks, start.Ticks));
@@ -642,8 +658,6 @@ public class VideoScanner : IHostedService
                             Channel = channel,
                             Action = channel == "audio" ? "mute" : "skip"
                         };
-
-                        searchFrom = matchIdx + phrase.Length;
                     }
                 }
             }
@@ -780,7 +794,7 @@ public class VideoScanner : IHostedService
     private static bool TryParseSrtTime(string raw, out TimeSpan value)
     {
         var normalized = raw.Replace(',', '.');
-        return TimeSpan.TryParse(normalized, out value);
+        return TimeSpan.TryParse(normalized, CultureInfo.InvariantCulture, out value);
     }
 
     private static bool IsGroupEnabled(PluginConfiguration? config, string group)

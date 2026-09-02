@@ -156,8 +156,14 @@ public class ContentFilterController : ControllerBase
 
         var bytes = await System.IO.File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
         var fallbackTitle = _libraryManager.GetItemById(itemId)?.Name ?? itemId.ToString("N", CultureInfo.InvariantCulture);
-        var title = string.IsNullOrWhiteSpace(filter.Title) ? fallbackTitle : filter.Title;
-        return File(bytes, "text/plain", $"{title}.jcf");
+        var rawTitle = string.IsNullOrWhiteSpace(filter.Title) ? fallbackTitle : filter.Title;
+        var safeTitle = string.Join("_", rawTitle.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+        if (string.IsNullOrWhiteSpace(safeTitle))
+        {
+            safeTitle = itemId.ToString("N", CultureInfo.InvariantCulture);
+        }
+
+        return File(bytes, "text/plain", $"{safeTitle}.jcf");
     }
 
     /// <summary>
@@ -210,7 +216,9 @@ public class ContentFilterController : ControllerBase
 
     private static string FormatTimestamp(TimeSpan value)
     {
-        return value.ToString(@"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture);
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}.{value.Milliseconds:000}");
     }
 }
 

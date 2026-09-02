@@ -10,7 +10,7 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 public static class JcfParser
 {
     private static readonly Regex TimecodeRegex = new(
-        @"^(\d+):(\d{2}):(\d{2})\.(\d{3}) --> (\d+):(\d{2}):(\d{2})\.(\d{3})$",
+        @"^(?:(?<sh>\d+):)?(?<sm>\d{2}):(?<ss>\d{2})[.,](?<sms>\d{3})\s+-->\s+(?:(?<eh>\d+):)?(?<em>\d{2}):(?<es>\d{2})[.,](?<ems>\d{3})(?:[ \t].*)?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -222,17 +222,20 @@ public static class JcfParser
             return false;
         }
 
-        start = ParseTimestamp(match, 1);
-        end = ParseTimestamp(match, 5);
+        start = ParseTimestamp(match, "s");
+        end = ParseTimestamp(match, "e");
         return true;
     }
 
-    private static TimeSpan ParseTimestamp(Match match, int offset)
+    private static TimeSpan ParseTimestamp(Match match, string prefix)
     {
-        var hours = int.Parse(match.Groups[offset].Value, CultureInfo.InvariantCulture);
-        var minutes = int.Parse(match.Groups[offset + 1].Value, CultureInfo.InvariantCulture);
-        var seconds = int.Parse(match.Groups[offset + 2].Value, CultureInfo.InvariantCulture);
-        var milliseconds = int.Parse(match.Groups[offset + 3].Value, CultureInfo.InvariantCulture);
-        return new TimeSpan(0, hours, minutes, seconds, milliseconds);
+        var hoursGroup = match.Groups[prefix + "h"];
+        var hours = hoursGroup.Success && !string.IsNullOrWhiteSpace(hoursGroup.Value)
+            ? int.Parse(hoursGroup.Value, CultureInfo.InvariantCulture)
+            : 0;
+        var minutes = int.Parse(match.Groups[prefix + "m"].Value, CultureInfo.InvariantCulture);
+        var seconds = int.Parse(match.Groups[prefix + "s"].Value, CultureInfo.InvariantCulture);
+        var milliseconds = int.Parse(match.Groups[prefix + "ms"].Value, CultureInfo.InvariantCulture);
+        return TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds) + TimeSpan.FromMilliseconds(milliseconds);
     }
 }

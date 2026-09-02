@@ -38,7 +38,7 @@ public sealed class FilterCue
     /// <summary>
     /// Gets the unique cue key composed of time range and category.
     /// </summary>
-    public string Key => $"{Start:hh\\:mm\\:ss\\.fff}-{End:hh\\:mm\\:ss\\.fff}-{Category}";
+    public string Key => $"{(int)Start.TotalHours:00}:{Start.Minutes:00}:{Start.Seconds:00}.{Start.Milliseconds:000}-{(int)End.TotalHours:00}:{End.Minutes:00}:{End.Seconds:00}.{End.Milliseconds:000}-{Category}";
 }
 
 /// <summary>

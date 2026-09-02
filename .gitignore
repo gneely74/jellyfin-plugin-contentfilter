@@ -6,3 +6,9 @@ dist/
 # Local Jellyfin dev server data
 jellyfin-data/
 test-media/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+jcf_output/

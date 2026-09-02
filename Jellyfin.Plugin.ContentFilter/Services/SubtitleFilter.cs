@@ -13,7 +13,7 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 public class SubtitleFilter
 {
     private static readonly Regex SrtTsRegex = new(
-        @"^(?<h>\d{2}):(?<m>\d{2}):(?<s>\d{2})[,.](?<ms>\d{3})$",
+        @"^(?<h>\d+):(?<m>\d{2}):(?<s>\d{2})[,.](?<ms>\d{3})$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly ILogger<SubtitleFilter> _logger;
@@ -161,7 +161,7 @@ public class SubtitleFilter
         {
             output = Regex.Replace(
                 output,
-                Regex.Escape(phrase),
+                $@"\b{Regex.Escape(phrase)}\b",
                 match =>
                 {
                     var value = match.Value;
@@ -223,7 +223,7 @@ public class SubtitleFilter
         var minutes = int.Parse(match.Groups["m"].Value, CultureInfo.InvariantCulture);
         var seconds = int.Parse(match.Groups["s"].Value, CultureInfo.InvariantCulture);
         var milliseconds = int.Parse(match.Groups["ms"].Value, CultureInfo.InvariantCulture);
-        timestamp = new TimeSpan(0, hours, minutes, seconds, milliseconds);
+        timestamp = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds) + TimeSpan.FromMilliseconds(milliseconds);
         return true;
     }
 
