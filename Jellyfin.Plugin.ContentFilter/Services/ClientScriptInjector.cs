@@ -20,6 +20,7 @@ public static class ClientScriptInjector
         /// <summary>
         /// Gets or sets the file contents.
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("contents")]
         public string Contents { get; set; } = string.Empty;
     }
 
@@ -79,13 +80,12 @@ public static class ClientScriptInjector
                 return;
             }
 
-            var payload = Activator.CreateInstance(jobjectType);
             var parseMethod = jobjectType.GetMethod("Parse", [typeof(string)]);
 
             var json = $$"""
             {
                 "id": "A62B2473-77E1-45C1-8470-57FB95A85394",
-                "fileNamePattern": "index\\.html",
+                "fileNamePattern": "index.html",
                 "callbackAssembly": "{{typeof(ClientScriptInjector).Assembly.FullName}}",
                 "callbackClass": "{{typeof(ClientScriptInjector).FullName}}",
                 "callbackMethod": "{{nameof(TransformIndexHtml)}}"
@@ -107,28 +107,54 @@ public static class ClientScriptInjector
 
     /// <summary>
     /// Callback method invoked by FileTransformation when index.html is served.
+    /// Accepts object to safely handle cross-assembly serialization models.
     /// </summary>
     /// <param name="input">The transformation input containing index.html contents.</param>
     /// <returns>The transformed HTML content with client.js injected.</returns>
-    public static string TransformIndexHtml(TransformationInput input)
+    public static string TransformIndexHtml(object? input)
     {
-        if (input?.Contents is null)
+        if (input is null)
+        {
+            return string.Empty;
+        }
+
+        string? contents = null;
+        if (input is string str)
+        {
+            contents = str;
+        }
+        else
+        {
+            var prop = input.GetType().GetProperty("Contents", BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (prop is not null)
+            {
+                contents = prop.GetValue(input) as string;
+            }
+        }
+
+        if (string.IsNullOrEmpty(contents))
         {
             return string.Empty;
         }
 
         const string scriptTag = "<script src=\"../ContentFilter/client.js\" defer></script>";
-        if (input.Contents.Contains(scriptTag, StringComparison.Ordinal))
+        if (contents.Contains(scriptTag, StringComparison.Ordinal))
         {
-            return input.Contents;
+            return contents;
         }
 
-        var bodyClose = input.Contents.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        var headClose = contents.IndexOf("</head>", StringComparison.OrdinalIgnoreCase);
+        if (headClose >= 0)
+        {
+            return contents.Insert(headClose, $"{scriptTag}\n");
+        }
+
+        var bodyClose = contents.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
         if (bodyClose >= 0)
         {
-            return input.Contents.Insert(bodyClose, $"{scriptTag}\n");
+            return contents.Insert(bodyClose, $"{scriptTag}\n");
         }
 
-        return input.Contents + "\n" + scriptTag;
+        return contents + "\n" + scriptTag;
     }
 }
