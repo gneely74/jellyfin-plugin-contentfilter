@@ -1589,6 +1589,7 @@
                                         <button id="addSegmentBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">
                                             <span>+ Add Segment</span>
                                         </button>
+                                        <button id="shiftSegmentsBtn" class="cf-btn cf-btn-sm" type="button" title="Shift cue timestamps earlier or later across video/audio channels">⚡ Shift Cues</button>
                                         <button id="bulkSkipBtn" class="cf-btn cf-btn-sm" type="button">Skip All</button>
                                         <button id="bulkMuteBtn" class="cf-btn cf-btn-sm" type="button">Mute All</button>
                                         <button id="bulkNoneBtn" class="cf-btn cf-btn-sm" type="button">Set None</button>
@@ -1695,6 +1696,53 @@
                             <div class="cf-modal-footer">
                                 <button id="cancelAddModalBtn" class="cf-btn" type="button">Cancel</button>
                                 <button type="submit" class="cf-btn cf-btn-primary">Add Segment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                    <!-- Shift Cues Modal -->
+                    <div id="shiftCuesModal" class="cf-modal-overlay">
+                    <div class="cf-modal">
+                        <div class="cf-modal-hdr">
+                            <h3 class="cf-modal-title">⚡ Shift Cues (Time Offset)</h3>
+                            <button id="closeShiftModalBtn" class="cf-del-btn" type="button">✕</button>
+                        </div>
+                        <form id="shiftCuesForm">
+                            <div style="background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:10px 12px; margin-bottom:14px; color:var(--cf-text); font-size:12px; line-height:1.5;">
+                                💡 Adjust cue timestamps earlier or later across this media item. Choose whether to shift all cues together or target video or audio cues independently.
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="shiftTargetChannel">Target Channel</label>
+                                <select id="shiftTargetChannel">
+                                    <option value="all">⚡ All Cues (Together)</option>
+                                    <option value="video">🎬 Video Cues Only (Skips & Visuals)</option>
+                                    <option value="audio">🔊 Audio Cues Only (Mutes & Dialogue)</option>
+                                </select>
+                            </div>
+                            <div class="cf-form-row">
+                                <label>Quick Offset Presets</label>
+                                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="-10">-10s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="-5">-5s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="-2">-2s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="-1">-1s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="-0.5">-0.5s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="0.5">+0.5s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="1">+1s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="2">+2s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="5">+5s</button>
+                                    <button type="button" class="cf-btn cf-btn-sm cf-shift-media-preset" data-sec="10">+10s</button>
+                                </div>
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="shiftOffsetSec">Offset (seconds, e.g. +2.5 or -1.2)</label>
+                                <input type="number" step="0.1" id="shiftOffsetSec" placeholder="0.0" value="0.0" required>
+                            </div>
+                            <div id="shiftModalStatus" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+                            <div class="cf-modal-footer">
+                                <button id="cancelShiftModalBtn" class="cf-btn" type="button">Cancel</button>
+                                <button id="applyShiftModalBtn" type="submit" class="cf-btn cf-btn-primary">⚡ Apply Shift</button>
                             </div>
                         </form>
                     </div>
@@ -3257,6 +3305,87 @@
                     }
                 }).catch(function(err) {
                     alert('Error adding segment: ' + err.message);
+                });
+            });
+
+            // --- Shift Cues Modal Logic ---
+            var shiftModal = document.getElementById('shiftCuesModal');
+            var shiftStatusEl = document.getElementById('shiftModalStatus');
+            var applyShiftModalBtn = document.getElementById('applyShiftModalBtn');
+
+            document.getElementById('shiftSegmentsBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                shiftStatusEl.textContent = '';
+                document.getElementById('shiftOffsetSec').value = '0.0';
+                shiftModal.style.display = 'flex';
+                document.getElementById('shiftOffsetSec').focus();
+            });
+
+            function closeShiftModal() {
+                shiftModal.style.display = 'none';
+                shiftStatusEl.textContent = '';
+            }
+
+            document.getElementById('closeShiftModalBtn').addEventListener('click', closeShiftModal);
+            document.getElementById('cancelShiftModalBtn').addEventListener('click', closeShiftModal);
+
+            document.querySelectorAll('.cf-shift-media-preset').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var sec = parseFloat(btn.getAttribute('data-sec')) || 0;
+                    document.getElementById('shiftOffsetSec').value = sec;
+                });
+            });
+
+            document.getElementById('shiftCuesForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (!activeItemId) return;
+
+                var offset = parseFloat(document.getElementById('shiftOffsetSec').value) || 0;
+                if (offset === 0) {
+                    shiftStatusEl.style.color = '#ef4444';
+                    shiftStatusEl.textContent = 'Offset must be non-zero.';
+                    return;
+                }
+
+                var channel = document.getElementById('shiftTargetChannel').value || 'all';
+
+                applyShiftModalBtn.disabled = true;
+                applyShiftModalBtn.textContent = 'Shifting ' + channel + '...';
+                shiftStatusEl.style.color = 'var(--cf-text-dim)';
+                shiftStatusEl.textContent = 'Applying shift...';
+
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/offset'), {
+                    method: 'POST',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        offsetSeconds: offset,
+                        channel: channel
+                    })
+                }).then(function(res) {
+                    applyShiftModalBtn.disabled = false;
+                    applyShiftModalBtn.textContent = '⚡ Apply Shift';
+                    if (res.ok) {
+                        return res.json();
+                    } else {
+                        return res.text().then(function(t) { throw new Error(t); });
+                    }
+                }).then(function(data) {
+                    var count = data.shiftedCues !== undefined ? data.shiftedCues : (data.totalCues || 0);
+                    var chanDesc = data.channel === 'video' ? 'video' : (data.channel === 'audio' ? 'audio' : 'all');
+                    shiftStatusEl.style.color = '#10b981';
+                    shiftStatusEl.textContent = '✅ Shifted ' + count + ' ' + chanDesc + ' cues by ' + (offset > 0 ? '+' : '') + offset + 's!';
+                    loadFilterDetails(activeItemId);
+                    setTimeout(function() {
+                        closeShiftModal();
+                    }, 800);
+                }).catch(function(err) {
+                    applyShiftModalBtn.disabled = false;
+                    applyShiftModalBtn.textContent = '⚡ Apply Shift';
+                    shiftStatusEl.style.color = '#ef4444';
+                    shiftStatusEl.textContent = 'Failed: ' + err.message;
                 });
             });
 

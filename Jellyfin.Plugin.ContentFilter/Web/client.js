@@ -643,7 +643,7 @@
                 // Navigation Tabs
                 '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; flex-wrap:wrap;">',
                 '  <button id="cfTabBtnAdd" style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.4); padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">➕ Set Cue Point</button>',
-                '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift All Cues</button>',
+                '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift Cues</button>',
                 '  <button id="cfTabBtnWords" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">💬 Subtitle Words (<span id="cfTabWordsCount">0</span>)</button>',
                 '  <button id="cfTabBtnList" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">📋 Active Cues (<span id="cfTabCuesCount">0</span>)</button>',
                 '</div>',
@@ -796,7 +796,16 @@
                 // Tab 2: Shift All Cues View
                 '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px;">',
                 '  <div style="background:rgba(30, 41, 59, 0.5); border:1px solid rgba(56, 189, 248, 0.2); border-radius:10px; padding:12px; color:#cbd5e1; font-size:12px; line-height:1.5;">',
-                '    💡 <strong>Shift All Cues:</strong> If the cues are off by a fixed amount because your video file has an extra logo or different cut, shift every cue across this episode earlier or later.',
+                '    💡 <strong>Shift Cues:</strong> If the cues are off by a fixed amount because your video file has an extra logo or different cut, shift cues earlier or later. You can shift video and audio cues together or separately.',
+                '  </div>',
+                '',
+                '  <div>',
+                '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Target Channel:</label>',
+                '    <select id="cfSelectShiftChannel" style="width:100%; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 10px; border-radius:8px; font-size:13px;">',
+                '      <option value="all">⚡ All Cues (Together)</option>',
+                '      <option value="video">🎬 Video Cues Only (Skips & Visuals)</option>',
+                '      <option value="audio">🔊 Audio Cues Only (Mutes & Dialogue)</option>',
+                '    </select>',
                 '  </div>',
 
                 '  <div>',
@@ -819,7 +828,7 @@
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Custom Offset (seconds, e.g. +3.5 or -2.4):</label>',
                 '    <div style="display:flex; gap:8px;">',
                 '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px; user-select:text;">',
-                '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Shift All Cues</button>',
+                '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Apply Shift</button>',
                 '    </div>',
                 '  </div>',
 
@@ -1297,9 +1306,10 @@
             });
         });
 
-        // Shift All Cues Presets & Apply
+        // Shift Cues Presets & Apply
         var shiftStatus = modal.querySelector('#cfShiftStatusMsg');
         var applyShiftBtn = modal.querySelector('#cfBtnApplyShift');
+        var shiftChannelSelect = modal.querySelector('#cfSelectShiftChannel');
 
         modal.querySelectorAll('.cf-shift-preset').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -1326,8 +1336,10 @@
                 return;
             }
 
+            var targetChannel = (shiftChannelSelect ? shiftChannelSelect.value : 'all') || 'all';
+
             applyShiftBtn.disabled = true;
-            applyShiftBtn.textContent = 'Shifting...';
+            applyShiftBtn.textContent = 'Shifting ' + targetChannel + '...';
 
             var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/offset');
             var token = client.accessToken ? client.accessToken() : '';
@@ -1338,10 +1350,10 @@
                     'Content-Type': 'application/json',
                     'X-Emby-Token': token
                 },
-                body: JSON.stringify({ offsetSeconds: sec })
+                body: JSON.stringify({ offsetSeconds: sec, channel: targetChannel })
             }).then(function (res) {
                 applyShiftBtn.disabled = false;
-                applyShiftBtn.textContent = '⚡ Shift All Cues';
+                applyShiftBtn.textContent = '⚡ Apply Shift';
 
                 if (res.ok) {
                     return res.json();
@@ -1349,18 +1361,21 @@
                     throw new Error('Server returned ' + res.status);
                 }
             }).then(function (data) {
+                var channelLabel = data.channel === 'video' ? 'video' : (data.channel === 'audio' ? 'audio' : 'total');
+                var count = data.shiftedCues !== undefined ? data.shiftedCues : (data.totalCues || 0);
+
                 shiftStatus.style.color = '#10b981';
-                shiftStatus.textContent = '✅ Successfully shifted ' + (data.totalCues || 0) + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's!';
+                shiftStatus.textContent = '✅ Shifted ' + count + ' ' + channelLabel + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's!';
 
                 fetchItemFilter(activeItemId).then(function (refreshed) {
                     if (refreshed) activeFilter = refreshed;
                     updateCuesBadge();
                     if (currentActiveTab === 'list') renderActiveCuesList();
-                    showHud('Shifted cues by ' + (sec > 0 ? '+' : '') + sec + 's', '⏱️');
+                    showHud('Shifted ' + channelLabel + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's (' + count + ' cues)', '⏱️');
                 });
             }).catch(function (err) {
                 applyShiftBtn.disabled = false;
-                applyShiftBtn.textContent = '⚡ Shift All Cues';
+                applyShiftBtn.textContent = '⚡ Apply Shift';
                 shiftStatus.style.color = '#ef4444';
                 shiftStatus.textContent = 'Shift failed: ' + err.message;
             });

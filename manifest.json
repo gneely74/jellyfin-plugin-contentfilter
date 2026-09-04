@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.21.0",
+        "changelog": "Add independent or combined channel cue shifting (video, audio, or all) across player HUD, admin Media Studio, API, and CLI tool.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.21/Jellyfin.Plugin.ContentFilter_1.0.21.0.zip",
+        "checksum": "46fc15f9aa29de48be629af185aa476b",
+        "timestamp": "2026-09-04T00:00:00Z"
+      },
+      {
         "version": "1.0.20.0",
         "changelog": "Fix Webpack chunk corruption by strictly anchoring index.html injection pattern in FileTransformation.",
         "targetAbi": "10.11.0.0",

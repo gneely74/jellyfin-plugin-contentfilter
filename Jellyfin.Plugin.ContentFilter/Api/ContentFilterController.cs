@@ -692,7 +692,8 @@ public class ContentFilterController : ControllerBase
             return BadRequest("Request body is required.");
         }
 
-        var filter = await _filterStore.ShiftCuesAsync(itemId, request.OffsetSeconds, cancellationToken).ConfigureAwait(false);
+        var channel = string.IsNullOrWhiteSpace(request.Channel) ? "all" : request.Channel.Trim().ToLowerInvariant();
+        var (filter, shiftedCount) = await _filterStore.ShiftCuesAsync(itemId, request.OffsetSeconds, channel, cancellationToken).ConfigureAwait(false);
         if (filter is null)
         {
             return NotFound();
@@ -717,6 +718,8 @@ public class ContentFilterController : ControllerBase
         {
             itemId,
             offsetSeconds = request.OffsetSeconds,
+            channel,
+            shiftedCues = shiftedCount,
             totalCues = cues.Count,
             cues
         });
@@ -1258,7 +1261,7 @@ public sealed class AddCueRequest
 }
 
 /// <summary>
-/// Request payload for shifting all cues by an offset.
+/// Request payload for shifting cues by an offset.
 /// </summary>
 public sealed class ShiftCuesRequest
 {
@@ -1266,6 +1269,11 @@ public sealed class ShiftCuesRequest
     /// Gets or sets the offset in seconds (can be positive or negative).
     /// </summary>
     public double OffsetSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the target channel to shift: "all", "video", or "audio".
+    /// </summary>
+    public string Channel { get; set; } = "all";
 }
 
 /// <summary>

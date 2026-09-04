@@ -132,6 +132,19 @@ public class FilterStore
         var content = JcfWriter.Serialize(filter);
         await File.WriteAllTextAsync(path, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
+        var sidecarPath = GetSidecarPath(itemId);
+        if (!string.IsNullOrEmpty(sidecarPath))
+        {
+            try
+            {
+                await File.WriteAllTextAsync(sidecarPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to sync updated filter to sidecar path {SidecarPath}", sidecarPath);
+            }
+        }
+
         _cache[itemId] = filter;
         _customFilterIds[itemId] = true;
         await _subtitleFilter.RegenerateAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
@@ -305,23 +318,32 @@ public class FilterStore
     }
 
     /// <summary>
-    /// Shifts all cues in an item's filter by the specified offset in seconds.
+    /// Shifts cues in an item's filter by the specified offset in seconds, filtered by channel.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <param name="offsetSeconds">The offset in seconds (positive or negative).</param>
+    /// <param name="channel">The target channel ("all", "video", or "audio"). Defaults to "all".</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The updated filter, or <see langword="null"/> if not found.</returns>
-    public async Task<JcfFilter?> ShiftCuesAsync(Guid itemId, double offsetSeconds, CancellationToken cancellationToken)
+    /// <returns>A tuple of the updated filter (or <see langword="null"/> if not found) and the number of cues shifted.</returns>
+    public async Task<(JcfFilter? Filter, int ShiftedCount)> ShiftCuesAsync(Guid itemId, double offsetSeconds, string? channel, CancellationToken cancellationToken)
     {
         var filter = GetFilter(itemId);
         if (filter is null || filter.Cues.Count == 0)
         {
-            return filter;
+            return (filter, 0);
         }
 
+        var targetChannel = string.IsNullOrWhiteSpace(channel) ? "all" : channel.Trim().ToLowerInvariant();
         var offset = TimeSpan.FromSeconds(offsetSeconds);
+        var shiftedCount = 0;
+
         foreach (var cue in filter.Cues)
         {
+            if (!CueMatchesChannel(cue, targetChannel))
+            {
+                continue;
+            }
+
             var newStart = cue.Start + offset;
             if (newStart < TimeSpan.Zero)
             {
@@ -336,11 +358,39 @@ public class FilterStore
 
             cue.Start = newStart;
             cue.End = newEnd;
+            shiftedCount++;
         }
 
-        filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
-        await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
-        return filter;
+        if (shiftedCount > 0)
+        {
+            filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return (filter, shiftedCount);
+    }
+
+    private static bool CueMatchesChannel(FilterCue cue, string targetChannel)
+    {
+        if (string.IsNullOrWhiteSpace(targetChannel) || targetChannel.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var ch = (cue.Channel ?? string.Empty).Trim().ToLowerInvariant();
+        var act = (cue.Action ?? string.Empty).Trim().ToLowerInvariant();
+
+        if (targetChannel.Equals("video", StringComparison.OrdinalIgnoreCase))
+        {
+            return ch == "video" || (ch == "both" && act != "mute") || act == "skip";
+        }
+
+        if (targetChannel.Equals("audio", StringComparison.OrdinalIgnoreCase))
+        {
+            return ch == "audio" || (ch == "both" && act == "mute") || act == "mute";
+        }
+
+        return ch.Equals(targetChannel, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
