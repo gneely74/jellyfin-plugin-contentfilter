@@ -2,13 +2,17 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.ContentFilter.Models;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ContentFilter.Services;
 
 /// <summary>
-/// Generates filtered subtitle outputs for mute-action cue ranges.
+/// Generates filtered subtitle outputs for mute-action cue ranges and blanket filter words.
 /// </summary>
 public class SubtitleFilter
 {
@@ -18,22 +22,171 @@ public class SubtitleFilter
 
     private readonly ILogger<SubtitleFilter> _logger;
     private readonly ILibraryManager _libraryManager;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SubtitleFilter"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="libraryManager">The library manager.</param>
-    public SubtitleFilter(ILogger<SubtitleFilter> logger, ILibraryManager libraryManager)
+    /// <param name="serviceProvider">The service provider.</param>
+    public SubtitleFilter(ILogger<SubtitleFilter> logger, ILibraryManager libraryManager, IServiceProvider serviceProvider)
     {
         _logger = logger;
         _libraryManager = libraryManager;
+        _serviceProvider = serviceProvider;
     }
 
     private string SubtitlesPath => Path.Combine(Plugin.Instance!.DataFolderPath, "subtitles");
 
     /// <summary>
-    /// Regenerates filtered subtitle output for an item.
+    /// Normalizes a language string to a 2-letter ISO-639-1 code (e.g. "eng" -> "en").
+    /// </summary>
+    /// <param name="lang">The language code or name.</param>
+    /// <returns>A 2-letter language code.</returns>
+    public static string ToTwoLetterLanguage(string? lang)
+    {
+        if (string.IsNullOrWhiteSpace(lang))
+        {
+            return "en";
+        }
+
+        var l = lang.Trim().ToLowerInvariant();
+        if (l.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+        {
+            return "en";
+        }
+
+        if (l.StartsWith("es", StringComparison.OrdinalIgnoreCase) || l == "spa")
+        {
+            return "es";
+        }
+
+        if (l.StartsWith("fr", StringComparison.OrdinalIgnoreCase) || l == "fra" || l == "fre")
+        {
+            return "fr";
+        }
+
+        if (l.StartsWith("de", StringComparison.OrdinalIgnoreCase) || l == "deu" || l == "ger")
+        {
+            return "de";
+        }
+
+        if (l.StartsWith("it", StringComparison.OrdinalIgnoreCase) || l == "ita")
+        {
+            return "it";
+        }
+
+        if (l.StartsWith("pt", StringComparison.OrdinalIgnoreCase) || l == "por")
+        {
+            return "pt";
+        }
+
+        return l.Length > 2 ? l[..2] : l;
+    }
+
+    /// <summary>
+    /// Gets the sidecar filtered SRT path adjacent to the media file on disk.
+    /// Example: /data/shows/GOT_S01E01.mkv -> /data/shows/GOT_S01E01.en.filtered.srt
+    /// </summary>
+    /// <param name="item">The media item.</param>
+    /// <param name="language">The subtitle language code.</param>
+    /// <returns>The sidecar path, or <see langword="null"/> if not resolvable.</returns>
+    public static string? GetSidecarFilteredSrtPath(BaseItem? item, string language = "en")
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Path))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(item.Path);
+        var stem = Path.GetFileNameWithoutExtension(item.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem))
+        {
+            return null;
+        }
+
+        var langCode = ToTwoLetterLanguage(language);
+        return Path.Combine(dir, $"{stem}.{langCode}.filtered.srt");
+    }
+
+    /// <summary>
+    /// Determines whether an adjacent sidecar filtered SRT exists for an item.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="language">The subtitle language code.</param>
+    /// <returns><see langword="true"/> when the sidecar exists; otherwise <see langword="false"/>.</returns>
+    public bool HasSidecarFilteredSrt(Guid itemId, string language = "en")
+    {
+        var item = _libraryManager.GetItemById(itemId);
+        var path = GetSidecarFilteredSrtPath(item, language);
+        return path is not null && File.Exists(path);
+    }
+
+    /// <summary>
+    /// Regenerates filtered subtitle output for an item in a given language.
+    /// Writes to both the plugin cache and adjacent media sidecar (.en.filtered.srt) if possible.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="filter">The active filter (optional, loaded from store if null).</param>
+    /// <param name="language">The requested subtitle language.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The path of the generated subtitle file, or null if no source subtitles exist.</returns>
+    public async Task<string?> RegenerateAsync(Guid itemId, JcfFilter? filter, string language, CancellationToken cancellationToken)
+    {
+        var item = _libraryManager.GetItemById(itemId);
+        if (item is null)
+        {
+            _logger.LogDebug("Item {ItemId} not found; skipping subtitle regeneration.", itemId);
+            return null;
+        }
+
+        filter ??= _serviceProvider.GetRequiredService<FilterStore>().GetFilter(itemId);
+
+        // Extract or retrieve original SRT
+        var scanner = _serviceProvider.GetRequiredService<SubtitleWordScanner>();
+        var srtContent = await scanner.GetSrtContentAsync(itemId, language, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(srtContent))
+        {
+            _logger.LogDebug("No SRT content available for item {ItemId} (language {Lang}).", itemId, language);
+            return null;
+        }
+
+        var filteredOutput = ApplyWordBlanking(srtContent, filter);
+
+        // 1. Save to plugin data folder cache
+        Directory.CreateDirectory(SubtitlesPath);
+        var pluginCachePath = GetFilteredSrtPath(itemId);
+        await File.WriteAllTextAsync(pluginCachePath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+
+        // 2. Save to adjacent sidecar if media directory is accessible
+        var sidecarPath = GetSidecarFilteredSrtPath(item, language);
+        if (sidecarPath is not null)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(sidecarPath);
+                if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+                {
+                    await File.WriteAllTextAsync(sidecarPath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Saved filtered subtitle sidecar to {Path}", sidecarPath);
+
+                    // Trigger Jellyfin item refresh so it immediately registers the external track
+                    RefreshItemSubtitles(item);
+                    return sidecarPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write sidecar subtitle to {Path}; plugin cache remains available.", sidecarPath);
+            }
+        }
+
+        return pluginCachePath;
+    }
+
+    /// <summary>
+    /// Regenerates filtered subtitle output for an item (default English).
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <param name="filter">The active filter.</param>
@@ -41,39 +194,47 @@ public class SubtitleFilter
     /// <returns>A task that completes when regeneration is complete.</returns>
     public async Task RegenerateAsync(Guid itemId, JcfFilter filter, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(filter);
-
-        var item = _libraryManager.GetItemById(itemId);
-        var mediaPath = item?.Path;
-        if (string.IsNullOrWhiteSpace(mediaPath))
-        {
-            _logger.LogDebug("No media path available for item {ItemId}; skipping subtitle regeneration.", itemId);
-            return;
-        }
-
-        var candidatePaths = new[]
-        {
-            Path.ChangeExtension(mediaPath, ".srt"),
-            Path.ChangeExtension(mediaPath, ".en.srt"),
-        };
-
-        var srtPath = candidatePaths.FirstOrDefault(File.Exists);
-        if (string.IsNullOrWhiteSpace(srtPath))
-        {
-            _logger.LogDebug("No adjacent SRT subtitle found for item {ItemId}.", itemId);
-            return;
-        }
-
-        var input = await File.ReadAllTextAsync(srtPath, cancellationToken).ConfigureAwait(false);
-        var output = ApplyWordBlanking(input, filter);
-        Directory.CreateDirectory(SubtitlesPath);
-
-        var outputPath = GetFilteredSrtPath(itemId);
-        await File.WriteAllTextAsync(outputPath, output, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        await RegenerateAsync(itemId, filter, "eng", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Deletes the generated filtered subtitle for an item.
+    /// Refreshes item metadata in Jellyfin to pick up newly written or removed sidecar subtitle files.
+    /// </summary>
+    /// <param name="item">The media item to refresh.</param>
+    private void RefreshItemSubtitles(BaseItem item)
+    {
+        try
+        {
+            var fileSystem = _serviceProvider.GetService<MediaBrowser.Model.IO.IFileSystem>();
+            var directoryService = fileSystem != null ? new DirectoryService(fileSystem) : new DirectoryService(null!);
+            var options = new MetadataRefreshOptions(directoryService)
+            {
+                MetadataRefreshMode = MetadataRefreshMode.ValidationOnly,
+                ImageRefreshMode = MetadataRefreshMode.None,
+                ReplaceAllMetadata = false
+            };
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await item.RefreshMetadata(options, CancellationToken.None).ConfigureAwait(false);
+                    _logger.LogInformation("Triggered metadata refresh for item {ItemName} ({ItemId})", item.Name, item.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Background metadata refresh for item {ItemId} encountered an error.", item.Id);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to initiate item refresh for item {ItemId}.", item.Id);
+        }
+    }
+
+    /// <summary>
+    /// Deletes the generated filtered subtitle for an item (both plugin cache and sidecar).
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     public void DeleteFilteredSubtitle(Guid itemId)
@@ -81,7 +242,30 @@ public class SubtitleFilter
         var path = GetFilteredSrtPath(itemId);
         if (File.Exists(path))
         {
-            File.Delete(path);
+            try
+            {
+                File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+
+        var item = _libraryManager.GetItemById(itemId);
+        if (item is not null)
+        {
+            var sidecar = GetSidecarFilteredSrtPath(item);
+            if (sidecar is not null && File.Exists(sidecar))
+            {
+                try
+                {
+                    File.Delete(sidecar);
+                    RefreshItemSubtitles(item);
+                }
+                catch
+                {
+                }
+            }
         }
     }
 
@@ -102,33 +286,134 @@ public class SubtitleFilter
     /// <returns><see langword="true"/> when a filtered subtitle exists; otherwise <see langword="false"/>.</returns>
     public bool HasFilteredSubtitle(Guid itemId)
     {
-        return File.Exists(GetFilteredSrtPath(itemId));
+        return File.Exists(GetFilteredSrtPath(itemId)) || HasSidecarFilteredSrt(itemId);
     }
 
-    private static string ApplyWordBlanking(string srtContent, JcfFilter filter)
+    /// <summary>
+    /// Masks a word or phrase, preserving the first letter of each word and replacing remaining letters with asterisks.
+    /// Example: "bastard" -> "b******", "damn" -> "d***", "son of a bitch" -> "s** o* a b****".
+    /// </summary>
+    /// <param name="word">The word or phrase to mask.</param>
+    /// <returns>The masked string.</returns>
+    public static string MaskLeavingFirstLetter(string word)
     {
-        var muteCues = filter.Cues
-            .Where(c => c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        if (muteCues.Length == 0)
+        if (string.IsNullOrEmpty(word))
+        {
+            return word;
+        }
+
+        return Regex.Replace(word, @"\b\w+", match =>
+        {
+            var val = match.Value;
+            if (val.Length <= 1)
+            {
+                return val;
+            }
+
+            return val[0] + new string('*', val.Length - 1);
+        });
+    }
+
+    /// <summary>
+    /// Redacts specific target phrases within text, replacing each with first-letter masking.
+    /// </summary>
+    /// <param name="text">The source text.</param>
+    /// <param name="phrases">The collection of words or phrases to redact.</param>
+    /// <returns>The redacted text.</returns>
+    public static string RedactPhrases(string text, IEnumerable<string> phrases)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+
+        var output = text;
+        foreach (var phrase in phrases)
+        {
+            if (string.IsNullOrWhiteSpace(phrase))
+            {
+                continue;
+            }
+
+            output = Regex.Replace(
+                output,
+                $@"\b{Regex.Escape(phrase.Trim())}\b",
+                match => MaskLeavingFirstLetter(match.Value),
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        return output;
+    }
+
+    /// <summary>
+    /// Applies word blanking / masking to SRT subtitle content based on filter cues and blanket words.
+    /// </summary>
+    /// <param name="srtContent">The source SRT content.</param>
+    /// <param name="filter">The active filter (optional).</param>
+    /// <returns>The filtered SRT content with words masked leaving the first letter.</returns>
+    public static string ApplyWordBlanking(string srtContent, JcfFilter? filter)
+    {
+        if (string.IsNullOrWhiteSpace(srtContent))
         {
             return srtContent;
         }
 
-        var phrases = FilterDictionary.GetWordLists()
+        var muteCues = filter?.Cues
+            .Where(c => c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
+                        c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase))
+            .ToArray() ?? [];
+
+        // Collect global blanket filter words
+        var config = Plugin.Instance?.Configuration;
+        var globalBlanketWords = new HashSet<string>(
+            config?.BlanketFilterWords ?? [],
+            StringComparer.OrdinalIgnoreCase);
+
+        // Collect specific words from cue descriptions (e.g. Spoken: "bastard")
+        var cueWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cue in muteCues)
+        {
+            if (string.IsNullOrWhiteSpace(cue.Description))
+            {
+                continue;
+            }
+
+            var m = Regex.Match(cue.Description, "\"([^\"]+)\"");
+            if (m.Success)
+            {
+                cueWords.Add(m.Groups[1].Value.Trim());
+            }
+            else if (!cue.Description.Contains(' ') && cue.Description.Length < 30)
+            {
+                cueWords.Add(cue.Description.Trim());
+            }
+        }
+
+        // Full dictionary words
+        var dictWords = FilterDictionary.GetWordLists()
             .SelectMany(kvp => kvp.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderByDescending(value => value.Length)
             .ToList();
 
-        if (phrases.Count == 0)
-        {
-            return srtContent;
-        }
+        // Target phrases for cues (cue words + dictionary words + global blanket words)
+        var allCuePhrases = cueWords
+            .Concat(globalBlanketWords)
+            .Concat(dictWords)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(p => p.Length)
+            .ToList();
+
+        // Blanket phrases to redact everywhere even outside cues
+        var blanketPhrases = globalBlanketWords
+            .Concat(cueWords)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(p => p.Length)
+            .ToList();
 
         var blocks = SplitSrtBlocks(srtContent);
         var processedBlocks = new List<string>(blocks.Count);
+
         foreach (var block in blocks)
         {
             var parsed = ParseSrtBlock(block);
@@ -140,42 +425,24 @@ public class SubtitleFilter
 
             var (index, start, end, text) = parsed.Value;
             var overlapsMute = muteCues.Any(cue => start < cue.End && end > cue.Start);
-            if (!overlapsMute)
+
+            var redactedText = text;
+            if (overlapsMute)
             {
-                processedBlocks.Add(block);
-                continue;
+                // In mute/skip window: redact all dictionary words, cue words, and blanket words
+                redactedText = RedactPhrases(redactedText, allCuePhrases);
+            }
+            else if (blanketPhrases.Count > 0)
+            {
+                // Outside mute window: redact configured blanket words
+                redactedText = RedactPhrases(redactedText, blanketPhrases);
             }
 
-            var blanked = BlankPhrases(text, phrases);
-            var rebuiltBlock = $"{index}{Environment.NewLine}{FormatSrtTimecode(start)} --> {FormatSrtTimecode(end)}{Environment.NewLine}{blanked}";
+            var rebuiltBlock = $"{index}{Environment.NewLine}{FormatSrtTimecode(start)} --> {FormatSrtTimecode(end)}{Environment.NewLine}{redactedText}";
             processedBlocks.Add(rebuiltBlock);
         }
 
         return string.Join($"{Environment.NewLine}{Environment.NewLine}", processedBlocks);
-    }
-
-    private static string BlankPhrases(string text, List<string> phrases)
-    {
-        var output = text;
-        foreach (var phrase in phrases)
-        {
-            output = Regex.Replace(
-                output,
-                $@"\b{Regex.Escape(phrase)}\b",
-                match =>
-                {
-                    var value = match.Value;
-                    var prefixLength = value.TakeWhile(char.IsWhiteSpace).Count();
-                    var prefix = value[..prefixLength];
-                    var replacementLength = value.Length - prefixLength;
-                    return replacementLength <= 0
-                        ? value
-                        : $"{prefix}{new string('*', replacementLength)}";
-                },
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        }
-
-        return output;
     }
 
     private static List<string> SplitSrtBlocks(string srtContent)

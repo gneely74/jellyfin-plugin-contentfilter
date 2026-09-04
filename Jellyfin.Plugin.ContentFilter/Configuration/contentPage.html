@@ -1629,10 +1629,12 @@
                                         </select>
                                     </div>
                                     <button id="studioScanSubsBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">🔄 Scan Subtitles</button>
+                                    <button id="studioGenCleanSubsBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(16, 185, 129, 0.2); border:1px solid rgba(16, 185, 129, 0.5); color:#6ee7b7; font-weight:600;">📄 Generate Clean Subtitles (.srt)</button>
                                     <input id="studioSearchWordsInput" type="text" class="cf-input-clean" placeholder="Filter words or categories…" style="flex:1; min-width:180px; max-width:320px; background:var(--cf-bg-input); border:1px solid var(--cf-border); color:var(--cf-text); border-radius:6px; padding:6px 10px; font-size:12px;">
                                     <button id="studioBlanketAllBtn" class="cf-btn cf-btn-sm cf-btn-warning" type="button" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; font-weight:700;">⚡ Blanket Filter All</button>
                                 </div>
 
+                                <div id="studioCleanSubStatusBanner" style="font-size:12px; padding:8px 12px; border-radius:8px; display:none; border:1px solid rgba(255,255,255,0.08);"></div>
                                 <div id="studioWordsStatus" style="font-size:12px; color:var(--cf-text-dim); min-height:16px;"></div>
 
                                 <div id="studioWordsListContainer" style="display:flex; flex-direction:column; gap:10px;">
@@ -3111,6 +3113,7 @@
                 document.getElementById('itemTabCuesPane').style.display = 'none';
                 document.getElementById('itemTabWordsPane').style.display = 'flex';
                 loadStudioSubtitleWords(false);
+                checkStudioCleanSubStatus();
             });
 
             document.getElementById('studioSubLangSelect').addEventListener('change', function() {
@@ -3121,6 +3124,68 @@
             document.getElementById('studioScanSubsBtn').addEventListener('click', function() {
                 loadStudioSubtitleWords(true);
             });
+            function checkStudioCleanSubStatus() {
+                var banner = document.getElementById("studioCleanSubStatusBanner");
+                if (!activeItemId || !banner) return;
+                fetch(apiUrl("ContentFilter/subtitles/" + activeItemId + "/filtered-status?language=" + encodeURIComponent(studioSelectedLanguage || "eng")), {
+                    headers: { "X-Emby-Token": ApiClient.accessToken() }
+                }).then(function (res) { return res.ok ? res.json() : null; })
+                .then(function (data) {
+                    if (data && (data.hasSidecar || data.HasSidecar)) {
+                        banner.style.display = "block";
+                        banner.style.color = "#34d399";
+                        banner.style.borderColor = "rgba(52, 211, 153, 0.4)";
+                        banner.style.background = "rgba(16, 185, 129, 0.15)";
+                        banner.innerHTML = "✓ <strong>Clean Subtitles Active</strong> — Filtered .srt sidecar is saved on disk and indexed by Jellyfin (Universal device support: Apple TV, Roku, Fire TV, Swiftfin).";
+                    } else if (data && (data.hasPluginSubtitle || data.HasPluginSubtitle)) {
+                        banner.style.display = "block";
+                        banner.style.color = "#38bdf8";
+                        banner.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                        banner.style.background = "rgba(56, 189, 248, 0.15)";
+                        banner.innerHTML = "ℹ️ <strong>Clean Subtitles Generated</strong> in plugin cache.";
+                    } else {
+                        banner.style.display = "none";
+                    }
+                }).catch(function () {
+                    banner.style.display = "none";
+                });
+            }
+
+            document.getElementById("studioGenCleanSubsBtn").addEventListener("click", function () {
+                var btn = document.getElementById("studioGenCleanSubsBtn");
+                var status = document.getElementById("studioWordsStatus");
+                if (!activeItemId) return;
+                btn.disabled = true;
+                btn.textContent = "⏳ Generating...";
+                if (status) {
+                    status.style.color = "var(--cf-accent)";
+                    status.textContent = "⏳ Generating clean .srt subtitles with first-letter word masking...";
+                }
+                fetch(apiUrl("ContentFilter/subtitles/" + activeItemId + "/generate-filtered?language=" + encodeURIComponent(studioSelectedLanguage || "eng")), {
+                    method: "POST",
+                    headers: { "X-Emby-Token": ApiClient.accessToken() }
+                }).then(function (res) {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                }).then(function () {
+                    btn.disabled = false;
+                    btn.textContent = "📄 Generate Clean Subtitles (.srt)";
+                    if (status) {
+                        status.style.color = "#34d399";
+                        status.textContent = "✅ Clean subtitle sidecar generated and indexed by Jellyfin!";
+                    }
+                    if (typeof showToast === "function") showToast("Clean subtitles generated successfully!");
+                    checkStudioCleanSubStatus();
+                }).catch(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = "📄 Generate Clean Subtitles (.srt)";
+                    if (status) {
+                        status.style.color = "#f87171";
+                        status.textContent = "Failed: " + err.message;
+                    }
+                });
+            });
+
 
             document.getElementById('studioSearchWordsInput').addEventListener('input', function() {
                 renderStudioSubtitleWords(document.getElementById('studioSearchWordsInput').value.trim());
@@ -3213,6 +3278,7 @@
                     badge.textContent = list.length;
                     statusEl.textContent = '✓ Found ' + list.length + ' filterable word(s) (' + ((data.TotalOccurrences || data.totalOccurrences || data.TotalProfanities || data.totalProfanities || 0)) + ' total occurrences)';
                     renderStudioSubtitleWords(document.getElementById('studioSearchWordsInput').value.trim());
+                    checkStudioCleanSubStatus();
                 }).catch(function(err) {
                     statusEl.textContent = 'Scan failed: ' + err.message;
                     container.innerHTML = '<div style="text-align:center; color:var(--cf-red); padding:24px;">Failed to extract subtitles for this item. Ensure media has subtitle tracks.</div>';

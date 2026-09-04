@@ -741,10 +741,85 @@ public class ContentFilterController : ControllerBase
         var path = _subtitleFilter.GetFilteredSrtPath(itemId);
         if (!System.IO.File.Exists(path))
         {
+            var item = _libraryManager.GetItemById(itemId);
+            var sidecar = SubtitleFilter.GetSidecarFilteredSrtPath(item);
+            if (sidecar is not null && System.IO.File.Exists(sidecar))
+            {
+                return PhysicalFile(sidecar, "text/plain");
+            }
+
             return NotFound();
         }
 
         return PhysicalFile(path, "text/plain");
+    }
+
+    /// <summary>
+    /// Generates filtered subtitles for an item (saving both disk sidecar and plugin cache).
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The requested subtitle language (default "eng").</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A status object with the path and registration status.</returns>
+    [HttpPost("subtitles/{itemId:guid}/generate-filtered")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GenerateFilteredSubtitleAsync(
+        Guid itemId,
+        [FromQuery] string? language,
+        CancellationToken cancellationToken)
+    {
+        var lang = string.IsNullOrWhiteSpace(language) ? "eng" : language;
+        var filter = _filterStore.GetFilter(itemId);
+        var path = await _subtitleFilter.RegenerateAsync(itemId, filter, lang, cancellationToken).ConfigureAwait(false);
+        if (path is null)
+        {
+            return NotFound("No source subtitle stream or file could be found for this item.");
+        }
+
+        var item = _libraryManager.GetItemById(itemId);
+        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, lang);
+        var hasSidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
+
+        return Ok(new
+        {
+            success = true,
+            itemId,
+            language = lang,
+            path,
+            hasSidecar,
+            sidecarPath,
+            hasPluginSubtitle = _subtitleFilter.HasFilteredSubtitle(itemId)
+        });
+    }
+
+    /// <summary>
+    /// Gets the current filtered subtitle status for an item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The requested subtitle language (default "eng").</param>
+    /// <returns>A status object.</returns>
+    [HttpGet("subtitles/{itemId:guid}/filtered-status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetFilteredSubtitleStatus(
+        Guid itemId,
+        [FromQuery] string? language)
+    {
+        var lang = string.IsNullOrWhiteSpace(language) ? "eng" : language;
+        var item = _libraryManager.GetItemById(itemId);
+        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, lang);
+        var hasSidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
+        var hasPluginSubtitle = _subtitleFilter.HasFilteredSubtitle(itemId);
+
+        return Ok(new
+        {
+            itemId,
+            language = lang,
+            hasSidecar,
+            sidecarPath,
+            hasPluginSubtitle,
+            isCleanSubActive = hasSidecar || hasPluginSubtitle
+        });
     }
 
     private static string FormatTimestamp(TimeSpan value)

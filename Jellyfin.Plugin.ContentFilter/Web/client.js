@@ -217,10 +217,222 @@
         return null;
     }
 
+
+    // --- Subtitle Masking & Redaction (Leaving First Letter) ---
+    var activeTargetWords = new Set();
+    var globalBlanketWords = new Set();
+
+    function maskLeavingFirstLetter(word) {
+        if (!word) return word;
+        return word.replace(/\b\w+/g, function (match) {
+            if (match.length <= 1) return match;
+            return match[0] + "*".repeat(match.length - 1);
+        });
+    }
+
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function sanitizeSubtitleText(text, targetWords) {
+        if (!text || !targetWords || targetWords.size === 0) return text;
+        var output = text;
+        var words = Array.from(targetWords).sort(function (a, b) {
+            return b.length - a.length;
+        });
+        for (var i = 0; i < words.length; i++) {
+            var w = words[i].trim();
+            if (!w) continue;
+            var re = new RegExp("\\b" + escapeRegExp(w) + "\\b", "gi");
+            output = output.replace(re, function (match) {
+                return maskLeavingFirstLetter(match);
+            });
+        }
+        return output;
+    }
+
+    function updateTargetWords() {
+        activeTargetWords.clear();
+        globalBlanketWords.forEach(function (w) {
+            if (w) activeTargetWords.add(w.toLowerCase());
+        });
+
+        if (activeFilter && activeFilter.cues) {
+            for (var i = 0; i < activeFilter.cues.length; i++) {
+                var c = activeFilter.cues[i];
+                if (c.action === "mute" || c.action === "skip") {
+                    if (c.description) {
+                        var m = c.description.match(/"([^"]+)"/);
+                        if (m && m[1]) {
+                            activeTargetWords.add(m[1].toLowerCase());
+                        } else if (!c.description.includes(" ") && c.description.length < 30) {
+                            activeTargetWords.add(c.description.toLowerCase());
+                        }
+                    }
+                }
+            }
+        }
+        if (activeVideo) {
+            hookTextTracks(activeVideo);
+        }
+    }
+
+    function loadGlobalBlanketWords() {
+        var client = getApiClient();
+        if (!client) return;
+        var url = client.getUrl("ContentFilter/subtitles/global-blanket-words");
+        var token = client.accessToken ? client.accessToken() : "";
+        fetch(url, { headers: { "X-Emby-Token": token } })
+            .then(function (res) { return res.ok ? res.json() : []; })
+            .then(function (words) {
+                globalBlanketWords.clear();
+                if (Array.isArray(words)) {
+                    words.forEach(function (w) {
+                        if (w) globalBlanketWords.add(w.toLowerCase());
+                    });
+                }
+                updateTargetWords();
+            }).catch(function () {});
+    }
+
+    function sanitizeTrackCues(track) {
+        if (!track || !track.cues) return;
+        for (var i = 0; i < track.cues.length; i++) {
+            var c = track.cues[i];
+            if (c && c.text) {
+                var sanitized = sanitizeSubtitleText(c.text, activeTargetWords);
+                if (sanitized !== c.text) {
+                    c.text = sanitized;
+                }
+            }
+        }
+    }
+
+    function hookTextTracks(video) {
+        if (!video || !video.textTracks) return;
+        var tracks = video.textTracks;
+        for (var i = 0; i < tracks.length; i++) {
+            var tr = tracks[i];
+            sanitizeTrackCues(tr);
+            if (!tr._cfHooked) {
+                tr._cfHooked = true;
+                tr.addEventListener("cuechange", function () {
+                    sanitizeTrackCues(this);
+                });
+            }
+        }
+        if (!tracks._cfHooked) {
+            tracks._cfHooked = true;
+            tracks.addEventListener("addtrack", function (e) {
+                if (e.track) {
+                    sanitizeTrackCues(e.track);
+                    e.track.addEventListener("cuechange", function () {
+                        sanitizeTrackCues(this);
+                    });
+                }
+            });
+        }
+    }
+
+    function checkCleanSubStatus() {
+        var modal = ensureEditorModal();
+        var banner = modal.querySelector("#cfCleanSubStatusBanner");
+        var client = getApiClient();
+        if (!client || !activeItemId || !banner) return;
+
+        var url = client.getUrl("ContentFilter/subtitles/" + activeItemId + "/filtered-status?language=" + encodeURIComponent(selectedSubtitleLanguage));
+        var token = client.accessToken ? client.accessToken() : "";
+
+        fetch(url, { headers: { "X-Emby-Token": token } })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (data && (data.hasSidecar || data.HasSidecar)) {
+                    banner.style.display = "block";
+                    banner.style.color = "#34d399";
+                    banner.style.borderColor = "rgba(52, 211, 153, 0.4)";
+                    banner.style.background = "rgba(16, 185, 129, 0.15)";
+                    banner.innerHTML = "✓ <strong>Clean Subtitles Active</strong> — Filtered .srt sidecar is saved on disk and indexed by Jellyfin (Universal device support: Apple TV, Roku, Fire TV, Swiftfin).";
+                } else if (data && (data.hasPluginSubtitle || data.HasPluginSubtitle)) {
+                    banner.style.display = "block";
+                    banner.style.color = "#38bdf8";
+                    banner.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                    banner.style.background = "rgba(56, 189, 248, 0.15)";
+                    banner.innerHTML = "ℹ️ <strong>Clean Subtitles Generated</strong> in plugin cache.";
+                } else {
+                    banner.style.display = "none";
+                }
+            }).catch(function () {
+                banner.style.display = "none";
+            });
+    }
+
+    function generateCleanSubtitles() {
+        var modal = ensureEditorModal();
+        var genBtn = modal.querySelector("#cfBtnGenCleanSubs");
+        var statusMsg = modal.querySelector("#cfWordsStatusMsg");
+        var client = getApiClient();
+        if (!client || !activeItemId) return;
+
+        if (genBtn) {
+            genBtn.disabled = true;
+            genBtn.innerHTML = "⏳ Generating...";
+        }
+        if (statusMsg) {
+            statusMsg.style.color = "#38bdf8";
+            statusMsg.textContent = "⏳ Generating clean .srt subtitles with first-letter word masking...";
+        }
+
+        var url = client.getUrl("ContentFilter/subtitles/" + activeItemId + "/generate-filtered?language=" + encodeURIComponent(selectedSubtitleLanguage));
+        var token = client.accessToken ? client.accessToken() : "";
+
+        fetch(url, {
+            method: "POST",
+            headers: { "X-Emby-Token": token }
+        }).then(function (res) {
+            if (!res.ok) throw new Error("Server returned " + res.status);
+            return res.json();
+        }).then(function (data) {
+            if (genBtn) {
+                genBtn.disabled = false;
+                genBtn.innerHTML = "📄 Generate Clean Subtitles (.srt)";
+            }
+            if (statusMsg) {
+                statusMsg.style.color = "#10b981";
+                statusMsg.textContent = "✅ Clean subtitle sidecar created! Jellyfin was notified to index it.";
+            }
+            showHud("Clean subtitles (.srt) generated!", "📄");
+            checkCleanSubStatus();
+        }).catch(function (err) {
+            if (genBtn) {
+                genBtn.disabled = false;
+                genBtn.innerHTML = "📄 Generate Clean Subtitles (.srt)";
+            }
+            if (statusMsg) {
+                statusMsg.style.color = "#ef4444";
+                statusMsg.textContent = "Failed to generate clean subtitles: " + err.message;
+            }
+        });
+    }
+
     function checkCues() {
         if (!activeFilter || !activeVideo || activeVideo.paused) {
             return;
         }
+
+        // Live sanitize visible subtitle elements
+        try {
+            var subEls = document.querySelectorAll('.subtitleappearance-text, .track-cues, .subtitleText, [class*="subtitleText"], [class*="subtitleappearance"]');
+            for (var s = 0; s < subEls.length; s++) {
+                var el = subEls[s];
+                if (el && el.textContent) {
+                    var cleanedText = sanitizeSubtitleText(el.textContent, activeTargetWords);
+                    if (cleanedText !== el.textContent) {
+                        el.textContent = cleanedText;
+                    }
+                }
+            }
+        } catch (e) {}
+
 
         var cur = activeVideo.currentTime;
         var cues = activeFilter.cues || [];
@@ -591,8 +803,10 @@
                 '    </div>',
                 '    <div style="display:flex; gap:6px; align-items:center;">',
                 '      <button id="cfBtnScanSubs" style="background:#0284c7; border:none; color:#fff; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:4px;">🔄 Scan Subtitles</button>',
+                '      <button id="cfBtnGenCleanSubs" title="Generate clean .srt sidecar with profanity masked leaving first letter" style="background:rgba(16, 185, 129, 0.2); border:1px solid rgba(16, 185, 129, 0.5); color:#6ee7b7; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:4px;">📄 Generate Clean Subtitles (.srt)</button>',
                 '    </div>',
                 '  </div>',
+                '  <div id="cfCleanSubStatusBanner" style="font-size:11px; padding:8px 12px; border-radius:8px; display:none;"></div>',
                 '  <div style="display:flex; gap:8px; align-items:center;">',
                 '    <input id="cfInputSearchWords" type="text" placeholder="Search detected words (e.g. bastard, profanity)..." style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:7px 10px; border-radius:8px; font-size:12px; user-select:text;">',
                 '    <button id="cfBtnBlanketVisibleWords" title="Blanket filter all currently visible words" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:7px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px; white-space:nowrap;">⚡ Blanket All</button>',
@@ -750,6 +964,7 @@
 
             if (tab === 'words') {
                 loadAndRenderSubtitleWords(false);
+                checkCleanSubStatus();
             } else if (tab === 'list') {
                 renderActiveCuesList();
             }
@@ -801,6 +1016,12 @@
         scanBtn.addEventListener('click', function () {
             loadAndRenderSubtitleWords(true);
         });
+        var genCleanBtn = modal.querySelector('#cfBtnGenCleanSubs');
+        if (genCleanBtn) {
+            genCleanBtn.addEventListener('click', function () {
+                generateCleanSubtitles();
+            });
+        }
 
         var blanketVisibleBtn = modal.querySelector('#cfBtnBlanketVisibleWords');
         blanketVisibleBtn.addEventListener('click', function () {
@@ -1243,6 +1464,7 @@
                 statusMsg.textContent = '✅ Found ' + list.length + ' filterable word(s) (' + ((data.TotalOccurrences || data.totalOccurrences || data.TotalProfanities || data.totalProfanities || 0)) + ' total occurrences)';
             }
             renderSubtitleWordsList(modal.querySelector('#cfInputSearchWords').value.trim());
+            checkCleanSubStatus();
         }).catch(function (err) {
             if (statusMsg) {
                 statusMsg.style.color = '#ef4444';
@@ -1768,6 +1990,9 @@
 
         fetchItemFilter(itemId).then(function (filter) {
             activeFilter = filter || { itemId: itemId, title: '', cues: [] };
+            updateTargetWords();
+            loadGlobalBlanketWords();
+            hookTextTracks(video);
 
             video.addEventListener('timeupdate', checkCues);
             video.addEventListener('seeked', checkCues);
@@ -1798,6 +2023,7 @@
 
         activeFilter = null;
         activeItemId = null;
+        activeTargetWords.clear();
         subtitleTracks = null;
         subtitleWords = null;
         activeVideo = null;

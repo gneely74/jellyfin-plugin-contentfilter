@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.18.0",
+        "changelog": "Subtitle filtering and redaction leaving first letter (e.g. bastard -> b******) with live player masking and universal .filtered.srt sidecar generation for Apple TV, Roku, Swiftfin, and web.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.18/Jellyfin.Plugin.ContentFilter_1.0.18.0.zip",
+        "checksum": "d9590739c10653d2a6f7df9bb99a6eea",
+        "timestamp": "2026-09-04T00:00:00Z"
+      },
+      {
         "version": "1.0.17.0",
         "changelog": "Enhance TheTimestampDudes downloader with configurable credentials, .env and JSON config support, and secure credential handling.",
         "targetAbi": "10.11.0.0",
