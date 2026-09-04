@@ -28,6 +28,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
             return new SqliteFilterRepository(logger, dbPath);
         });
         serviceCollection.AddSingleton<FilterStore>();
+        serviceCollection.AddSingleton<FilterRuleService>();
         serviceCollection.AddSingleton<SubtitleFilter>();
         serviceCollection.AddSingleton<SubtitleWordScanner>();
         serviceCollection.AddSingleton<SubtitleSyncService>();

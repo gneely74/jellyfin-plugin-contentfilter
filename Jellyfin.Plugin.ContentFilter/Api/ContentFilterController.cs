@@ -25,6 +25,7 @@ public class ContentFilterController : ControllerBase
     private readonly SubtitleSyncService _subtitleSyncService;
     private readonly SqliteFilterRepository _sqliteRepository;
     private readonly ILibraryManager _libraryManager;
+    private readonly FilterRuleService _filterRuleService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ContentFilterController"/> class.
@@ -35,13 +36,15 @@ public class ContentFilterController : ControllerBase
     /// <param name="subtitleSyncService">The subtitle sync service.</param>
     /// <param name="sqliteRepository">The SQLite repository.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
+    /// <param name="filterRuleService">The filter rule evaluation service.</param>
     public ContentFilterController(
         FilterStore filterStore,
         SubtitleFilter subtitleFilter,
         SubtitleWordScanner subtitleWordScanner,
         SubtitleSyncService subtitleSyncService,
         SqliteFilterRepository sqliteRepository,
-        ILibraryManager libraryManager)
+        ILibraryManager libraryManager,
+        FilterRuleService filterRuleService)
     {
         _filterStore = filterStore;
         _subtitleFilter = subtitleFilter;
@@ -49,6 +52,7 @@ public class ContentFilterController : ControllerBase
         _subtitleSyncService = subtitleSyncService;
         _sqliteRepository = sqliteRepository;
         _libraryManager = libraryManager;
+        _filterRuleService = filterRuleService;
     }
 
     /// <summary>
@@ -80,7 +84,8 @@ public class ContentFilterController : ControllerBase
                 description = cue.Description,
                 category = cue.Category,
                 channel = cue.Channel,
-                action = cue.Action
+                action = cue.Action,
+                enabled = _filterRuleService.IsCueEnabled(cue, itemId)
             })
             .ToList();
 
@@ -91,6 +96,47 @@ public class ContentFilterController : ControllerBase
             imdbUrl = filter.ImdbUrl,
             cues
         });
+    }
+
+    /// <summary>
+    /// Gets the effective filter rules and override state for a specific media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The effective filter rules and source metadata.</returns>
+    [HttpGet("items/{itemId:guid}/rules")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetItemRules(Guid itemId)
+    {
+        var result = _filterRuleService.GetEffectiveRules(itemId);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Sets or updates custom filter rule overrides for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="overrideData">The filter rules override payload.</param>
+    /// <returns>An action result indicating success.</returns>
+    [HttpPost("items/{itemId:guid}/rules")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult SetItemRules(Guid itemId, [FromBody] ItemFilterOverride overrideData)
+    {
+        ArgumentNullException.ThrowIfNull(overrideData);
+        _filterRuleService.SetItemOverride(itemId, null, overrideData);
+        return Ok(new { success = true });
+    }
+
+    /// <summary>
+    /// Deletes custom filter rule overrides for a media item, reverting to inheritance.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>An action result indicating success.</returns>
+    [HttpDelete("items/{itemId:guid}/rules")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult DeleteItemRules(Guid itemId)
+    {
+        _filterRuleService.DeleteItemOverride(itemId);
+        return Ok(new { success = true });
     }
 
     /// <summary>

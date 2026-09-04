@@ -173,7 +173,8 @@
                     channel: (c.channel || 'both').toLowerCase(),
                     category: c.category || '',
                     description: c.description || c.category || 'Filtered Content',
-                    key: c.key || (c.start + '-' + c.end + '-' + c.category)
+                    key: c.key || (c.start + '-' + c.end + '-' + c.category),
+                    enabled: c.enabled !== false
                 };
             }).filter(function (c) {
                 return c.action !== 'none' && c.end > c.start;
@@ -441,6 +442,9 @@
 
         for (var i = 0; i < cues.length; i++) {
             var cue = cues[i];
+            if (cue.enabled === false) {
+                continue;
+            }
 
             // 1. Skip check (video or both channels)
             if (cue.action === 'skip' && cue.channel !== 'audio') {
@@ -646,6 +650,7 @@
                 '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift Cues</button>',
                 '  <button id="cfTabBtnWords" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">💬 Subtitle Words (<span id="cfTabWordsCount">0</span>)</button>',
                 '  <button id="cfTabBtnList" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">📋 Active Cues (<span id="cfTabCuesCount">0</span>)</button>',
+                '  <button id="cfTabBtnRules" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">🛡️ Rules</button>',
                 '</div>',
 
                 // Tab 1: Set / Add / Edit Cue View
@@ -872,8 +877,28 @@
                 '  <div id="cfCuesListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
                 '    <div style="text-align:center; color:#94a3b8; padding:20px;">No cues loaded</div>',
                 '  </div>',
-                '</div>'
-            ].join('\n');
+                '</div>',
+                '',
+                '                // Tab 5: Rules & Category Overrides View',
+                '                \'<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:14px;">\',',
+                '                \'  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">\',',
+                '                \'    <div>\',',
+                '                \'      <div style="font-weight:700; color:#38bdf8; font-size:13px;" id="cfPlayerRulesSource">Rules: Global Defaults</div>\',',
+                '                \'      <div style="font-size:11px; color:#94a3b8;" id="cfPlayerRulesDesc">Filters active globally are applied to this media.</div>\',',
+                '                \'    </div>\',',
+                '                \'    <div style="display:flex; gap:6px;">\',',
+                '                \'      <button id="cfPlayerSaveRulesBtn" style="background:#0284c7; border:none; color:#ffffff; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">💾 Save Rules</button>\',',
+                '                \'      <button id="cfPlayerResetRulesBtn" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">↺ Revert</button>\',',
+                '                \'    </div>\',',
+                '                \'  </div>\',',
+                '                \'  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">\',',
+                '                \'    <input type="checkbox" id="cfPlayerCustomRulesToggle" style="cursor:pointer; width:15px; height:15px;">\',',
+                '                \'    <span style="font-weight:600; color:#f8fafc; font-size:12px;">Override rules for this specific show / movie</span>\',',
+                '                \'  </label>\',',
+                '                \'  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; max-height:42vh; overflow-y:auto; padding-right:4px;"></div>\',',
+                '                \'  <div id="cfPlayerRulesStatus" style="font-size:11px; color:#4ade80;"></div>\',',
+                '                \'</div>\'',
+                '            ].join(\'\\n\');'
 
             wireEditorEvents(editorModal);
         }
@@ -984,10 +1009,12 @@
         var tabBtnShift = modal.querySelector('#cfTabBtnShift');
         var tabBtnWords = modal.querySelector('#cfTabBtnWords');
         var tabBtnList = modal.querySelector('#cfTabBtnList');
+        var tabBtnRules = modal.querySelector('#cfTabBtnRules');
         var paneAdd = modal.querySelector('#cfTabPaneAdd');
         var paneShift = modal.querySelector('#cfTabPaneShift');
         var paneWords = modal.querySelector('#cfTabPaneWords');
         var paneList = modal.querySelector('#cfTabPaneList');
+        var paneRules = modal.querySelector('#cfTabPaneRules');
 
         function switchTab(tab) {
             currentActiveTab = tab;
@@ -1007,16 +1034,25 @@
             tabBtnList.style.color = tab === 'list' ? '#38bdf8' : '#94a3b8';
             tabBtnList.style.borderColor = tab === 'list' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
 
+            if (tabBtnRules) {
+                tabBtnRules.style.background = tab === 'rules' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
+                tabBtnRules.style.color = tab === 'rules' ? '#38bdf8' : '#94a3b8';
+                tabBtnRules.style.borderColor = tab === 'rules' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
+            }
+
             paneAdd.style.display = tab === 'add' ? 'flex' : 'none';
             paneShift.style.display = tab === 'shift' ? 'flex' : 'none';
             paneWords.style.display = tab === 'words' ? 'flex' : 'none';
             paneList.style.display = tab === 'list' ? 'flex' : 'none';
+            if (paneRules) paneRules.style.display = tab === 'rules' ? 'flex' : 'none';
 
             if (tab === 'words') {
                 loadAndRenderSubtitleWords(false);
                 checkCleanSubStatus();
             } else if (tab === 'list') {
                 renderActiveCuesList();
+            } else if (tab === 'rules') {
+                loadPlayerItemRules();
             }
         }
 
@@ -1024,6 +1060,24 @@
         tabBtnShift.addEventListener('click', function () { switchTab('shift'); });
         tabBtnWords.addEventListener('click', function () { switchTab('words'); });
         tabBtnList.addEventListener('click', function () { switchTab('list'); });
+        if (tabBtnRules) tabBtnRules.addEventListener('click', function () { switchTab('rules'); });
+
+        var saveRulesBtn = modal.querySelector('#cfPlayerSaveRulesBtn');
+        if (saveRulesBtn) saveRulesBtn.addEventListener('click', savePlayerItemRules);
+
+        var resetRulesBtn = modal.querySelector('#cfPlayerResetRulesBtn');
+        if (resetRulesBtn) resetRulesBtn.addEventListener('click', resetPlayerItemRules);
+
+        var customRulesToggle = modal.querySelector('#cfPlayerCustomRulesToggle');
+        if (customRulesToggle) {
+            customRulesToggle.addEventListener('change', function () {
+                var list = modal.querySelector('#cfPlayerRulesList');
+                if (list) {
+                    list.style.opacity = customRulesToggle.checked ? '1' : '0.4';
+                    list.style.pointerEvents = customRulesToggle.checked ? 'auto' : 'none';
+                }
+            });
+        }
 
         // Category dropdown custom trigger
         var catSelect = modal.querySelector('#cfSelectCategory');
@@ -1958,6 +2012,177 @@
                     alert('Error deleting cue: ' + e.message);
                 });
             });
+        });
+    }
+
+    function refreshActiveFilter() {
+        if (!activeItemId) return;
+        fetchItemFilter(activeItemId).then(function (filter) {
+            if (filter) {
+                activeFilter = filter;
+                updateCuesBadge();
+                renderActiveCuesList();
+            }
+        });
+    }
+
+    function loadPlayerItemRules() {
+        if (!activeItemId) return;
+        var modal = ensureEditorModal();
+        var listEl = modal.querySelector('#cfPlayerRulesList');
+        var sourceEl = modal.querySelector('#cfPlayerRulesSource');
+        var descEl = modal.querySelector('#cfPlayerRulesDesc');
+        var toggleEl = modal.querySelector('#cfPlayerCustomRulesToggle');
+        var statusEl = modal.querySelector('#cfPlayerRulesStatus');
+        if (!listEl) return;
+
+        listEl.innerHTML = '<div style="color:#94a3b8; padding:16px; text-align:center;">Loading effective rules...</div>';
+
+        var client = getApiClient();
+        if (!client) return;
+        var url = client.getUrl('ContentFilter/items/' + activeItemId + '/rules');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            headers: { 'X-Emby-Token': token }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (rules) {
+            if (sourceEl) {
+                sourceEl.textContent = 'Rules: ' + (rules.source === 'ItemCustom' ? '⚡ Custom for this Item' : (rules.source === 'SeriesInherited' ? '📺 Inherited from Series' : '🌐 Global Defaults'));
+            }
+            if (descEl) {
+                descEl.textContent = rules.sourceDescription || '';
+            }
+            if (toggleEl) {
+                toggleEl.checked = !!rules.isCustom;
+                listEl.style.opacity = rules.isCustom ? '1' : '0.4';
+                listEl.style.pointerEvents = rules.isCustom ? 'auto' : 'none';
+            }
+
+            renderPlayerRulesList(rules);
+        })
+        .catch(function (err) {
+            listEl.innerHTML = '<div style="color:#ef4444; padding:10px;">Failed to load rules: ' + err.message + '</div>';
+        });
+    }
+
+    function renderPlayerRulesList(rules) {
+        var modal = ensureEditorModal();
+        var listEl = modal.querySelector('#cfPlayerRulesList');
+        if (!listEl) return;
+
+        var disabledCats = new Set((rules.disabledCategories || []).map(function (c) { return c.toLowerCase(); }));
+        var enabledCats = new Set((rules.enabledCategories || []).map(function (c) { return c.toLowerCase(); }));
+
+        var standardCategories = [
+            { group: 'Sex & Nudity', cats: ['SexAndNudity.Graphic', 'SexAndNudity.FullNudity', 'SexAndNudity.PartialNudity', 'SexAndNudity.ImpliedSex', 'SexAndNudity.SexualAssault', 'SexAndNudity.PhysicalIntimacy', 'SexAndNudity.Mild', 'SexAndNudity.OnscreenActivity', 'SexAndNudity.NudityProfiles'] },
+            { group: 'Violence & Horror', cats: ['Violence.Graphic', 'Violence.Gore', 'Violence.Moderate', 'Violence.Mild', 'Violence.JumpScares', 'Violence.Disturbing', 'Violence.Tiers'] },
+            { group: 'Language & Profanity', cats: ['Language.GeneralProfanity', 'Language.Blasphemy', 'Language.RacialAndBigotedSlurs', 'Language.ChildishLanguage', 'Language.CaptionsWithProfanity'] },
+            { group: 'Sexual References', cats: ['SexualReferences.ExplicitWords', 'SexualReferences.ContextualDialogue', 'SexualReferences.Visuals'] },
+            { group: 'Substances', cats: ['Substances.Tobacco', 'Substances.Alcohol', 'Substances.IllegalDrugs', 'Substances.Usage'] },
+            { group: 'Medical', cats: ['Medical.Events', 'Medical.BodilyFunctions'] },
+            { group: 'Structural', cats: ['Structural.Credits', 'Structural.IntroRecap', 'Structural.Timestamps'] }
+        ];
+
+        var html = '';
+        standardCategories.forEach(function (grp) {
+            html += '<div style="margin-top:6px; margin-bottom:2px; font-weight:700; color:#38bdf8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">' + grp.group + '</div>';
+            grp.cats.forEach(function (catKey) {
+                var isChecked = !disabledCats.has(catKey.toLowerCase());
+                if (enabledCats.has(catKey.toLowerCase())) isChecked = true;
+                var shortName = catKey.split('.')[1] || catKey;
+                html += [
+                    '<label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor:pointer;">',
+                    '  <span style="color:#f8fafc; font-size:12px;">' + shortName + '</span>',
+                    '  <input type="checkbox" data-player-catcb="' + catKey + '" ' + (isChecked ? 'checked' : '') + ' style="cursor:pointer; width:15px; height:15px;">',
+                    '</label>'
+                ].join('');
+            });
+        });
+
+        listEl.innerHTML = html;
+    }
+
+    function savePlayerItemRules() {
+        if (!activeItemId) return;
+        var modal = ensureEditorModal();
+        var toggleEl = modal.querySelector('#cfPlayerCustomRulesToggle');
+        var isCustom = toggleEl ? toggleEl.checked : true;
+        var statusEl = modal.querySelector('#cfPlayerRulesStatus');
+
+        var disabledCategories = [];
+        var enabledCategories = [];
+        modal.querySelectorAll('[data-player-catcb]').forEach(function (cb) {
+            var cat = cb.getAttribute('data-player-catcb');
+            if (cb.checked) {
+                enabledCategories.push(cat);
+            } else {
+                disabledCategories.push(cat);
+            }
+        });
+
+        if (statusEl) statusEl.textContent = 'Saving rules...';
+
+        var client = getApiClient();
+        if (!client) return;
+        var url = client.getUrl('ContentFilter/items/' + activeItemId + '/rules');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Token': token
+            },
+            body: JSON.stringify({
+                isCustom: isCustom,
+                disabledCategories: disabledCategories,
+                enabledCategories: enabledCategories,
+                disabledFilterItems: []
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function () {
+            if (statusEl) {
+                statusEl.textContent = '✓ Saved! Active cues refreshed.';
+                setTimeout(function () { statusEl.textContent = ''; }, 3000);
+            }
+            showHud('Content Filter rules updated', '🛡️');
+            refreshActiveFilter();
+            loadPlayerItemRules();
+        })
+        .catch(function (err) {
+            if (statusEl) statusEl.textContent = '❌ ' + err.message;
+        });
+    }
+
+    function resetPlayerItemRules() {
+        if (!activeItemId) return;
+        var modal = ensureEditorModal();
+        var statusEl = modal.querySelector('#cfPlayerRulesStatus');
+        if (statusEl) statusEl.textContent = 'Reverting to defaults...';
+
+        var client = getApiClient();
+        if (!client) return;
+        var url = client.getUrl('ContentFilter/items/' + activeItemId + '/rules');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            method: 'DELETE',
+            headers: { 'X-Emby-Token': token }
+        })
+        .then(function () {
+            if (statusEl) {
+                statusEl.textContent = '✓ Reverted to defaults!';
+                setTimeout(function () { statusEl.textContent = ''; }, 3000);
+            }
+            showHud('Reverted rules to defaults', '↺');
+            refreshActiveFilter();
+            loadPlayerItemRules();
+        })
+        .catch(function (err) {
+            if (statusEl) statusEl.textContent = '❌ ' + err.message;
         });
     }
 

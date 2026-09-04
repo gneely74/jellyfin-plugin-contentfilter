@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.27.0",
+        "changelog": "Add 28-category taxonomy alignment, 3-tier collapsible tree structure, global playback rule enforcement, and per-show/movie rule overrides.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.27/Jellyfin.Plugin.ContentFilter_1.0.27.0.zip",
+        "checksum": "ac9274f39eb082c8e219756ba82b42be",
+        "timestamp": "2026-09-04T00:00:00Z"
+      },
+      {
         "version": "1.0.26.0",
         "changelog": "Default new cue category to SexAndNudity.FullNudity across player HUD editor, admin studio, and API controller.",
         "targetAbi": "10.11.0.0",

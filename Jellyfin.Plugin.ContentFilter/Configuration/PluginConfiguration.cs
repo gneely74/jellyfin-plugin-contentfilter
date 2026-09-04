@@ -37,6 +37,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool StructuralEnabled { get; set; } = false;
 
     /// <summary>
+    /// Gets or sets the set of entire categories that have been explicitly disabled.
+    /// E.g. <c>SexAndNudity.Mild</c>, <c>Violence.JumpScares</c>.
+    /// </summary>
+    public List<string> DisabledCategories { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the set of individual filter items that have been explicitly disabled.
     /// Each entry is formatted as <c>{CategoryKey}:{term}</c>, e.g. <c>Language.GeneralProfanity:ass</c>.
     /// An empty list means all items within enabled groups are active.

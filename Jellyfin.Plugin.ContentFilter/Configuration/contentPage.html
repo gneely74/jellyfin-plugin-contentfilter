@@ -951,29 +951,115 @@
                 line-height: 1.5;
             }
 
-            /* Rules Hierarchy Modern Dark Theme */
-            .cf-g {
+            /* Rules Hierarchy Collapsible Tree */
+            .cf-tree-controls {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
                 margin-bottom: 16px;
+                padding: 12px 16px;
+                background: var(--cf-surface-elevated);
                 border: 1px solid var(--cf-border);
                 border-radius: 8px;
-                overflow: hidden;
+            }
+
+            .cf-tree-search-wrap {
+                position: relative;
+                flex: 1;
+                min-width: 260px;
+                max-width: 440px;
+            }
+
+            .cf-tree-search-input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 12px 8px 34px;
                 background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: var(--cf-text-main);
+                font-size: 0.88rem;
+                outline: none;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            }
+
+            .cf-tree-search-input:focus {
+                border-color: var(--cf-primary);
+                box-shadow: 0 0 0 2px var(--cf-primary-glow);
+            }
+
+            .cf-tree-search-icon {
+                position: absolute;
+                left: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--cf-text-dim);
+                font-size: 14px;
+                pointer-events: none;
+            }
+
+            .cf-g {
+                margin-bottom: 14px;
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                background: var(--cf-surface);
+                transition: border-color 0.15s ease;
+                overflow: hidden;
+            }
+
+            .cf-g:hover {
+                border-color: rgba(255, 255, 255, 0.16);
             }
 
             .cf-g-hdr {
                 background: var(--cf-surface-elevated);
                 padding: 12px 16px;
-                border-bottom: 1px solid var(--cf-border);
+                border-bottom: 1px solid transparent;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 cursor: pointer;
+                user-select: none;
+                transition: background 0.15s ease;
+            }
+
+            .cf-g.open > .cf-g-hdr {
+                border-bottom: 1px solid var(--cf-border);
+            }
+
+            .cf-g-hdr:hover {
+                background: var(--cf-surface-hover);
             }
 
             .cf-g-hdr-left {
                 display: flex;
                 align-items: center;
                 gap: 12px;
+            }
+
+            .cf-tree-chevron {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 22px;
+                height: 22px;
+                border-radius: 4px;
+                color: var(--cf-text-muted);
+                font-size: 11px;
+                transition: transform 0.2s ease, background 0.15s ease;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+
+            .cf-tree-chevron:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #fff;
+            }
+
+            .cf-tree-chevron.open {
+                transform: rotate(90deg);
             }
 
             .cf-num {
@@ -993,36 +1079,62 @@
             .cf-g-title {
                 font-weight: 700;
                 font-size: 0.95rem;
-                letter-spacing: 0.04em;
+                letter-spacing: 0.03em;
                 color: #fff;
             }
 
             .cf-g-body {
-                padding: 14px 18px 18px;
-                background: rgba(0, 0, 0, 0.15);
+                padding: 12px 16px 16px;
+                background: rgba(0, 0, 0, 0.18);
+                display: none;
+            }
+
+            .cf-g.open > .cf-g-body {
+                display: block;
             }
 
             .cf-c {
-                margin-top: 14px;
-                padding-left: 14px;
+                margin-top: 10px;
+                border: 1px solid var(--cf-border-subtle);
                 border-left: 3px solid var(--cf-primary);
+                border-radius: 6px;
+                background: var(--cf-surface);
+                overflow: hidden;
             }
 
             .cf-c-header {
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                justify-content: space-between;
+                padding: 8px 12px;
                 cursor: pointer;
                 user-select: none;
-                padding: 4px 0;
+                background: rgba(255, 255, 255, 0.02);
+                transition: background 0.15s ease;
+            }
+
+            .cf-c-header:hover {
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .cf-c.open > .cf-c-header {
+                border-bottom: 1px solid var(--cf-border-subtle);
+            }
+
+            .cf-c-header-left {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
             }
 
             .cf-cname {
-                font-family: monospace;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
                 background: var(--cf-surface-elevated);
                 padding: 3px 8px;
                 border-radius: 4px;
-                font-size: 0.88rem;
+                font-size: 0.86rem;
+                font-weight: 600;
                 color: #bae6fd;
                 border: 1px solid var(--cf-border);
             }
@@ -1048,24 +1160,35 @@
                 border: 1px solid rgba(168, 85, 247, 0.35);
             }
 
+            .cf-badge-legacy {
+                background: rgba(245, 158, 11, 0.15);
+                color: #fde047;
+                border: 1px solid rgba(245, 158, 11, 0.35);
+            }
+
             .cf-items {
-                display: flex;
+                display: none;
                 flex-wrap: wrap;
-                gap: 8px 14px;
-                padding: 8px 0 6px 14px;
-                margin-top: 6px;
+                gap: 8px 12px;
+                padding: 12px 14px;
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            .cf-c.open > .cf-items {
+                display: flex;
             }
 
             .cf-item {
-                background: rgba(255, 255, 255, 0.03);
+                background: rgba(255, 255, 255, 0.04);
                 border: 1px solid var(--cf-border-subtle);
                 padding: 4px 10px;
                 border-radius: 6px;
-                transition: background 0.15s ease;
+                transition: all 0.15s ease;
             }
 
             .cf-item:hover {
-                background: rgba(255, 255, 255, 0.06);
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.15);
             }
 
             .cf-item > label {
@@ -1223,137 +1346,6 @@
                 line-height: 1.5;
             }
 
-            /* Rules Hierarchy Modern Dark Theme */
-            .cf-g {
-                margin-bottom: 16px;
-                border: 1px solid var(--cf-border);
-                border-radius: 8px;
-                overflow: hidden;
-                background: var(--cf-surface);
-            }
-
-            .cf-g-hdr {
-                background: var(--cf-surface-elevated);
-                padding: 12px 16px;
-                border-bottom: 1px solid var(--cf-border);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                cursor: pointer;
-            }
-
-            .cf-g-hdr-left {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-
-            .cf-num {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                min-width: 24px;
-                height: 24px;
-                border-radius: 6px;
-                background: var(--cf-primary);
-                color: #fff;
-                font-size: 0.78rem;
-                font-weight: bold;
-                flex-shrink: 0;
-            }
-
-            .cf-g-title {
-                font-weight: 700;
-                font-size: 0.95rem;
-                letter-spacing: 0.04em;
-                color: #fff;
-            }
-
-            .cf-g-body {
-                padding: 14px 18px 18px;
-                background: rgba(0, 0, 0, 0.15);
-            }
-
-            .cf-c {
-                margin-top: 14px;
-                padding-left: 14px;
-                border-left: 3px solid var(--cf-primary);
-            }
-
-            .cf-c-header {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                cursor: pointer;
-                user-select: none;
-                padding: 4px 0;
-            }
-
-            .cf-cname {
-                font-family: monospace;
-                background: var(--cf-surface-elevated);
-                padding: 3px 8px;
-                border-radius: 4px;
-                font-size: 0.88rem;
-                color: #bae6fd;
-                border: 1px solid var(--cf-border);
-            }
-
-            .cf-badge {
-                font-size: 0.72rem;
-                font-weight: 600;
-                padding: 2px 7px;
-                border-radius: 4px;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
-            }
-
-            .cf-badge-word {
-                background: rgba(82, 181, 75, 0.15);
-                color: #86efac;
-                border: 1px solid rgba(82, 181, 75, 0.35);
-            }
-
-            .cf-badge-visual {
-                background: rgba(168, 85, 247, 0.15);
-                color: #d8b4fe;
-                border: 1px solid rgba(168, 85, 247, 0.35);
-            }
-
-            .cf-items {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px 14px;
-                padding: 8px 0 6px 14px;
-                margin-top: 6px;
-            }
-
-            .cf-item {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid var(--cf-border-subtle);
-                padding: 4px 10px;
-                border-radius: 6px;
-                transition: background 0.15s ease;
-            }
-
-            .cf-item:hover {
-                background: rgba(255, 255, 255, 0.06);
-            }
-
-            .cf-item > label {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                cursor: pointer;
-                user-select: none;
-                font-size: 0.84rem;
-                color: var(--cf-text-main);
-            }
-
-            .cf-off {
-                opacity: 0.35;
-                pointer-events: none;
-            }
 
             /* Settings Input Fields */
             .cf-field-group {
@@ -1576,6 +1568,10 @@
                                     <span>💬 Subtitle Words</span>
                                     <span id="itemWordsCountBadge" class="cf-counter-badge">0</span>
                                 </button>
+                                <button id="itemTabRulesBtn" class="cf-tab-btn" type="button">
+                                    <span>🛡️ Rules Override</span>
+                                    <span id="itemRulesStatusBadge" class="cf-pill cf-pill-gray" style="font-size:10px; padding:2px 6px;">Global</span>
+                                </button>
                             </div>
 
                             <!-- Cues & Segments Pane -->
@@ -1635,12 +1631,93 @@
                                     <button id="studioBlanketAllBtn" class="cf-btn cf-btn-sm cf-btn-warning" type="button" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; font-weight:700;">⚡ Blanket Filter All</button>
                                 </div>
 
+                                <!-- Subtitle Timing & Edition Override Panel -->
+                                <div id="studioSubOverridePanel" style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+                                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <span style="font-weight:700; font-size:13px; color:var(--cf-text-main);">⏱️ Subtitle Timing & Edition Override</span>
+                                            <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cf-text-muted); cursor:pointer; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:6px; border:1px solid var(--cf-border);">
+                                                <input id="studioSubLockCheckbox" type="checkbox" style="cursor:pointer;">
+                                                <span title="When locked, automated sync will never overwrite this item's subtitle or timing">🔒 Lock Subtitle (Protect from Auto-Sync)</span>
+                                            </label>
+                                            <span id="studioSubLockBadge" class="cf-pill cf-pill-gray" style="display:none; font-size:11px;">🔒 Locked</span>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button id="studioSearchRemoteSubsBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.4); color:#38bdf8; font-weight:600;">
+                                                🌐 Search Remote Subtitles...
+                                            </button>
+                                            <button id="studioUploadSrtBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(255, 255, 255, 0.08); border:1px solid var(--cf-border); color:var(--cf-text-main);">
+                                                📤 Upload Custom .srt
+                                            </button>
+                                            <input id="studioUploadSrtInput" type="file" accept=".srt" style="display:none;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Time Shift Row -->
+                                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px;">
+                                        <span style="font-weight:600; color:var(--cf-text-dim);">Time Offset:</span>
+                                        <div style="display:flex; gap:4px;">
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-5.0" type="button">-5s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-1.0" type="button">-1s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-0.2" type="button">-0.2s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="0.2" type="button">+0.2s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="1.0" type="button">+1s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="5.0" type="button">+5s</button>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input id="studioSubOffsetInput" type="number" step="0.1" value="0.0" style="width:75px; background:var(--cf-bg-input); border:1px solid var(--cf-border); color:var(--cf-text); border-radius:6px; padding:4px 8px; font-size:12px;">
+                                            <span style="color:var(--cf-text-muted);">seconds</span>
+                                            <button id="studioApplyShiftBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">⚡ Apply Shift & Sync Cues</button>
+                                        </div>
+                                        <span id="studioSubShiftStatus" style="font-size:11px; margin-left:auto; min-height:14px;"></span>
+                                    </div>
+                                </div>
+
                                 <div id="studioCleanSubStatusBanner" style="font-size:12px; padding:8px 12px; border-radius:8px; display:none; border:1px solid rgba(255,255,255,0.08);"></div>
                                 <div id="studioWordsStatus" style="font-size:12px; color:var(--cf-text-dim); min-height:16px;"></div>
 
                                 <div id="studioWordsListContainer" style="display:flex; flex-direction:column; gap:10px;">
                                     <div style="text-align:center; color:var(--cf-text-dim); padding:32px;">Click "Scan Subtitles" to inspect subtitle dialogue for filterable words.</div>
                                 </div>
+                            </div>
+
+                            <!-- Rules Override Pane -->
+                            <div id="itemTabRulesPane" style="display:none; flex-direction:column; gap:16px;">
+                                <div id="itemRulesHeaderCard" style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                        <div>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#fff;" id="itemRulesTitle">Item Filter Rules</h3>
+                                                <span id="itemRulesSourceBadge" class="cf-pill cf-pill-gray" style="font-size:11px;">Global Server Rules</span>
+                                            </div>
+                                            <div style="font-size:0.85rem; color:var(--cf-text-muted); margin-top:4px;" id="itemRulesSubtitle">This item currently inherits the global server filtering rules.</div>
+                                        </div>
+                                        <div style="display:flex; gap:8px; align-items:center;">
+                                            <button id="saveItemRulesBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">💾 Save Item Override</button>
+                                            <button id="resetItemRulesBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5;">↺ Reset to Defaults</button>
+                                        </div>
+                                    </div>
+                                    <label class="cf-checkbox-row" style="background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:6px; border:1px solid var(--cf-border); cursor:pointer; margin:0;">
+                                        <input id="itemRulesCustomToggle" type="checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                        <span style="font-weight:600; font-size:0.92rem;">Use Custom Rules for this Item (Overrides Global Server Settings)</span>
+                                    </label>
+                                </div>
+
+                                <div class="cf-tree-controls">
+                                    <div class="cf-tree-search-wrap">
+                                        <span class="cf-tree-search-icon">🔍</span>
+                                        <input id="itemRulesSearchInput" type="text" class="cf-tree-search-input" placeholder="Filter rules, categories, or words for this item...">
+                                    </div>
+                                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                        <button id="itemRulesExpandAllBtn" type="button" class="cf-btn cf-btn-sm">Expand All</button>
+                                        <button id="itemRulesCollapseAllBtn" type="button" class="cf-btn cf-btn-sm">Collapse All</button>
+                                        <button id="itemRulesSelectAllBtn" type="button" class="cf-btn cf-btn-sm cf-btn-primary">Select All</button>
+                                        <button id="itemRulesDeselectAllBtn" type="button" class="cf-btn cf-btn-sm">Deselect All</button>
+                                    </div>
+                                </div>
+
+                                <div id="itemRulesTreeContainer" style="transition:opacity 0.2s ease;"></div>
+                                <div id="itemRulesStatusMsg" style="font-size:0.88rem; min-height:18px;"></div>
                             </div>
 
                         </div>
@@ -1739,6 +1816,12 @@
                                 <label for="shiftOffsetSec">Offset (seconds, e.g. +2.5 or -1.2)</label>
                                 <input type="number" step="0.1" id="shiftOffsetSec" placeholder="0.0" value="0.0" required>
                             </div>
+                            <div class="cf-form-row" style="margin-top:6px;">
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:normal;">
+                                    <input type="checkbox" id="shiftSyncSubtitles" checked style="cursor:pointer;">
+                                    <span>Also shift sidecar subtitles (.srt) and sync timing</span>
+                                </label>
+                            </div>
                             <div id="shiftModalStatus" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
                             <div class="cf-modal-footer">
                                 <button id="cancelShiftModalBtn" class="cf-btn" type="button">Cancel</button>
@@ -1779,6 +1862,50 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Remote Subtitle Search Modal -->
+                    <div id="remoteSubModal" class="cf-modal-overlay" style="display:none;">
+                        <div class="cf-modal" style="max-width:760px; width:92%;">
+                            <div class="cf-modal-hdr">
+                                <h3 class="cf-modal-title">🌐 Search Remote Subtitles</h3>
+                                <button id="closeRemoteSubModalBtn" class="cf-del-btn" type="button">✕</button>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:12px; padding:4px 0;">
+                                <div style="font-size:12px; color:var(--cf-text-muted); line-height:1.4;">
+                                    Query installed Jellyfin subtitle providers (e.g. OpenSubtitles) to find subtitle editions that match this video release.
+                                </div>
+                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                    <label style="font-weight:600; font-size:12px; color:var(--cf-text-dim);">Language:</label>
+                                    <input id="remoteSubLangInput" type="text" value="eng" class="cf-field-input" style="width:90px; padding:6px 10px; font-size:12px;" placeholder="eng">
+                                    <button id="executeRemoteSearchBtn" class="cf-btn cf-btn-primary cf-btn-sm" type="button">🔍 Search Providers</button>
+                                    <span id="remoteSubSearchStatus" style="font-size:12px; color:var(--cf-text-dim);"></span>
+                                </div>
+                                <div class="cf-table-container" style="max-height:360px; overflow-y:auto; border:1px solid var(--cf-border); border-radius:8px;">
+                                    <table class="cf-table" style="font-size:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Release / Subtitle Name</th>
+                                                <th style="width:110px;">Provider</th>
+                                                <th style="width:70px;">Format</th>
+                                                <th style="width:90px;">Rating/DL</th>
+                                                <th style="width:130px; text-align:center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="remoteSubResultsTbody">
+                                            <tr>
+                                                <td colspan="5" style="text-align:center; color:var(--cf-text-dim); padding:28px;">
+                                                    Click "Search Providers" to find matching subtitles.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="cf-modal-footer" style="margin-top:14px;">
+                                <button id="closeRemoteSubModalBtn2" class="cf-btn" type="button">Close</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab 2: Filter Rules -->
@@ -1801,11 +1928,16 @@
                             <span style="font-size:1.02rem; font-weight:700;">Enable Content Filtering Active Playback</span>
                         </label>
 
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                            <input id="rulesSearchInput" type="text" class="cf-field-input" placeholder="Search rules or words (e.g. profanity, violence, gore)..." style="max-width:380px;">
-                            <div style="display:flex; gap:8px;">
+                        <div class="cf-tree-controls">
+                            <div class="cf-tree-search-wrap">
+                                <span class="cf-tree-search-icon">🔍</span>
+                                <input id="rulesSearchInput" type="text" class="cf-tree-search-input" placeholder="Search rules or words (e.g. profanity, violence, gore)...">
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button id="rulesExpandAllBtn" type="button" class="cf-btn cf-btn-sm">Expand All</button>
                                 <button id="rulesCollapseAllBtn" type="button" class="cf-btn cf-btn-sm">Collapse All</button>
+                                <button id="rulesSelectAllBtn" type="button" class="cf-btn cf-btn-sm cf-btn-primary">Select All</button>
+                                <button id="rulesDeselectAllBtn" type="button" class="cf-btn cf-btn-sm">Deselect All</button>
                             </div>
                         </div>
 
@@ -1883,6 +2015,81 @@
                             <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                             <span>Analyze Audio Transcript & Subtitle Streams</span>
                         </label>
+                    </div>
+
+                    <!-- Automated Subtitle Downloader & Cleaner -->
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">💬 Automated Subtitle Downloader & Cleaner</h3>
+                        <div class="cf-settings-card-desc">
+                            Automatically search, download, clean, and set default subtitles across your media libraries.
+                        </div>
+
+                        <label class="cf-checkbox-row" style="margin-top:8px; margin-bottom:6px;">
+                            <input id="AutoDownloadSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                            <span style="font-weight:600;">Enable Automated Remote Subtitle Downloads</span>
+                        </label>
+                        <div class="cf-field-helper" style="margin-bottom:14px;">
+                            When enabled, queries configured Jellyfin subtitle providers (e.g. OpenSubtitles) for missing subtitles during automated sync. 
+                            When disabled, the automated sync will only clean and standardize existing local/embedded subtitles without querying remote providers.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:14px;">
+                            <div class="cf-field-group" style="margin-bottom:0;">
+                                <label class="cf-field-label" for="SubtitleDownloadLanguage">Target Subtitle Language</label>
+                                <input id="SubtitleDownloadLanguage" type="text" class="cf-field-input" placeholder="default (or eng, spa, fre)">
+                                <div class="cf-field-helper">Language code for downloads (leave as "default" to match Jellyfin server language).</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+                            <label class="cf-checkbox-row">
+                                <input id="SetSubtitlesAsDefault" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Set cleaned subtitles as default for all users</span>
+                            </label>
+                            <label class="cf-checkbox-row">
+                                <input id="AutoMuteProfanityFromSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Automatically generate audio mute cues for profanity found in subtitles</span>
+                            </label>
+                            <label class="cf-checkbox-row">
+                                <input id="OverwriteExistingCleanSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Force overwrite existing clean subtitles during automated runs (skips locked items)</span>
+                            </label>
+                        </div>
+
+                        <!-- On-Demand Sync Box -->
+                        <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-top:10px;">
+                            <div style="font-weight:600; font-size:0.95rem; margin-bottom:4px; color:var(--cf-text-main);">⚡ On-Demand Library Sync</div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-muted); margin-bottom:12px;">
+                                Kick off subtitle download and cleaning across all movies and TV shows now, or monitor scheduled daily runs.
+                            </div>
+
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
+                                <button id="runSubSyncBtn" class="cf-btn cf-btn-primary" type="button">
+                                    ▶️ Run Subtitle Sync Now
+                                </button>
+                                <button id="cancelSubSyncBtn" class="cf-btn" style="display:none; border-color:var(--cf-red); color:var(--cf-red);" type="button">
+                                    ⏹ Cancel Sync
+                                </button>
+                                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cf-text-muted); cursor:pointer;">
+                                    <input id="subSyncForceCheckbox" type="checkbox" style="cursor:pointer;">
+                                    <span>Force re-process all items (ignore existing)</span>
+                                </label>
+                            </div>
+
+                            <div id="subSyncProgressContainer" style="display:none; flex-direction:column; gap:8px;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                                    <span id="subSyncStatusText" style="font-weight:600; color:var(--cf-accent);">Syncing subtitles...</span>
+                                    <span id="subSyncPercentText" style="font-weight:700;">0%</span>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:8px; overflow:hidden;">
+                                    <div id="subSyncProgressBar" style="background:var(--cf-accent); height:100%; width:0%; transition:width 0.3s ease;"></div>
+                                </div>
+                                <div id="subSyncStatsText" style="font-size:11px; color:var(--cf-text-muted);">
+                                    Processed: 0 / 0 | Downloaded: 0 | Cleaned: 0 | Skipped: 0 | Errors: 0
+                                </div>
+                                <div id="subSyncLogs" style="font-size:11px; font-family:monospace; background:rgba(0,0,0,0.3); border-radius:4px; padding:6px 10px; max-height:80px; overflow-y:auto; color:var(--cf-text-dim);"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="cf-settings-card">
@@ -1969,18 +2176,18 @@
             // --- Filter Hierarchy Configuration Logic ---
             var FH = [
                 { g:'Language', label:'Language & Profanity', cats:[
-                    { key:'Language.GeneralProfanity',    label:'General Profanity',      badge:'word',
+                    { key:'Language.GeneralProfanity', label:'General Profanity', badge:'word',
                       items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','cock','crap','cunt','damn','dick','douche','fuck','fucking','fucker','hell','piss','prick','pussy','screw','shit','twat','wank'] },
-                    { key:'Language.Blasphemy',           label:'Blasphemy',              badge:'word',
+                    { key:'Language.Blasphemy', label:'Blasphemy', badge:'word',
                       items:['Jesus Christ','Oh God'] },
                     { key:'Language.RacialAndBigotedSlurs', label:'Racial & Bigoted Slurs', badge:'word',
                       items:['chink','cracker','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
-                    { key:'Language.ChildishLanguage',    label:'Childish Language',      badge:'word',
+                    { key:'Language.ChildishLanguage', label:'Childish Language', badge:'word',
                       items:['bum','butt','dumb','fart','stupid'] },
                     { key:'Language.CaptionsWithProfanity', label:'Captions with Profanity', badge:'word',
                       items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','damn','fuck','fucking','fucker','hell','shit'] }
                 ]},
-                { g:'SexualReferences', label:'Sexual References & Anatomy', cats:[
+                { g:'SexualReferences', label:'Sexual References & Dialogue', cats:[
                     { key:'SexualReferences.ExplicitWords', label:'Explicit Words', badge:'word',
                       items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunillingus','dick','dildo','dink','douche','ejaculate','fag','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','picker','penis','porn','prick','piss','pussy','queer','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
                     { key:'SexualReferences.ContextualDialogue', label:'Contextual Dialogue', badge:'visual',
@@ -2002,7 +2209,11 @@
                     { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
                       items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)','Sensual Caressing','Prolonged Making Out'] },
                     { key:'SexAndNudity.Mild', label:'Mild Nudity & Kissing', badge:'visual',
-                      items:['Swimwear & Beach Attire','Mild Immodesty','Brief Non-sexual Kissing','Nude Statues & Paintings'] }
+                      items:['Swimwear & Beach Attire','Mild Immodesty','Brief Non-sexual Kissing','Nude Statues & Paintings'] },
+                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity (Legacy)', badge:'legacy',
+                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
+                    { key:'SexAndNudity.NudityProfiles', label:'Nudity Profiles (Legacy)', badge:'legacy',
+                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] }
                 ]},
                 { g:'Violence', label:'Violence & Horror', cats:[
                     { key:'Violence.Mild', label:'Mild Violence', badge:'visual',
@@ -2016,7 +2227,9 @@
                     { key:'Violence.JumpScares', label:'Jump Scares', badge:'visual',
                       items:['Horror Jump Scares','Sudden Shock Sequences','Startling Creature Reveals','Startling Sounds with Visual Jump'] },
                     { key:'Violence.Disturbing', label:'Disturbing & Psychological Horror', badge:'visual',
-                      items:['Disturbing Images','Psychological Horror','Corpses and Skeletal Remains','Suicide or Self-Harm Themes','Torture Sequences','Objectionable, Disturbing, or Scary'] }
+                      items:['Disturbing Images','Psychological Horror','Corpses and Skeletal Remains','Suicide or Self-Harm Themes','Torture Sequences','Objectionable, Disturbing, or Scary'] },
+                    { key:'Violence.Tiers', label:'Violence Tiers (Legacy)', badge:'legacy',
+                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
                 ]},
                 { g:'Substances', label:'Substance Use', cats:[
                     { key:'Substances.Tobacco', label:'Tobacco & Smoking', badge:'visual',
@@ -2024,7 +2237,9 @@
                     { key:'Substances.Alcohol', label:'Alcohol & Drinking', badge:'visual',
                       items:['Alcohol Consumption','Drunkenness and Intoxication','Beer, Wine, or Liquor Drinking','Bar Scenes with Heavy Drinking'] },
                     { key:'Substances.IllegalDrugs', label:'Illegal Drugs & Narcotics', badge:'visual',
-                      items:['Illicit Drug Use','Narcotics Consumption','Smoking Marijuana / Weed','Snorting Cocaine / Heroin','Drug Injections and Paraphernalia','Drug Overdose or Intoxication'] }
+                      items:['Illicit Drug Use','Narcotics Consumption','Smoking Marijuana / Weed','Snorting Cocaine / Heroin','Drug Injections and Paraphernalia','Drug Overdose or Intoxication'] },
+                    { key:'Substances.Usage', label:'Substance Usage (Legacy)', badge:'legacy',
+                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
                 ]},
                 { g:'Medical', label:'Medical & Biological Processes', cats:[
                     { key:'Medical.Events', label:'Medical Procedures & Trauma', badge:'visual',
@@ -2036,7 +2251,9 @@
                     { key:'Structural.Credits', label:'Credits', badge:'visual',
                       items:['Opening Credits','Closing Credits'] },
                     { key:'Structural.IntroRecap', label:'Intro & Recap', badge:'visual',
-                      items:['Opening Intro Sequence','Episode Recap','Outtakes and Bloopers'] }
+                      items:['Opening Intro Sequence','Episode Recap','Outtakes and Bloopers'] },
+                    { key:'Structural.Timestamps', label:'Structural Timestamps (Legacy)', badge:'legacy',
+                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
                 ]}
             ];
 
@@ -2045,14 +2262,6 @@
             }
 
             function getEl(id) { return document.getElementById(id); }
-
-            function findItemCb(key) {
-                var all = document.querySelectorAll('[data-ik]');
-                for (var i = 0; i < all.length; i++) {
-                    if (all[i].getAttribute('data-ik') === key) return all[i];
-                }
-                return null;
-            }
 
             function bleep(str) {
                 return str.split(' ').map(function(w) {
@@ -2065,23 +2274,29 @@
                 }).join(' ');
             }
 
-            function renderHierarchy() {
-                var container = getEl('filterHierarchyContainer');
+            function renderHierarchyTree(containerId, isItem) {
+                var container = getEl(containerId);
                 if (!container) return;
                 container.innerHTML = '';
+
                 FH.forEach(function(gDef, gIdx) {
                     var catsHtml = '';
+                    var totalGroupItems = 0;
+
                     gDef.cats.forEach(function(cat) {
-                        var subName = cat.key.split('.')[1];
+                        totalGroupItems += cat.items.length;
+                        var subName = cat.key.split('.')[1] || cat.key;
                         var isWord = cat.badge === 'word';
-                        var badgeCls = isWord ? 'cf-badge-word' : 'cf-badge-visual';
-                        var badgeTxt = isWord ? 'word' : 'visual';
+                        var isLegacy = cat.badge === 'legacy';
+                        var badgeCls = isLegacy ? 'cf-badge-legacy' : (isWord ? 'cf-badge-word' : 'cf-badge-visual');
+                        var badgeTxt = isLegacy ? 'legacy' : (isWord ? 'word' : 'visual');
+
                         var itemsHtml = '';
                         cat.items.forEach(function(item) {
                             var ik = cat.key + ':' + item;
                             var display = isWord ? bleep(item) : item;
                             itemsHtml +=
-                                '<div class="cf-item">' +
+                                '<div class="cf-item" data-itemwrap="' + esc(ik) + '">' +
                                     '<label>' +
                                         '<input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
                                         '<span>' + esc(display) + '</span>' +
@@ -2092,26 +2307,32 @@
                         catsHtml +=
                             '<div class="cf-c" data-fc="' + esc(cat.key) + '">' +
                                 '<div class="cf-c-header">' +
-                                    '<input type="checkbox" data-catcb="' + esc(cat.key) + '">' +
-                                    '<span class="cf-cname">' + esc(subName) + '</span>' +
-                                    '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
-                                    '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + cat.items.length + ' items</span>' +
+                                    '<div class="cf-c-header-left">' +
+                                        '<span class="cf-tree-chevron" data-chevron="cat" title="Expand/Collapse">▶</span>' +
+                                        '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;">' +
+                                            '<input type="checkbox" data-catcb="' + esc(cat.key) + '">' +
+                                            '<span class="cf-cname">' + esc(subName) + '</span>' +
+                                        '</label>' +
+                                        '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
+                                        '<span style="font-size:0.78rem;color:var(--cf-text-dim);">' + cat.items.length + ' items</span>' +
+                                    '</div>' +
                                 '</div>' +
                                 '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
                             '</div>';
                     });
 
                     var gHtml =
-                        '<div class="cf-g" data-group="' + esc(gDef.g) + '">' +
+                        '<div class="cf-g open" data-group="' + esc(gDef.g) + '">' +
                             '<div class="cf-g-hdr">' +
                                 '<div class="cf-g-hdr-left">' +
+                                    '<span class="cf-tree-chevron open" data-chevron="group" title="Expand/Collapse">▶</span>' +
                                     '<span class="cf-num">' + (gIdx + 1) + '</span>' +
                                     '<label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">' +
-                                        '<input type="checkbox" id="' + esc(gDef.g) + 'Enabled" style="width:16px;height:16px;">' +
+                                        '<input type="checkbox" data-gcb="' + esc(gDef.g) + '" style="width:16px;height:16px;cursor:pointer;">' +
                                         '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
                                     '</label>' +
                                 '</div>' +
-                                '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + gDef.cats.length + ' categories</span>' +
+                                '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + gDef.cats.length + ' categories • ' + totalGroupItems + ' items</span>' +
                             '</div>' +
                             '<div class="cf-g-body">' + catsHtml + '</div>' +
                         '</div>';
@@ -2119,50 +2340,276 @@
                     container.insertAdjacentHTML('beforeend', gHtml);
                 });
 
-                // Hook change listeners
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
+                wireTreeEvents(container);
+            }
 
-                    if (groupCb && groupEl) {
-                        groupCb.addEventListener('change', function() {
-                            var on = groupCb.checked;
-                            groupEl.querySelectorAll('.cf-items, .cf-c').forEach(function(el) {
-                                el.classList.toggle('cf-off', !on);
+            function wireTreeEvents(container) {
+                container.querySelectorAll('.cf-g').forEach(function(groupEl) {
+                    var gHdr = groupEl.querySelector('.cf-g-hdr');
+                    var gChevron = groupEl.querySelector('[data-chevron="group"]');
+                    var gCb = groupEl.querySelector('[data-gcb]');
+
+                    gHdr.addEventListener('click', function(e) {
+                        if (e.target.tagName === 'INPUT' || e.target.closest('label')) return;
+                        groupEl.classList.toggle('open');
+                        if (gChevron) gChevron.classList.toggle('open', groupEl.classList.contains('open'));
+                    });
+
+                    if (gCb) {
+                        gCb.addEventListener('change', function() {
+                            var checked = gCb.checked;
+                            groupEl.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                                if (cb !== gCb) {
+                                    cb.checked = checked;
+                                    cb.indeterminate = false;
+                                }
                             });
                         });
                     }
+                });
 
-                    gDef.cats.forEach(function(cat) {
-                        var catCb = groupEl ? groupEl.querySelector('[data-catcb="' + cat.key + '"]') : null;
-                        if (catCb) {
-                            catCb.addEventListener('change', function() {
-                                var checked = catCb.checked;
-                                groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
-                                    icb.checked = checked;
-                                });
-                            });
-                        }
+                container.querySelectorAll('.cf-c').forEach(function(catEl) {
+                    var catHdr = catEl.querySelector('.cf-c-header');
+                    var catChevron = catEl.querySelector('[data-chevron="cat"]');
+                    var catCb = catEl.querySelector('[data-catcb]');
+                    var catKey = catEl.getAttribute('data-fc');
 
-                        if (groupEl) {
-                            groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
-                                icb.addEventListener('change', function() {
-                                    updateCatCb(groupEl, cat.key);
-                                });
+                    catHdr.addEventListener('click', function(e) {
+                        if (e.target.tagName === 'INPUT' || e.target.closest('label')) return;
+                        catEl.classList.toggle('open');
+                        if (catChevron) catChevron.classList.toggle('open', catEl.classList.contains('open'));
+                    });
+
+                    if (catCb) {
+                        catCb.addEventListener('change', function() {
+                            var checked = catCb.checked;
+                            catEl.querySelectorAll('[data-cat="' + catKey + '"]').forEach(function(icb) {
+                                icb.checked = checked;
                             });
-                        }
+                            updateTreeTriStates(container, catKey);
+                        });
+                    }
+
+                    catEl.querySelectorAll('[data-cat="' + catKey + '"]').forEach(function(icb) {
+                        icb.addEventListener('change', function() {
+                            updateTreeTriStates(container, catKey);
+                        });
                     });
                 });
             }
 
-            function updateCatCb(groupEl, catKey) {
-                var catCb = groupEl.querySelector('[data-catcb="' + catKey + '"]');
-                if (!catCb) return;
-                var items = groupEl.querySelectorAll('[data-cat="' + catKey + '"]');
+            function updateTreeTriStates(container, catKey) {
+                if (!container) return;
+                var groupEl = null;
+
+                if (catKey) {
+                    var catEl = container.querySelector('[data-fc="' + catKey + '"]');
+                    if (catEl) {
+                        var catCb = catEl.querySelector('[data-catcb]');
+                        var items = catEl.querySelectorAll('[data-cat="' + catKey + '"]');
+                        if (catCb && items.length > 0) {
+                            var allOn = true, allOff = true;
+                            items.forEach(function(cb) {
+                                if (cb.checked) allOff = false;
+                                else allOn = false;
+                            });
+                            catCb.checked = allOn;
+                            catCb.indeterminate = (!allOn && !allOff);
+                        }
+                        groupEl = catEl.closest('.cf-g');
+                    }
+                }
+
+                if (groupEl) {
+                    updateGroupTriState(groupEl);
+                } else {
+                    container.querySelectorAll('.cf-g').forEach(updateGroupTriState);
+                }
+            }
+
+            function updateGroupTriState(groupEl) {
+                var gCb = groupEl.querySelector('[data-gcb]');
+                if (!gCb) return;
+                var allCbs = groupEl.querySelectorAll('[data-ik]');
                 var allOn = true, allOff = true;
-                items.forEach(function(cb) { if (cb.checked) allOff = false; else allOn = false; });
-                catCb.checked = allOn;
-                catCb.indeterminate = !allOn && !allOff;
+                allCbs.forEach(function(cb) {
+                    if (cb.checked) allOff = false;
+                    else allOn = false;
+                });
+                gCb.checked = allOn;
+                gCb.indeterminate = (!allOn && !allOff);
+            }
+
+            function populateTree(container, disabledCats, disabledItems, groupEnabledMap) {
+                if (!container) return;
+                var dCats = new Set((disabledCats || []).map(function(c) { return c.toLowerCase(); }));
+                var dItems = new Set((disabledItems || []).map(function(i) { return i.toLowerCase(); }));
+
+                FH.forEach(function(gDef) {
+                    var isGroupEnabled = true;
+                    if (groupEnabledMap && (gDef.g + 'Enabled') in groupEnabledMap) {
+                        isGroupEnabled = groupEnabledMap[gDef.g + 'Enabled'] !== false;
+                    }
+
+                    gDef.cats.forEach(function(cat) {
+                        var isCatDisabled = dCats.has(cat.key.toLowerCase()) || !isGroupEnabled;
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var cb = container.querySelector('[data-ik="' + esc(ik) + '"]');
+                            if (cb) {
+                                cb.checked = !isCatDisabled && !dItems.has(ik.toLowerCase());
+                            }
+                        });
+
+                        var catEl = container.querySelector('[data-fc="' + cat.key + '"]');
+                        if (catEl) {
+                            var catCb = catEl.querySelector('[data-catcb]');
+                            var items = catEl.querySelectorAll('[data-cat="' + cat.key + '"]');
+                            var allOn = true, allOff = true;
+                            items.forEach(function(cb) {
+                                if (cb.checked) allOff = false;
+                                else allOn = false;
+                            });
+                            if (catCb) {
+                                catCb.checked = allOn;
+                                catCb.indeterminate = (!allOn && !allOff);
+                            }
+                        }
+                    });
+
+                    var gEl = container.querySelector('[data-group="' + gDef.g + '"]');
+                    if (gEl) {
+                        updateGroupTriState(gEl);
+                    }
+                });
+            }
+
+            function collectTree(container) {
+                if (!container) return { disabledCategories: [], enabledCategories: [], disabledFilterItems: [], groups: {} };
+                var disabledCategories = [];
+                var enabledCategories = [];
+                var disabledFilterItems = [];
+                var groups = {};
+
+                FH.forEach(function(gDef) {
+                    var gEl = container.querySelector('[data-group="' + gDef.g + '"]');
+                    var gCb = gEl ? gEl.querySelector('[data-gcb]') : null;
+                    groups[gDef.g + 'Enabled'] = gCb ? (gCb.checked || gCb.indeterminate) : true;
+
+                    gDef.cats.forEach(function(cat) {
+                        var catEl = container.querySelector('[data-fc="' + cat.key + '"]');
+                        var catCb = catEl ? catEl.querySelector('[data-catcb]') : null;
+                        var items = container.querySelectorAll('[data-cat="' + cat.key + '"]');
+                        var allOff = true;
+
+                        items.forEach(function(icb) {
+                            if (icb.checked) {
+                                allOff = false;
+                            } else {
+                                disabledFilterItems.push(icb.getAttribute('data-ik'));
+                            }
+                        });
+
+                        if (allOff || (catCb && !catCb.checked && !catCb.indeterminate)) {
+                            disabledCategories.push(cat.key);
+                        } else {
+                            enabledCategories.push(cat.key);
+                        }
+                    });
+                });
+
+                return {
+                    disabledCategories: disabledCategories,
+                    enabledCategories: enabledCategories,
+                    disabledFilterItems: disabledFilterItems,
+                    groups: groups
+                };
+            }
+
+            function hookTreeControls(prefix, containerId) {
+                var searchInput = getEl(prefix + 'SearchInput');
+                var expandBtn = getEl(prefix + 'ExpandAllBtn');
+                var collapseBtn = getEl(prefix + 'CollapseAllBtn');
+                var selectAllBtn = getEl(prefix + 'SelectAllBtn');
+                var deselectAllBtn = getEl(prefix + 'DeselectAllBtn');
+                var container = getEl(containerId);
+                if (!container) return;
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', function(e) {
+                        var q = e.target.value.toLowerCase().trim();
+                        container.querySelectorAll('.cf-g').forEach(function(gEl) {
+                            var groupMatches = !q || (gEl.getAttribute('data-group') || '').toLowerCase().includes(q);
+                            var anyCatMatched = false;
+
+                            gEl.querySelectorAll('.cf-c').forEach(function(catEl) {
+                                var catKey = (catEl.getAttribute('data-fc') || '').toLowerCase();
+                                var catMatches = groupMatches || catKey.includes(q);
+                                var anyItemMatched = false;
+
+                                catEl.querySelectorAll('.cf-item').forEach(function(itemEl) {
+                                    var text = itemEl.textContent.toLowerCase();
+                                    var itemMatches = catMatches || text.includes(q);
+                                    itemEl.style.display = itemMatches ? 'inline-block' : 'none';
+                                    if (itemMatches) anyItemMatched = true;
+                                });
+
+                                var showCat = catMatches || anyItemMatched;
+                                catEl.style.display = showCat ? 'block' : 'none';
+                                if (showCat) {
+                                    anyCatMatched = true;
+                                    if (q) {
+                                        catEl.classList.add('open');
+                                        var chevron = catEl.querySelector('[data-chevron="cat"]');
+                                        if (chevron) chevron.classList.add('open');
+                                    }
+                                }
+                            });
+
+                            var showGroup = groupMatches || anyCatMatched;
+                            gEl.style.display = showGroup ? 'block' : 'none';
+                            if (showGroup && q) {
+                                gEl.classList.add('open');
+                                var gChevron = gEl.querySelector('[data-chevron="group"]');
+                                if (gChevron) gChevron.classList.add('open');
+                            }
+                        });
+                    });
+                }
+
+                if (expandBtn) {
+                    expandBtn.addEventListener('click', function() {
+                        container.querySelectorAll('.cf-g, .cf-c, .cf-tree-chevron').forEach(function(el) {
+                            el.classList.add('open');
+                        });
+                    });
+                }
+
+                if (collapseBtn) {
+                    collapseBtn.addEventListener('click', function() {
+                        container.querySelectorAll('.cf-c, [data-chevron="cat"]').forEach(function(el) {
+                            el.classList.remove('open');
+                        });
+                    });
+                }
+
+                if (selectAllBtn) {
+                    selectAllBtn.addEventListener('click', function() {
+                        container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                            cb.checked = true;
+                            cb.indeterminate = false;
+                        });
+                    });
+                }
+
+                if (deselectAllBtn) {
+                    deselectAllBtn.addEventListener('click', function() {
+                        container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                            cb.checked = false;
+                            cb.indeterminate = false;
+                        });
+                    });
+                }
             }
 
             function populateConfigForm(config) {
@@ -2177,32 +2624,13 @@
                 if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
                 if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
                 if (getEl('SaveSidecarsToDisk')) getEl('SaveSidecarsToDisk').checked = !!config.SaveSidecarsToDisk;
+                if (getEl('AutoDownloadSubtitles')) getEl('AutoDownloadSubtitles').checked = config.AutoDownloadSubtitles !== false;
+                if (getEl('SubtitleDownloadLanguage')) getEl('SubtitleDownloadLanguage').value = config.SubtitleDownloadLanguage || 'default';
+                if (getEl('OverwriteExistingCleanSubtitles')) getEl('OverwriteExistingCleanSubtitles').checked = !!config.OverwriteExistingCleanSubtitles;
+                if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
+                if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
 
-                var disabled = new Set(config.DisabledFilterItems || []);
-
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    if (groupCb) groupCb.checked = !!config[gDef.g + 'Enabled'];
-                    var groupOn = groupCb ? groupCb.checked : true;
-                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
-
-                    gDef.cats.forEach(function(cat) {
-                        cat.items.forEach(function(item) {
-                            var ik = cat.key + ':' + item;
-                            var cb = findItemCb(ik);
-                            if (cb) cb.checked = !disabled.has(ik);
-                        });
-                        if (groupEl) {
-                            updateCatCb(groupEl, cat.key);
-                            if (!groupOn) {
-                                var fiList = groupEl.querySelector('[data-fil="' + cat.key + '"]');
-                                if (fiList) fiList.classList.add('cf-off');
-                                var fc = groupEl.querySelector('[data-fc="' + cat.key + '"]');
-                                if (fc) fc.classList.add('cf-off');
-                            }
-                        }
-                    });
-                });
+                populateTree(getEl('filterHierarchyContainer'), config.DisabledCategories, config.DisabledFilterItems, config);
             }
 
             function collectConfigForm(config) {
@@ -2217,20 +2645,18 @@
                 if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
                 if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
                 if (getEl('SaveSidecarsToDisk')) config.SaveSidecarsToDisk = getEl('SaveSidecarsToDisk').checked;
+                if (getEl('AutoDownloadSubtitles')) config.AutoDownloadSubtitles = getEl('AutoDownloadSubtitles').checked;
+                if (getEl('SubtitleDownloadLanguage')) config.SubtitleDownloadLanguage = getEl('SubtitleDownloadLanguage').value || 'default';
+                if (getEl('OverwriteExistingCleanSubtitles')) config.OverwriteExistingCleanSubtitles = getEl('OverwriteExistingCleanSubtitles').checked;
+                if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
+                if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
 
-                var disabled = [];
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    if (groupCb) config[gDef.g + 'Enabled'] = groupCb.checked;
-                    gDef.cats.forEach(function(cat) {
-                        cat.items.forEach(function(item) {
-                            var ik = cat.key + ':' + item;
-                            var cb = findItemCb(ik);
-                            if (cb && !cb.checked) disabled.push(ik);
-                        });
-                    });
-                });
-                config.DisabledFilterItems = disabled;
+                var data = collectTree(getEl('filterHierarchyContainer'));
+                config.DisabledCategories = data.disabledCategories;
+                config.DisabledFilterItems = data.disabledFilterItems;
+                for (var gk in data.groups) {
+                    config[gk] = data.groups[gk];
+                }
             }
 
             function saveConfiguration(statusElId) {
@@ -2260,35 +2686,146 @@
                 getEl('saveSettingsBtn').addEventListener('click', function() { saveConfiguration('settingsSaveStatus'); });
             }
 
-            // Search filter for rules
-            if (getEl('rulesSearchInput')) {
-                getEl('rulesSearchInput').addEventListener('input', function(e) {
-                    var q = e.target.value.toLowerCase().trim();
-                    document.querySelectorAll('.cf-g').forEach(function(gEl) {
-                        var groupMatch = false;
-                        gEl.querySelectorAll('.cf-item').forEach(function(itemEl) {
-                            var text = itemEl.textContent.toLowerCase();
-                            var match = !q || text.includes(q);
-                            itemEl.style.display = match ? 'inline-block' : 'none';
-                            if (match) groupMatch = true;
-                        });
-                        gEl.style.display = (!q || groupMatch) ? 'block' : 'none';
-                    });
+            // Media Studio Item Rules Override Logic
+            function loadItemRules(itemId) {
+                if (!itemId) return;
+                var titleEl = getEl('itemRulesTitle');
+                var subEl = getEl('itemRulesSubtitle');
+                var sourceBadge = getEl('itemRulesSourceBadge');
+                var statusBadge = getEl('itemRulesStatusBadge');
+                var toggle = getEl('itemRulesCustomToggle');
+                var treeContainer = getEl('itemRulesTreeContainer');
+                var statusMsg = getEl('itemRulesStatusMsg');
+
+                if (titleEl) {
+                    var name = (activeItemData && (activeItemData.title || activeItemData.Name)) || 'Media Item';
+                    titleEl.textContent = name + ' Rules';
+                }
+
+                fetch(apiUrl('ContentFilter/items/' + itemId + '/rules'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(rules) {
+                    var isCustom = !!rules.isCustom;
+                    if (sourceBadge) {
+                        sourceBadge.textContent = isCustom ? '⚡ Custom Item Override' : (rules.source === 'SeriesInherited' ? '📺 Inherited from Series' : '🌐 Global Server Rules');
+                        sourceBadge.className = 'cf-pill ' + (isCustom ? 'cf-pill-green' : 'cf-pill-gray');
+                    }
+                    if (statusBadge) {
+                        statusBadge.textContent = isCustom ? 'Custom' : (rules.source === 'SeriesInherited' ? 'Series' : 'Global');
+                        statusBadge.className = 'cf-pill ' + (isCustom ? 'cf-pill-green' : 'cf-pill-gray');
+                    }
+                    if (subEl) {
+                        subEl.textContent = rules.sourceDescription || 'Inherited from global server settings';
+                    }
+                    if (toggle) {
+                        toggle.checked = isCustom;
+                    }
+                    if (treeContainer) {
+                        treeContainer.style.opacity = isCustom ? '1' : '0.45';
+                        treeContainer.style.pointerEvents = isCustom ? 'auto' : 'none';
+                    }
+
+                    populateTree(treeContainer, rules.disabledCategories, rules.disabledFilterItems, null);
+                })
+                .catch(function(err) {
+                    if (statusMsg) statusMsg.textContent = '❌ Failed to load rules: ' + err.message;
                 });
             }
 
-            if (getEl('rulesExpandAllBtn')) {
-                getEl('rulesExpandAllBtn').addEventListener('click', function() {
-                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'block'; });
-                });
-            }
-            if (getEl('rulesCollapseAllBtn')) {
-                getEl('rulesCollapseAllBtn').addEventListener('click', function() {
-                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'none'; });
+            function saveItemRules() {
+                if (!activeItemId) return;
+                var toggle = getEl('itemRulesCustomToggle');
+                var isCustom = toggle ? toggle.checked : true;
+                var statusMsg = getEl('itemRulesStatusMsg');
+                var treeContainer = getEl('itemRulesTreeContainer');
+
+                var data = collectTree(treeContainer);
+                if (statusMsg) {
+                    statusMsg.textContent = 'Saving item rules...';
+                    statusMsg.style.color = 'var(--cf-text-dim)';
+                }
+
+                fetch(apiUrl('ContentFilter/items/' + activeItemId + '/rules'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({
+                        isCustom: isCustom,
+                        disabledCategories: data.disabledCategories,
+                        enabledCategories: data.enabledCategories,
+                        disabledFilterItems: data.disabledFilterItems
+                    })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function() {
+                    if (statusMsg) {
+                        statusMsg.textContent = '✓ Item rules saved successfully!';
+                        statusMsg.style.color = 'var(--cf-green)';
+                        setTimeout(function() { statusMsg.textContent = ''; }, 3500);
+                    }
+                    loadItemRules(activeItemId);
+                    loadFilterDetails(activeItemId);
+                })
+                .catch(function(err) {
+                    if (statusMsg) {
+                        statusMsg.textContent = '❌ Error saving rules: ' + err.message;
+                        statusMsg.style.color = 'var(--cf-red)';
+                    }
                 });
             }
 
-            renderHierarchy();
+            function resetItemRules() {
+                if (!activeItemId) return;
+                if (!confirm('Revert rules for this item back to global/series defaults?')) return;
+                var statusMsg = getEl('itemRulesStatusMsg');
+                if (statusMsg) statusMsg.textContent = 'Reverting to defaults...';
+
+                fetch(apiUrl('ContentFilter/items/' + activeItemId + '/rules'), {
+                    method: 'DELETE',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                })
+                .then(function() {
+                    if (statusMsg) {
+                        statusMsg.textContent = '✓ Reverted to inherited defaults!';
+                        statusMsg.style.color = 'var(--cf-green)';
+                        setTimeout(function() { statusMsg.textContent = ''; }, 3500);
+                    }
+                    loadItemRules(activeItemId);
+                    loadFilterDetails(activeItemId);
+                })
+                .catch(function(err) {
+                    if (statusMsg) {
+                        statusMsg.textContent = '❌ Error: ' + err.message;
+                        statusMsg.style.color = 'var(--cf-red)';
+                    }
+                });
+            }
+
+            if (getEl('itemRulesCustomToggle')) {
+                getEl('itemRulesCustomToggle').addEventListener('change', function(e) {
+                    var treeContainer = getEl('itemRulesTreeContainer');
+                    if (treeContainer) {
+                        treeContainer.style.opacity = e.target.checked ? '1' : '0.45';
+                        treeContainer.style.pointerEvents = e.target.checked ? 'auto' : 'none';
+                    }
+                });
+            }
+            if (getEl('saveItemRulesBtn')) {
+                getEl('saveItemRulesBtn').addEventListener('click', saveItemRules);
+            }
+            if (getEl('resetItemRulesBtn')) {
+                getEl('resetItemRulesBtn').addEventListener('click', resetItemRules);
+            }
+
+            // Initialize both trees
+            renderHierarchyTree('filterHierarchyContainer', false);
+            renderHierarchyTree('itemRulesTreeContainer', true);
+            hookTreeControls('rules', 'filterHierarchyContainer');
+            hookTreeControls('itemRules', 'itemRulesTreeContainer');
 
             // Load plugin configuration
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
@@ -2717,6 +3254,8 @@
                 studioSubtitleWords = null;
                 loadFilterDetails(itemId);
                 refreshScanStatus(itemId);
+                loadStudioSubtitleOverride(itemId);
+                loadItemRules(itemId);
             }
 
             function loadFilterDetails(itemId) {
@@ -2929,18 +3468,41 @@
             document.getElementById('itemTabCuesBtn').addEventListener('click', function() {
                 document.getElementById('itemTabCuesBtn').classList.add('active');
                 document.getElementById('itemTabWordsBtn').classList.remove('active');
+                var rulesBtn = document.getElementById('itemTabRulesBtn');
+                if (rulesBtn) rulesBtn.classList.remove('active');
                 document.getElementById('itemTabCuesPane').style.display = 'block';
                 document.getElementById('itemTabWordsPane').style.display = 'none';
+                var rulesPane = document.getElementById('itemTabRulesPane');
+                if (rulesPane) rulesPane.style.display = 'none';
             });
 
             document.getElementById('itemTabWordsBtn').addEventListener('click', function() {
                 document.getElementById('itemTabWordsBtn').classList.add('active');
                 document.getElementById('itemTabCuesBtn').classList.remove('active');
+                var rulesBtn = document.getElementById('itemTabRulesBtn');
+                if (rulesBtn) rulesBtn.classList.remove('active');
                 document.getElementById('itemTabCuesPane').style.display = 'none';
                 document.getElementById('itemTabWordsPane').style.display = 'flex';
+                var rulesPane = document.getElementById('itemTabRulesPane');
+                if (rulesPane) rulesPane.style.display = 'none';
                 loadStudioSubtitleWords(false);
                 checkStudioCleanSubStatus();
+                loadStudioSubtitleOverride(activeItemId);
             });
+
+            var itemTabRulesBtnEl = document.getElementById('itemTabRulesBtn');
+            if (itemTabRulesBtnEl) {
+                itemTabRulesBtnEl.addEventListener('click', function() {
+                    itemTabRulesBtnEl.classList.add('active');
+                    document.getElementById('itemTabCuesBtn').classList.remove('active');
+                    document.getElementById('itemTabWordsBtn').classList.remove('active');
+                    document.getElementById('itemTabCuesPane').style.display = 'none';
+                    document.getElementById('itemTabWordsPane').style.display = 'none';
+                    var rulesPane = document.getElementById('itemTabRulesPane');
+                    if (rulesPane) rulesPane.style.display = 'flex';
+                    loadItemRules(activeItemId);
+                });
+            }
 
             document.getElementById('studioSubLangSelect').addEventListener('change', function() {
                 studioSelectedLanguage = document.getElementById('studioSubLangSelect').value;
@@ -3011,6 +3573,470 @@
                     }
                 });
             });
+
+            // --- Subtitle Timing & Edition Override Logic ---
+            function loadStudioSubtitleOverride(itemId) {
+                if (!itemId) return;
+                var lockCb = document.getElementById('studioSubLockCheckbox');
+                var lockBadge = document.getElementById('studioSubLockBadge');
+                var offsetInput = document.getElementById('studioSubOffsetInput');
+                var shiftStatus = document.getElementById('studioSubShiftStatus');
+                if (shiftStatus) shiftStatus.textContent = '';
+
+                fetch(apiUrl('ContentFilter/subtitles/' + itemId + '/override'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) return null;
+                    return res.json();
+                }).then(function(info) {
+                    if (!info) return;
+                    if (lockCb) lockCb.checked = !!(info.isLocked || info.IsLocked);
+                    var isLocked = !!(info.isLocked || info.IsLocked);
+                    if (lockBadge) lockBadge.style.display = isLocked ? 'inline-block' : 'none';
+                    var off = info.offsetSeconds !== undefined ? info.offsetSeconds : (info.OffsetSeconds !== undefined ? info.OffsetSeconds : 0.0);
+                    if (offsetInput) offsetInput.value = off;
+                }).catch(function(err) {
+                    console.warn('Could not load subtitle override:', err);
+                });
+            }
+
+            var studioSubLockCheckbox = document.getElementById('studioSubLockCheckbox');
+            if (studioSubLockCheckbox) {
+                studioSubLockCheckbox.addEventListener('change', function() {
+                    if (!activeItemId) return;
+                    var locked = studioSubLockCheckbox.checked;
+                    var lockBadge = document.getElementById('studioSubLockBadge');
+                    fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/lock'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Emby-Token': ApiClient.accessToken()
+                        },
+                        body: JSON.stringify({ isLocked: locked })
+                    }).then(function(res) {
+                        if (!res.ok) throw new Error('Status ' + res.status);
+                        return res.json();
+                    }).then(function() {
+                        if (lockBadge) lockBadge.style.display = locked ? 'inline-block' : 'none';
+                        if (typeof showToast === 'function') {
+                            showToast(locked ? '🔒 Subtitle locked against auto-sync' : '🔓 Subtitle unlocked');
+                        }
+                    }).catch(function(err) {
+                        alert('Failed to update subtitle lock: ' + err.message);
+                    });
+                });
+            }
+
+            function applyStudioSubtitleShift(delta) {
+                if (!activeItemId) return;
+                var offsetInput = document.getElementById('studioSubOffsetInput');
+                var shiftStatus = document.getElementById('studioSubShiftStatus');
+                var applyBtn = document.getElementById('studioApplyShiftBtn');
+
+                var currentOffset = parseFloat(offsetInput.value) || 0;
+                var newOffset = delta !== undefined ? (currentOffset + delta) : currentOffset;
+                newOffset = Math.round(newOffset * 10) / 10;
+                offsetInput.value = newOffset;
+
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.textContent = '⏳ Shifting...';
+                }
+                if (shiftStatus) {
+                    shiftStatus.style.color = 'var(--cf-accent)';
+                    shiftStatus.textContent = 'Applying time offset and realigning cues...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/shift'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({ offsetSeconds: newOffset })
+                }).then(function(res) {
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '⚡ Apply Shift & Sync Cues';
+                    }
+                    if (!res.ok) throw new Error('Status ' + res.status);
+                    return res.json();
+                }).then(function() {
+                    if (shiftStatus) {
+                        shiftStatus.style.color = '#34d399';
+                        shiftStatus.textContent = '✅ Subtitle & cues shifted by ' + (newOffset > 0 ? '+' : '') + newOffset + 's!';
+                        setTimeout(function() { if (shiftStatus) shiftStatus.textContent = ''; }, 4000);
+                    }
+                    loadFilterDetails(activeItemId);
+                    loadStudioSubtitleWords(true);
+                    checkStudioCleanSubStatus();
+                    loadStudioSubtitleOverride(activeItemId);
+                }).catch(function(err) {
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '⚡ Apply Shift & Sync Cues';
+                    }
+                    if (shiftStatus) {
+                        shiftStatus.style.color = '#f87171';
+                        shiftStatus.textContent = 'Shift failed: ' + err.message;
+                    }
+                });
+            }
+
+            var studioApplyShiftBtn = document.getElementById('studioApplyShiftBtn');
+            if (studioApplyShiftBtn) {
+                studioApplyShiftBtn.addEventListener('click', function() {
+                    applyStudioSubtitleShift();
+                });
+            }
+
+            document.querySelectorAll('.cf-btn-shift-nudge').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var nudge = parseFloat(btn.getAttribute('data-nudge')) || 0;
+                    applyStudioSubtitleShift(nudge);
+                });
+            });
+
+            // Remote Subtitle Search Modal Logic
+            var remoteSubModal = document.getElementById('remoteSubModal');
+            var studioSearchRemoteSubsBtn = document.getElementById('studioSearchRemoteSubsBtn');
+            var closeRemoteSubModalBtn = document.getElementById('closeRemoteSubModalBtn');
+            var closeRemoteSubModalBtn2 = document.getElementById('closeRemoteSubModalBtn2');
+            var executeRemoteSearchBtn = document.getElementById('executeRemoteSearchBtn');
+            var remoteSubLangInput = document.getElementById('remoteSubLangInput');
+            var remoteSubSearchStatus = document.getElementById('remoteSubSearchStatus');
+            var remoteSubResultsTbody = document.getElementById('remoteSubResultsTbody');
+
+            function openRemoteSubModal() {
+                if (!activeItemId || !remoteSubModal) return;
+                if (remoteSubLangInput) remoteSubLangInput.value = studioSelectedLanguage || 'eng';
+                remoteSubModal.style.display = 'flex';
+                searchRemoteSubtitles();
+            }
+
+            function closeRemoteSubModal() {
+                if (remoteSubModal) remoteSubModal.style.display = 'none';
+            }
+
+            if (studioSearchRemoteSubsBtn) studioSearchRemoteSubsBtn.addEventListener('click', openRemoteSubModal);
+            if (closeRemoteSubModalBtn) closeRemoteSubModalBtn.addEventListener('click', closeRemoteSubModal);
+            if (closeRemoteSubModalBtn2) closeRemoteSubModalBtn2.addEventListener('click', closeRemoteSubModal);
+            if (executeRemoteSearchBtn) executeRemoteSearchBtn.addEventListener('click', searchRemoteSubtitles);
+
+            function searchRemoteSubtitles() {
+                if (!activeItemId) return;
+                var lang = (remoteSubLangInput ? remoteSubLangInput.value.trim() : '') || 'eng';
+                if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = 'Searching remote providers...';
+                if (remoteSubResultsTbody) {
+                    remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--cf-text-dim);">🔍 Searching providers for subtitles...</td></tr>';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/remote-search?language=' + encodeURIComponent(lang)), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) throw new Error('Status ' + res.status);
+                    return res.json();
+                }).then(function(results) {
+                    if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = results.length + ' candidates found.';
+                    renderRemoteSubResults(results);
+                }).catch(function(err) {
+                    if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = 'Search failed: ' + err.message;
+                    if (remoteSubResultsTbody) {
+                        remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--cf-red);">Failed to query remote subtitle providers: ' + esc(err.message) + '</td></tr>';
+                    }
+                });
+            }
+
+            function renderRemoteSubResults(results) {
+                if (!remoteSubResultsTbody) return;
+                remoteSubResultsTbody.innerHTML = '';
+                if (!results || results.length === 0) {
+                    remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:28px; color:var(--cf-text-dim);">No matching subtitles found from configured providers.</td></tr>';
+                    return;
+                }
+
+                results.forEach(function(sub) {
+                    var tr = document.createElement('tr');
+
+                    var nameTd = document.createElement('td');
+                    nameTd.style.fontWeight = '600';
+                    var hashBadge = sub.isHashMatch || sub.IsHashMatch ? ' <span class="cf-pill cf-pill-green" style="font-size:10px;">Hash Match</span>' : '';
+                    var hiBadge = sub.isHearingImpaired || sub.IsHearingImpaired ? ' <span class="cf-pill cf-pill-blue" style="font-size:10px;">CC</span>' : '';
+                    nameTd.innerHTML = esc(sub.name || sub.Name || 'Unnamed Release') + hashBadge + hiBadge;
+
+                    var provTd = document.createElement('td');
+                    provTd.textContent = sub.providerName || sub.ProviderName || 'Provider';
+
+                    var fmtTd = document.createElement('td');
+                    fmtTd.textContent = (sub.format || sub.Format || 'srt').toUpperCase();
+
+                    var rateTd = document.createElement('td');
+                    var dl = sub.downloadCount ?? sub.DownloadCount;
+                    var rating = sub.communityRating ?? sub.CommunityRating;
+                    var rateText = [];
+                    if (rating !== null && rating !== undefined) rateText.push('★ ' + rating);
+                    if (dl !== null && dl !== undefined) rateText.push('↓ ' + dl);
+                    rateTd.textContent = rateText.join(' ') || '-';
+
+                    var actTd = document.createElement('td');
+                    actTd.style.textAlign = 'center';
+                    var dlBtn = document.createElement('button');
+                    dlBtn.type = 'button';
+                    dlBtn.className = 'cf-btn cf-btn-sm cf-btn-primary';
+                    dlBtn.textContent = '⬇ Download';
+                    dlBtn.addEventListener('click', function() {
+                        dlBtn.disabled = true;
+                        dlBtn.textContent = '⏳ Downloading...';
+                        var subId = sub.id || sub.Id;
+                        fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/remote-download'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Emby-Token': ApiClient.accessToken()
+                            },
+                            body: JSON.stringify({ subtitleId: subId })
+                        }).then(function(res) {
+                            if (!res.ok) throw new Error('Status ' + res.status);
+                            return res.json();
+                        }).then(function() {
+                            closeRemoteSubModal();
+                            if (typeof showToast === 'function') showToast('Subtitle downloaded, cleaned, and set as default!');
+                            loadStudioSubtitleWords(true);
+                            checkStudioCleanSubStatus();
+                            loadStudioSubtitleOverride(activeItemId);
+                        }).catch(function(err) {
+                            dlBtn.disabled = false;
+                            dlBtn.textContent = '⬇ Download';
+                            alert('Download failed: ' + err.message);
+                        });
+                    });
+                    actTd.appendChild(dlBtn);
+
+                    tr.appendChild(nameTd);
+                    tr.appendChild(provTd);
+                    tr.appendChild(fmtTd);
+                    tr.appendChild(rateTd);
+                    tr.appendChild(actTd);
+                    remoteSubResultsTbody.appendChild(tr);
+                });
+            }
+
+            // Custom SRT Upload Logic
+            var studioUploadSrtBtn = document.getElementById('studioUploadSrtBtn');
+            var studioUploadSrtInput = document.getElementById('studioUploadSrtInput');
+            if (studioUploadSrtBtn && studioUploadSrtInput) {
+                studioUploadSrtBtn.addEventListener('click', function() {
+                    studioUploadSrtInput.click();
+                });
+
+                studioUploadSrtInput.addEventListener('change', function(e) {
+                    var file = e.target.files && e.target.files[0];
+                    if (!file || !activeItemId) return;
+
+                    var reader = new FileReader();
+                    reader.onload = function(evt) {
+                        var text = evt.target.result;
+                        if (!text) return;
+
+                        studioUploadSrtBtn.disabled = true;
+                        studioUploadSrtBtn.textContent = '⏳ Uploading...';
+
+                        fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/upload'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'text/plain; charset=utf-8',
+                                'X-Emby-Token': ApiClient.accessToken()
+                            },
+                            body: text
+                        }).then(function(res) {
+                            studioUploadSrtBtn.disabled = false;
+                            studioUploadSrtBtn.textContent = '📤 Upload Custom .srt';
+                            if (!res.ok) throw new Error('Status ' + res.status);
+                            return res.json();
+                        }).then(function() {
+                            if (typeof showToast === 'function') showToast('Custom subtitle uploaded, cleaned, and locked!');
+                            loadStudioSubtitleWords(true);
+                            checkStudioCleanSubStatus();
+                            loadStudioSubtitleOverride(activeItemId);
+                        }).catch(function(err) {
+                            studioUploadSrtBtn.disabled = false;
+                            studioUploadSrtBtn.textContent = '📤 Upload Custom .srt';
+                            alert('Upload failed: ' + err.message);
+                        });
+                    };
+                    reader.readAsText(file);
+                    studioUploadSrtInput.value = '';
+                });
+            }
+
+            // --- Automated Subtitle Library Sync Controller ---
+            var subSyncPollTimer = null;
+
+            function startSubtitleSync() {
+                var forceAll = !!(document.getElementById('subSyncForceCheckbox') && document.getElementById('subSyncForceCheckbox').checked);
+                var langInput = document.getElementById('SubtitleDownloadLanguage');
+                var lang = (langInput ? langInput.value.trim() : '') || 'default';
+
+                var runBtn = document.getElementById('runSubSyncBtn');
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                var progContainer = document.getElementById('subSyncProgressContainer');
+
+                if (runBtn) {
+                    runBtn.disabled = true;
+                    runBtn.textContent = '⏳ Starting...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/start'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({ forceAll: forceAll, language: lang })
+                }).then(function(res) {
+                    if (!res.ok && res.status !== 409) throw new Error('Server returned ' + res.status);
+                    return res.json();
+                }).then(function(status) {
+                    if (runBtn) {
+                        runBtn.disabled = true;
+                        runBtn.textContent = '▶️ Subtitle Sync Active';
+                    }
+                    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                    if (progContainer) progContainer.style.display = 'flex';
+                    updateSubtitleSyncUI(status);
+                    pollSubtitleSyncStatus();
+                }).catch(function(err) {
+                    if (runBtn) {
+                        runBtn.disabled = false;
+                        runBtn.textContent = '▶️ Run Subtitle Sync Now';
+                    }
+                    alert('Could not start subtitle sync: ' + err.message);
+                });
+            }
+
+            function cancelSubtitleSync() {
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                if (cancelBtn) {
+                    cancelBtn.disabled = true;
+                    cancelBtn.textContent = '⏳ Cancelling...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/cancel'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function() {
+                    // next poll will report state Cancelled
+                }).catch(function(err) {
+                    console.warn('Cancel failed:', err);
+                });
+            }
+
+            function pollSubtitleSyncStatus() {
+                if (subSyncPollTimer) clearTimeout(subSyncPollTimer);
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/status'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) return null;
+                    return res.json();
+                }).then(function(status) {
+                    if (!status) return;
+                    updateSubtitleSyncUI(status);
+
+                    var state = (status.state || status.State || '').toLowerCase();
+                    var isRunning = status.isRunning || status.IsRunning || state === 'running';
+
+                    if (isRunning) {
+                        var runBtn = document.getElementById('runSubSyncBtn');
+                        var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                        if (runBtn) {
+                            runBtn.disabled = true;
+                            runBtn.textContent = '▶️ Subtitle Sync Active';
+                        }
+                        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                        subSyncPollTimer = setTimeout(pollSubtitleSyncStatus, 1000);
+                    } else {
+                        onSubtitleSyncFinished(status);
+                    }
+                }).catch(function(err) {
+                    console.warn('Failed to poll subtitle sync status', err);
+                });
+            }
+
+            function updateSubtitleSyncUI(status) {
+                if (!status) return;
+                var progContainer = document.getElementById('subSyncProgressContainer');
+                var statusText = document.getElementById('subSyncStatusText');
+                var percentText = document.getElementById('subSyncPercentText');
+                var progBar = document.getElementById('subSyncProgressBar');
+                var statsText = document.getElementById('subSyncStatsText');
+                var logsEl = document.getElementById('subSyncLogs');
+
+                if (progContainer) progContainer.style.display = 'flex';
+
+                var pct = Math.round(status.progressPercentage ?? status.ProgressPercentage ?? 0);
+                var itemName = status.currentItemName || status.CurrentItemName || '';
+                var processed = status.processedItems ?? status.ProcessedItems ?? 0;
+                var total = status.totalItems ?? status.TotalItems ?? 0;
+                var dl = status.subtitlesDownloaded ?? status.SubtitlesDownloaded ?? 0;
+                var cleaned = status.subtitlesCleaned ?? status.SubtitlesCleaned ?? 0;
+                var skipped = status.subtitlesSkipped ?? status.SubtitlesSkipped ?? 0;
+                var errors = status.errorCount ?? status.ErrorCount ?? 0;
+                var state = (status.state || status.State || 'Idle');
+
+                if (progBar) progBar.style.width = pct + '%';
+                if (percentText) percentText.textContent = pct + '%';
+
+                if (statusText) {
+                    if (state === 'Running') {
+                        statusText.textContent = itemName ? ('Processing: ' + itemName + ' (' + processed + '/' + total + ')') : 'Scanning libraries...';
+                        statusText.style.color = 'var(--cf-accent)';
+                    } else if (state === 'Completed') {
+                        statusText.textContent = '✅ Subtitle sync completed!';
+                        statusText.style.color = '#34d399';
+                    } else if (state === 'Cancelled') {
+                        statusText.textContent = '⏹ Subtitle sync cancelled';
+                        statusText.style.color = 'var(--cf-text-muted)';
+                    } else if (state === 'Error') {
+                        statusText.textContent = '❌ Subtitle sync encountered errors';
+                        statusText.style.color = '#f87171';
+                    }
+                }
+
+                if (statsText) {
+                    statsText.textContent = 'Processed: ' + processed + ' / ' + total +
+                        ' | Downloaded: ' + dl +
+                        ' | Cleaned: ' + cleaned +
+                        ' | Skipped: ' + skipped +
+                        ' | Errors: ' + errors;
+                }
+
+                if (logsEl) {
+                    var logs = status.recentLogs || status.RecentLogs || [];
+                    logsEl.innerHTML = logs.map(function(l) { return esc(l); }).join('<br>');
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+            }
+
+            function onSubtitleSyncFinished(status) {
+                var runBtn = document.getElementById('runSubSyncBtn');
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                if (runBtn) {
+                    runBtn.disabled = false;
+                    runBtn.textContent = '▶️ Run Subtitle Sync Now';
+                }
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.style.display = 'none';
+                    cancelBtn.textContent = '⏹ Cancel Sync';
+                }
+            }
+
+            var runSubSyncBtn = document.getElementById('runSubSyncBtn');
+            if (runSubSyncBtn) runSubSyncBtn.addEventListener('click', startSubtitleSync);
+
+            var cancelSubSyncBtn = document.getElementById('cancelSubSyncBtn');
+            if (cancelSubSyncBtn) cancelSubSyncBtn.addEventListener('click', cancelSubtitleSync);
 
 
             document.getElementById('studioSearchWordsInput').addEventListener('input', function() {
@@ -3424,23 +4450,38 @@
                 }
 
                 var channel = document.getElementById('shiftTargetChannel').value || 'all';
+                var syncSubs = !!(document.getElementById('shiftSyncSubtitles') && document.getElementById('shiftSyncSubtitles').checked);
 
                 applyShiftModalBtn.disabled = true;
                 applyShiftModalBtn.textContent = 'Shifting ' + channel + '...';
                 shiftStatusEl.style.color = 'var(--cf-text-dim)';
                 shiftStatusEl.textContent = 'Applying shift...';
 
-                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/offset'), {
-                    method: 'POST',
-                    headers: {
-                        'X-Emby-Token': ApiClient.accessToken(),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        offsetSeconds: offset,
-                        channel: channel
-                    })
-                }).then(function(res) {
+                var shiftPromise;
+                if (syncSubs && channel === 'all') {
+                    shiftPromise = fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/shift'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ offsetSeconds: offset })
+                    });
+                } else {
+                    shiftPromise = fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/offset'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            offsetSeconds: offset,
+                            channel: channel
+                        })
+                    });
+                }
+
+                shiftPromise.then(function(res) {
                     applyShiftModalBtn.disabled = false;
                     applyShiftModalBtn.textContent = '⚡ Apply Shift';
                     if (res.ok) {
@@ -3452,8 +4493,11 @@
                     var count = data.shiftedCues !== undefined ? data.shiftedCues : (data.totalCues || 0);
                     var chanDesc = data.channel === 'video' ? 'video' : (data.channel === 'audio' ? 'audio' : 'all');
                     shiftStatusEl.style.color = '#10b981';
-                    shiftStatusEl.textContent = '✅ Shifted ' + count + ' ' + chanDesc + ' cues by ' + (offset > 0 ? '+' : '') + offset + 's!';
+                    shiftStatusEl.textContent = '✅ Shifted ' + count + ' ' + chanDesc + ' cues by ' + (offset > 0 ? '+' : '') + offset + 's!' + (syncSubs ? ' (Subtitles synchronized)' : '');
                     loadFilterDetails(activeItemId);
+                    loadStudioSubtitleWords(true);
+                    checkStudioCleanSubStatus();
+                    loadStudioSubtitleOverride(activeItemId);
                     setTimeout(function() {
                         closeShiftModal();
                     }, 800);
@@ -3915,6 +4959,7 @@
                 }
 
                 loadShows();
+                pollSubtitleSyncStatus();
 
                 // Dynamically sync version tag with running plugin version
                 fetch(apiUrl('Plugins'), {

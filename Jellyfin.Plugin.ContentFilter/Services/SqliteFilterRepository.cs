@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Jellyfin.Plugin.ContentFilter.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -93,9 +94,20 @@ public sealed class SqliteFilterRepository : IDisposable
                         updated_at TEXT NOT NULL
                     );
 
+                    CREATE TABLE IF NOT EXISTS item_filter_overrides (
+                        item_id TEXT PRIMARY KEY,
+                        parent_id TEXT,
+                        is_custom INTEGER NOT NULL DEFAULT 1,
+                        disabled_categories TEXT,
+                        disabled_items TEXT,
+                        enabled_categories TEXT,
+                        updated_at TEXT NOT NULL
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_cues_item_id ON cues(item_id);
                     CREATE INDEX IF NOT EXISTS idx_cues_category ON cues(category);
                     CREATE INDEX IF NOT EXISTS idx_subtitle_overrides_locked ON item_subtitle_overrides(is_locked);
+                    CREATE INDEX IF NOT EXISTS idx_item_filter_overrides_parent ON item_filter_overrides(parent_id);
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -497,6 +509,97 @@ public sealed class SqliteFilterRepository : IDisposable
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Gets the custom filter rule overrides for a media item (Series, Movie, or Episode).
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The filter override data, or <see langword="null"/> if none exists.</returns>
+    public ItemFilterOverride? GetItemFilterOverride(Guid itemId)
+    {
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT is_custom, disabled_categories, disabled_items, enabled_categories FROM item_filter_overrides WHERE item_id = @itemId;";
+        cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var isCustom = reader.GetInt32(0) == 1;
+        var disabledCatsJson = reader.IsDBNull(1) ? null : reader.GetString(1);
+        var disabledItemsJson = reader.IsDBNull(2) ? null : reader.GetString(2);
+        var enabledCatsJson = reader.IsDBNull(3) ? null : reader.GetString(3);
+
+        return new ItemFilterOverride
+        {
+            IsCustom = isCustom,
+            DisabledCategories = string.IsNullOrEmpty(disabledCatsJson)
+                ? []
+                : JsonSerializer.Deserialize<List<string>>(disabledCatsJson) ?? [],
+            DisabledFilterItems = string.IsNullOrEmpty(disabledItemsJson)
+                ? []
+                : JsonSerializer.Deserialize<List<string>>(disabledItemsJson) ?? [],
+            EnabledCategories = string.IsNullOrEmpty(enabledCatsJson)
+                ? []
+                : JsonSerializer.Deserialize<List<string>>(enabledCatsJson) ?? []
+        };
+    }
+
+    /// <summary>
+    /// Sets or updates the custom filter rule overrides for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="parentId">Optional parent series identifier.</param>
+    /// <param name="overrideData">The override settings.</param>
+    public void SetItemFilterOverride(Guid itemId, Guid? parentId, ItemFilterOverride overrideData)
+    {
+        ArgumentNullException.ThrowIfNull(overrideData);
+
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_filter_overrides (item_id, parent_id, is_custom, disabled_categories, disabled_items, enabled_categories, updated_at)
+                VALUES (@itemId, @parentId, @isCustom, @disabledCats, @disabledItems, @enabledCats, @updatedAt)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    parent_id = COALESCE(@parentId, item_filter_overrides.parent_id),
+                    is_custom = @isCustom,
+                    disabled_categories = @disabledCats,
+                    disabled_items = @disabledItems,
+                    enabled_categories = @enabledCats,
+                    updated_at = @updatedAt;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@parentId", parentId.HasValue ? parentId.Value.ToString("N") : DBNull.Value);
+            cmd.Parameters.AddWithValue("@isCustom", overrideData.IsCustom ? 1 : 0);
+            cmd.Parameters.AddWithValue("@disabledCats", JsonSerializer.Serialize(overrideData.DisabledCategories));
+            cmd.Parameters.AddWithValue("@disabledItems", JsonSerializer.Serialize(overrideData.DisabledFilterItems));
+            cmd.Parameters.AddWithValue("@enabledCats", JsonSerializer.Serialize(overrideData.EnabledCategories));
+            cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Deletes the custom filter rule overrides for a media item, resetting it to inherit global rules.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns><see langword="true"/> if an override was deleted; otherwise <see langword="false"/>.</returns>
+    public bool DeleteItemFilterOverride(Guid itemId)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM item_filter_overrides WHERE item_id = @itemId;";
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            return cmd.ExecuteNonQuery() > 0;
+        }
     }
 
     /// <inheritdoc/>

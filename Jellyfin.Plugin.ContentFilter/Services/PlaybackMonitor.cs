@@ -15,6 +15,7 @@ public class PlaybackMonitor : IHostedService
     private readonly ISessionManager _sessionManager;
     private readonly FilterStore _filterStore;
     private readonly SubtitleFilter _subtitleFilter;
+    private readonly FilterRuleService _filterRuleService;
     private readonly ConcurrentDictionary<string, SessionState> _sessionState = new(StringComparer.Ordinal);
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
@@ -26,16 +27,19 @@ public class PlaybackMonitor : IHostedService
     /// <param name="sessionManager">The Jellyfin session manager.</param>
     /// <param name="filterStore">The filter store.</param>
     /// <param name="subtitleFilter">The subtitle filter service.</param>
+    /// <param name="filterRuleService">The filter rule service.</param>
     public PlaybackMonitor(
         ILogger<PlaybackMonitor> logger,
         ISessionManager sessionManager,
         FilterStore filterStore,
-        SubtitleFilter subtitleFilter)
+        SubtitleFilter subtitleFilter,
+        FilterRuleService filterRuleService)
     {
         _logger = logger;
         _sessionManager = sessionManager;
         _filterStore = filterStore;
         _subtitleFilter = subtitleFilter;
+        _filterRuleService = filterRuleService;
     }
 
     /// <inheritdoc />
@@ -172,6 +176,7 @@ public class PlaybackMonitor : IHostedService
 
         var activeCues = filter.Cues
             .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
+            .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
             .Where(c => (c.Start <= windowEnd && c.End > position) ||
                         (position >= c.Start - TimeSpan.FromSeconds(1) && position < c.End))
             .ToArray();

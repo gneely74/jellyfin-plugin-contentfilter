@@ -82,3 +82,30 @@ public sealed class DeleteSidecarsRequest
     /// </summary>
     public string Confirm { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Represents custom filter rule overrides for a specific media item (Series, Movie, or Episode).
+/// </summary>
+public sealed class ItemFilterOverride
+{
+    /// <summary>
+    /// Gets or sets a value indicating whether custom rules are active for this item.
+    /// If false, this item inherits global rules.
+    /// </summary>
+    public bool IsCustom { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets categories that are explicitly disabled for this item.
+    /// </summary>
+    public List<string> DisabledCategories { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets categories that are explicitly enabled for this item (overriding a global disable).
+    /// </summary>
+    public List<string> EnabledCategories { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets specific item terms ({CategoryKey}:{term}) that are explicitly disabled.
+    /// </summary>
+    public List<string> DisabledFilterItems { get; set; } = [];
+}
