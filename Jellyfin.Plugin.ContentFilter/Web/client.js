@@ -602,10 +602,10 @@
                 'left: 50%',
                 'transform: translate(-50%, -50%)',
                 'z-index: 2147483647',
-                'width: 560px',
+                'width: 580px',
                 'max-width: 95vw',
-                'max-height: 88vh',
-                'overflow-y: auto',
+                'max-height: 85vh',
+                'overflow: hidden',
                 'background: rgba(15, 23, 42, 0.97)',
                 'color: #f8fafc',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
@@ -613,15 +613,28 @@
                 'backdrop-filter: blur(20px)',
                 '-webkit-backdrop-filter: blur(20px)',
                 'border-radius: 18px',
-                'padding: 22px',
+                'padding: 20px',
                 'box-sizing: border-box',
                 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 'font-size: 13px',
                 'display: none',
                 'flex-direction: column',
-                'gap: 16px',
+                'gap: 14px',
                 'user-select: none'
             ].join(';');
+
+            var cfScrollStyle = document.getElementById('cfScrollStyle');
+            if (!cfScrollStyle) {
+                cfScrollStyle = document.createElement('style');
+                cfScrollStyle.id = 'cfScrollStyle';
+                cfScrollStyle.textContent = [
+                    '#cfEditorModal *::-webkit-scrollbar { width: 6px; height: 6px; }',
+                    '#cfEditorModal *::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 4px; }',
+                    '#cfEditorModal *::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }',
+                    '#cfEditorModal *::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.8); }'
+                ].join('\n');
+                document.head.appendChild(cfScrollStyle);
+            }
 
             editorModal.innerHTML = [
                 // Draggable Header
@@ -664,7 +677,7 @@
                 '</div>',
 
                 // Tab 1: Set / Add / Edit Cue View
-                '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px;">',
+                '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
                 '  <!-- Edit Banner (hidden unless editing) -->',
                 '  <div id="cfEditBanner" style="display:none; justify-content:space-between; align-items:center; background:rgba(234, 179, 8, 0.15); border:1px solid rgba(234, 179, 8, 0.4); border-radius:8px; padding:8px 12px; color:#fef08a; font-size:12px;">',
                 '    <div style="display:flex; align-items:center; gap:8px;">',
@@ -804,7 +817,7 @@
                 '</div>',
 
                 // Tab 2: Shift All Cues View
-                '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px;">',
+                '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
                 '  <div style="background:rgba(30, 41, 59, 0.5); border:1px solid rgba(56, 189, 248, 0.2); border-radius:10px; padding:12px; color:#cbd5e1; font-size:12px; line-height:1.5;">',
                 '    💡 <strong>Shift Cues:</strong> If the cues are off by a fixed amount because your video file has an extra logo or different cut, shift cues earlier or later. You can shift video and audio cues together or separately.',
                 '  </div>',
@@ -853,7 +866,7 @@
                 '</div>',
 
                 // Tab 3: Subtitle Words View
-                '<div id="cfTabPaneWords" style="display:none; flex-direction:column; gap:12px;">',
+                '<div id="cfTabPaneWords" style="display:none; flex-direction:column; gap:12px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
                 '  <div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">',
                 '    <div style="display:flex; align-items:center; gap:8px;">',
                 '      <label style="font-weight:600; color:#cbd5e1; font-size:12px;">Language:</label>',
@@ -878,15 +891,15 @@
                 '</div>',
 
                 // Tab 4: Active Cues List View
-                '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px;">',
+                '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
                 '  <div id="cfCuesListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
                 '    <div style="text-align:center; color:#94a3b8; padding:20px;">No cues loaded</div>',
                 '  </div>',
                 '</div>',
                 '',
                 // Tab 5: Rules & Category Overrides View
-                '<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:14px;">',
-                '  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">',
+                '<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:12px; flex:1; min-height:0; overflow:hidden;">',
+                '  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">',
                 '    <div>',
                 '      <div style="font-weight:700; color:#38bdf8; font-size:13px;" id="cfPlayerRulesSource">Rules: Global Defaults</div>',
                 '      <div style="font-size:11px; color:#94a3b8;" id="cfPlayerRulesDesc">Filters active globally are applied to this media.</div>',
@@ -900,7 +913,7 @@
                 '    <input type="checkbox" id="cfPlayerCustomRulesToggle" style="cursor:pointer; width:15px; height:15px;">',
                 '    <span style="font-weight:600; color:#f8fafc; font-size:12px;">Override rules for this specific show / movie</span>',
                 '  </label>',
-                '  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; max-height:42vh; overflow-y:auto; padding-right:4px;"></div>',
+                '  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; flex:1; min-height:160px; max-height:48vh; overflow-y:auto; padding-right:6px;"></div>',
                 '  <div id="cfPlayerRulesStatus" style="font-size:11px; color:#4ade80;"></div>',
                 '</div>'
             ].join('\n');
@@ -1076,10 +1089,18 @@
         var customRulesToggle = modal.querySelector('#cfPlayerCustomRulesToggle');
         if (customRulesToggle) {
             customRulesToggle.addEventListener('change', function () {
+                var isCustom = customRulesToggle.checked;
                 var list = modal.querySelector('#cfPlayerRulesList');
                 if (list) {
-                    list.style.opacity = customRulesToggle.checked ? '1' : '0.4';
-                    list.style.pointerEvents = customRulesToggle.checked ? 'auto' : 'none';
+                    list.querySelectorAll('[data-player-catcb]').forEach(function (cb) {
+                        cb.disabled = !isCustom;
+                        cb.style.cursor = isCustom ? 'pointer' : 'not-allowed';
+                        var lbl = cb.closest('label');
+                        if (lbl) {
+                            lbl.style.cursor = isCustom ? 'pointer' : 'default';
+                            lbl.style.opacity = isCustom ? '1' : '0.75';
+                        }
+                    });
                 }
             });
         }
@@ -2061,8 +2082,6 @@
             }
             if (toggleEl) {
                 toggleEl.checked = !!rules.isCustom;
-                listEl.style.opacity = rules.isCustom ? '1' : '0.4';
-                listEl.style.pointerEvents = rules.isCustom ? 'auto' : 'none';
             }
 
             renderPlayerRulesList(rules);
@@ -2075,37 +2094,75 @@
     function renderPlayerRulesList(rules) {
         var modal = ensureEditorModal();
         var listEl = modal.querySelector('#cfPlayerRulesList');
+        var toggleEl = modal.querySelector('#cfPlayerCustomRulesToggle');
         if (!listEl) return;
 
+        var isCustom = toggleEl ? toggleEl.checked : false;
         var disabledCats = new Set((rules.disabledCategories || []).map(function (c) { return c.toLowerCase(); }));
         var enabledCats = new Set((rules.enabledCategories || []).map(function (c) { return c.toLowerCase(); }));
 
         var standardCategories = [
-            { group: 'Sex & Nudity', cats: ['SexAndNudity.FullNudity', 'SexAndNudity.PartialNudity', 'SexAndNudity.Graphic', 'SexAndNudity.ImpliedSex', 'SexAndNudity.PhysicalIntimacy', 'SexAndNudity.SexualAssault', 'SexualReferences.ContextualDialogue'] },
-            { group: 'Violence & Gore', cats: ['Violence.Graphic', 'Violence.Gore', 'Violence.Moderate', 'Violence.Mild'] },
-            { group: 'Profanity', cats: ['Language.GeneralProfanity', 'Language.Blasphemy', 'Language.RacialAndBigotedSlurs', 'SexualReferences.ExplicitWords', 'Language.ChildishLanguage'] },
-            { group: 'Alcohol, Drugs & Smoking', cats: ['Substances.IllegalDrugs', 'Substances.Alcohol', 'Substances.Tobacco'] },
-            { group: 'Frightening & Intense Scenes', cats: ['Violence.Disturbing', 'Violence.JumpScares'] },
-            { group: 'Other / Playback & Medical', cats: ['Structural.Credits', 'Structural.IntroRecap', 'Medical.Events', 'Medical.BodilyFunctions'] }
+            { group: 'Sex & Nudity', icon: '🔞', cats: ['SexAndNudity.FullNudity', 'SexAndNudity.PartialNudity', 'SexAndNudity.Graphic', 'SexAndNudity.ImpliedSex', 'SexAndNudity.PhysicalIntimacy', 'SexAndNudity.SexualAssault', 'SexualReferences.ContextualDialogue'] },
+            { group: 'Violence & Gore', icon: '🩸', cats: ['Violence.Graphic', 'Violence.Gore', 'Violence.Moderate', 'Violence.Mild'] },
+            { group: 'Profanity', icon: '🤬', cats: ['Language.GeneralProfanity', 'Language.Blasphemy', 'Language.RacialAndBigotedSlurs', 'SexualReferences.ExplicitWords', 'Language.ChildishLanguage'] },
+            { group: 'Alcohol, Drugs & Smoking', icon: '🍺', cats: ['Substances.IllegalDrugs', 'Substances.Alcohol', 'Substances.Tobacco'] },
+            { group: 'Frightening & Intense Scenes', icon: '⚡', cats: ['Violence.Disturbing', 'Violence.JumpScares'] },
+            { group: 'Other / Playback & Medical', icon: '🩹', cats: ['Structural.Credits', 'Structural.IntroRecap', 'Medical.Events', 'Medical.BodilyFunctions'] }
         ];
 
         var html = '';
-        standardCategories.forEach(function (grp) {
-            html += '<div style="margin-top:6px; margin-bottom:2px; font-weight:700; color:#38bdf8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">' + grp.group + '</div>';
+        standardCategories.forEach(function (grp, gIdx) {
+            var groupId = 'cfPlayerGrp_' + gIdx;
+            var activeCount = 0;
+            var itemsHtml = '';
+
             grp.cats.forEach(function (catKey) {
                 var isChecked = !disabledCats.has(catKey.toLowerCase());
                 if (enabledCats.has(catKey.toLowerCase())) isChecked = true;
+                if (isChecked) activeCount++;
                 var shortName = catKey.split('.')[1] || catKey;
-                html += [
-                    '<label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor:pointer;">',
+                itemsHtml += [
+                    '<label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:6px; cursor:' + (isCustom ? 'pointer' : 'default') + '; opacity:' + (isCustom ? '1' : '0.75') + ';">',
                     '  <span style="color:#f8fafc; font-size:12px;">' + shortName + '</span>',
-                    '  <input type="checkbox" data-player-catcb="' + catKey + '" ' + (isChecked ? 'checked' : '') + ' style="cursor:pointer; width:15px; height:15px;">',
+                    '  <input type="checkbox" data-player-catcb="' + catKey + '" ' + (isChecked ? 'checked' : '') + ' ' + (isCustom ? '' : 'disabled') + ' style="cursor:' + (isCustom ? 'pointer' : 'not-allowed') + '; width:15px; height:15px;">',
                     '</label>'
                 ].join('');
             });
+
+            html += [
+                '<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; overflow:hidden;">',
+                '  <div class="cf-grp-header" data-grp-target="' + groupId + '" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(30,41,59,0.5); cursor:pointer; user-select:none;">',
+                '    <div style="font-weight:700; color:#38bdf8; font-size:12px; display:flex; align-items:center; gap:6px;">',
+                '      <span class="cf-grp-arrow" style="font-size:10px; transition:transform 0.2s;">▼</span>',
+                '      <span>' + grp.icon + ' ' + grp.group + '</span>',
+                '    </div>',
+                '    <div style="font-size:11px; color:#94a3b8;">' + activeCount + ' of ' + grp.cats.length + ' filtered</div>',
+                '  </div>',
+                '  <div id="' + groupId + '" style="display:flex; flex-direction:column; gap:4px; padding:8px 10px;">',
+                itemsHtml,
+                '  </div>',
+                '</div>'
+            ].join('');
         });
 
         listEl.innerHTML = html;
+        listEl.style.pointerEvents = 'auto';
+
+        // Wire accordion clicks
+        listEl.querySelectorAll('.cf-grp-header').forEach(function (header) {
+            header.addEventListener('click', function () {
+                var targetId = header.getAttribute('data-grp-target');
+                var body = listEl.querySelector('#' + targetId);
+                var arrow = header.querySelector('.cf-grp-arrow');
+                if (body.style.display === 'none') {
+                    body.style.display = 'flex';
+                    if (arrow) arrow.textContent = '▼';
+                } else {
+                    body.style.display = 'none';
+                    if (arrow) arrow.textContent = '▶';
+                }
+            });
+        });
     }
 
     function savePlayerItemRules() {
