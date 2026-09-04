@@ -12,7 +12,7 @@
         "changelog": "SRT subtitle word scanning with language selector defaulting to English, interactive dialogue word browser, blanket word filtering per-item and globally across the library, integrated into the in-player HUD and Media Studio.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.14/Jellyfin.Plugin.ContentFilter_1.0.14.0.zip",
-        "checksum": "c6bc0a5509bd89f11f10264b5f7def32",
+        "checksum": "fe9fcc50c500f8f501c141c352851515",
         "timestamp": "2026-09-04T00:00:00Z"
       },
       {

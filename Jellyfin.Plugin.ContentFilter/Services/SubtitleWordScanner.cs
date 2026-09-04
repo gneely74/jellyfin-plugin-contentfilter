@@ -218,13 +218,16 @@ public class SubtitleWordScanner
     }
 
     /// <summary>
-    /// Retrieves or extracts SRT content for a given item and language.
+    /// Retrieves or extracts SRT content for a given item and language or stream index.
     /// </summary>
     public async Task<string?> GetSrtContentAsync(Guid itemId, string language, CancellationToken ct)
     {
-        language = NormalizeLanguage(language);
+        bool isNumericIndex = int.TryParse(language, out var reqIndex);
+        var normLang = isNumericIndex ? "eng" : NormalizeLanguage(language);
         Directory.CreateDirectory(CacheDir);
-        var cacheFile = Path.Combine(CacheDir, $"{itemId:N}_{language}.srt");
+        var cacheFile = isNumericIndex
+            ? Path.Combine(CacheDir, $"{itemId:N}_idx{reqIndex}.srt")
+            : Path.Combine(CacheDir, $"{itemId:N}_{normLang}.srt");
 
         if (File.Exists(cacheFile) && new FileInfo(cacheFile).Length > 0)
         {
@@ -241,14 +244,14 @@ public class SubtitleWordScanner
         var dir = Path.GetDirectoryName(mediaPath);
         var stem = Path.GetFileNameWithoutExtension(mediaPath);
 
-        // 1. Check for adjacent external SRT matching requested language
-        if (!string.IsNullOrWhiteSpace(dir) && !string.IsNullOrWhiteSpace(stem) && Directory.Exists(dir))
+        // 1. If not a specific embedded index, check adjacent external SRTs
+        if (!isNumericIndex && !string.IsNullOrWhiteSpace(dir) && !string.IsNullOrWhiteSpace(stem) && Directory.Exists(dir))
         {
             string[] candidateFiles =
             [
-                Path.Combine(dir, $"{stem}.{language}.WhisperSubs.srt"),
-                Path.Combine(dir, $"{stem}.{language}.generated.srt"),
-                Path.Combine(dir, $"{stem}.{language}.srt"),
+                Path.Combine(dir, $"{stem}.{normLang}.WhisperSubs.srt"),
+                Path.Combine(dir, $"{stem}.{normLang}.generated.srt"),
+                Path.Combine(dir, $"{stem}.{normLang}.srt"),
                 Path.Combine(dir, $"{stem}.WhisperSubs.srt"),
                 Path.Combine(dir, $"{stem}.generated.srt"),
                 Path.Combine(dir, $"{stem}.srt")
@@ -275,9 +278,21 @@ public class SubtitleWordScanner
                 .Where(s => s.Type == MediaStreamType.Subtitle)
                 .ToList();
 
-            var matchedStream = streams.FirstOrDefault(s => (s.Language ?? "eng").StartsWith(language, StringComparison.OrdinalIgnoreCase))
-                                ?? streams.FirstOrDefault(s => (s.Language ?? "").StartsWith("en", StringComparison.OrdinalIgnoreCase))
+            MediaStream? matchedStream = null;
+            if (isNumericIndex)
+            {
+                matchedStream = streams.FirstOrDefault(s => s.Index == reqIndex);
+            }
+
+            if (matchedStream == null)
+            {
+                var matching = streams.Where(s => (s.Language ?? "eng").StartsWith(normLang, StringComparison.OrdinalIgnoreCase)).ToList();
+                // Prioritize full dialogue subtitles over forced/commentary
+                matchedStream = matching.FirstOrDefault(s => !s.IsForced && (s.DisplayTitle == null || !s.DisplayTitle.Contains("forced", StringComparison.OrdinalIgnoreCase)))
+                                ?? matching.FirstOrDefault()
+                                ?? streams.FirstOrDefault(s => !s.IsForced && (s.Language ?? "").StartsWith("en", StringComparison.OrdinalIgnoreCase))
                                 ?? streams.FirstOrDefault();
+            }
 
             if (matchedStream != null)
             {
@@ -299,14 +314,15 @@ public class SubtitleWordScanner
     /// </summary>
     public async Task<SubtitleScanResult> ScanWordsAsync(Guid itemId, string language, CancellationToken ct)
     {
-        language = NormalizeLanguage(language);
+        bool isNumericIndex = int.TryParse(language, out _);
+        var normLang = isNumericIndex ? language : NormalizeLanguage(language);
         var tracks = GetAvailableTracks(itemId);
-        var srt = await GetSrtContentAsync(itemId, language, ct).ConfigureAwait(false);
+        var srt = await GetSrtContentAsync(itemId, normLang, ct).ConfigureAwait(false);
 
         var result = new SubtitleScanResult
         {
             ItemId = itemId,
-            SelectedLanguage = language,
+            SelectedLanguage = normLang,
             AvailableTracks = tracks
         };
 

@@ -1168,19 +1168,24 @@
 
         sorted.forEach(function (tr) {
             var opt = document.createElement('option');
-            opt.value = tr.language || 'eng';
+            opt.value = tr.isExternal ? (tr.language || 'eng') : String(tr.index);
             var codec = tr.codec ? (' (' + tr.codec + ')') : '';
             var ext = tr.isExternal ? ' [ext]' : '';
             opt.textContent = (tr.displayName || tr.language || 'Subtitles') + codec + ext;
-            if (tr.language === selectedSubtitleLanguage) {
-                opt.selected = true;
-            }
             sel.appendChild(opt);
         });
 
-        if (!sel.value && sel.options.length > 0) {
-            sel.options[0].selected = true;
-            selectedSubtitleLanguage = sel.value;
+        // Default to full non-forced English subtitles if available
+        var defaultOpt = Array.from(sel.options).find(function (o) {
+            var text = o.textContent.toLowerCase();
+            return text.indexOf('english') !== -1 && text.indexOf('forced') === -1;
+        }) || Array.from(sel.options).find(function (o) {
+            return o.textContent.toLowerCase().indexOf('english') !== -1;
+        }) || sel.options[0];
+
+        if (defaultOpt) {
+            defaultOpt.selected = true;
+            selectedSubtitleLanguage = defaultOpt.value;
         }
     }
 
