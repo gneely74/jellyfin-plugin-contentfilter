@@ -136,6 +136,53 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Deletes a specific cue from an item's filter.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="cueKey">The cue key to remove.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> when the cue was removed; otherwise <see langword="false"/>.</returns>
+    public async Task<bool> DeleteCueAsync(Guid itemId, string cueKey, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return false;
+        }
+
+        var removed = filter.Cues.RemoveAll(c => c.Key.Equals(cueKey, StringComparison.Ordinal));
+        if (removed > 0)
+        {
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Adds a new cue to an item's filter.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="cue">The cue to add.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that completes when persistence has finished.</returns>
+    public async Task AddCueAsync(Guid itemId, FilterCue cue, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            filter = new JcfFilter
+            {
+                Title = _libraryManager.GetItemById(itemId)?.Name ?? "Filtered Item"
+            };
+        }
+
+        filter.Cues.Add(cue);
+        await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Deletes a filter for an item and associated filtered subtitle output.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>

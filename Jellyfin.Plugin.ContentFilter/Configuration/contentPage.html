@@ -2,776 +2,1112 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Jellyfin Content Filter - Media &amp; Segments Studio</title>
-    <style>
-        :root {
-            --cf-bg: #121218;
-            --cf-surface: #1a1a24;
-            --cf-surface-elevated: #222232;
-            --cf-surface-hover: #29293d;
-            --cf-border: #2e2e42;
-            --cf-border-subtle: #242436;
-            --cf-primary: #52b54b;
-            --cf-primary-glow: rgba(82, 181, 75, 0.18);
-            --cf-accent-blue: #00a4dc;
-            --cf-accent-amber: #f59e0b;
-            --cf-accent-red: #ef4444;
-            --cf-accent-purple: #a855f7;
-            --cf-text-main: #f3f4f6;
-            --cf-text-muted: #9ca3af;
-            --cf-text-dim: #6b7280;
-        }
-
-        .cf-page-wrapper {
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 12px 16px 32px;
-            color: var(--cf-text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        /* Top Header */
-        .cf-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--cf-border);
-            margin-bottom: 20px;
-        }
-
-        .cf-header-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .cf-header-title h2 {
-            margin: 0;
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #fff;
-            letter-spacing: -0.01em;
-        }
-
-        .cf-header-title .cf-tag {
-            font-size: 0.72rem;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: var(--cf-primary-glow);
-            color: var(--cf-primary);
-            border: 1px solid rgba(82, 181, 75, 0.35);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .cf-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Studio Split Workspace */
-        .cf-workspace {
-            display: grid;
-            grid-template-columns: 360px 1fr;
-            gap: 20px;
-            align-items: start;
-        }
-
-        @media (max-width: 960px) {
-            .cf-workspace {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Left Panel - Media Browser */
-        .cf-browser {
-            background: var(--cf-surface);
-            border: 1px solid var(--cf-border);
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            max-height: calc(100vh - 170px);
-        }
-
-        .cf-browser-tabs {
-            display: flex;
-            border-bottom: 1px solid var(--cf-border);
-            background: var(--cf-bg);
-        }
-
-        .cf-tab-btn {
-            flex: 1;
-            padding: 10px 14px;
-            background: none;
-            border: none;
-            color: var(--cf-text-muted);
-            font-size: 0.88rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            text-align: center;
-            border-bottom: 2px solid transparent;
-        }
-
-        .cf-tab-btn:hover {
-            color: #fff;
-            background: var(--cf-surface-hover);
-        }
-
-        .cf-tab-btn.active {
-            color: #fff;
-            border-bottom: 2px solid var(--cf-primary);
-            background: var(--cf-surface);
-        }
-
-        .cf-search-box {
-            padding: 12px;
-            border-bottom: 1px solid var(--cf-border);
-            background: var(--cf-surface);
-            position: relative;
-        }
-
-        .cf-search-input {
-            width: 100%;
-            box-sizing: border-box;
-            background: var(--cf-bg);
-            border: 1px solid var(--cf-border);
-            border-radius: 6px;
-            padding: 8px 30px 8px 10px;
-            color: #fff;
-            font-size: 0.85rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .cf-search-input:focus {
-            border-color: var(--cf-primary);
-        }
-
-        .cf-search-clear {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            background: none;
-            border: none;
-            color: var(--cf-text-dim);
-            cursor: pointer;
-            font-size: 14px;
-            display: none;
-        }
-
-        .cf-media-tree {
-            overflow-y: auto;
-            flex: 1;
-            padding: 6px;
-        }
-
-        /* Tree Items: Shows, Seasons, Episodes, Movies */
-        .cf-tree-series {
-            margin-bottom: 4px;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid transparent;
-        }
-
-        .cf-tree-series-hdr {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 10px;
-            background: var(--cf-surface);
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.15s;
-            border-radius: 6px;
-        }
-
-        .cf-tree-series-hdr:hover {
-            background: var(--cf-surface-hover);
-        }
-
-        .cf-series-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
-
-        .cf-expand-arrow {
-            font-size: 10px;
-            color: var(--cf-text-dim);
-            transition: transform 0.2s ease;
-            width: 12px;
-            text-align: center;
-        }
-
-        .cf-expand-arrow.open {
-            transform: rotate(90deg);
-        }
-
-        .cf-series-title {
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: #fff;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .cf-series-year {
-            font-size: 0.75rem;
-            color: var(--cf-text-dim);
-        }
-
-        .cf-seasons-container {
-            display: none;
-            padding-left: 14px;
-            margin-top: 2px;
-            border-left: 2px solid var(--cf-border-subtle);
-            margin-left: 12px;
-        }
-
-        .cf-season-grp {
-            margin-top: 6px;
-        }
-
-        .cf-season-hdr {
-            font-size: 0.78rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--cf-text-dim);
-            padding: 4px 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .cf-episode-item, .cf-movie-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 6px 10px;
-            margin-bottom: 2px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-size: 0.83rem;
-            color: var(--cf-text-muted);
-        }
-
-        .cf-episode-item:hover, .cf-movie-item:hover {
-            background: var(--cf-surface-hover);
-            color: #fff;
-        }
-
-        .cf-episode-item.selected, .cf-movie-item.selected {
-            background: var(--cf-surface-elevated);
-            color: #fff;
-            border-left: 3px solid var(--cf-primary);
-            font-weight: 600;
-        }
-
-        .cf-ep-meta {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            flex: 1;
-        }
-
-        .cf-ep-num {
-            font-family: monospace;
-            font-size: 0.78rem;
-            color: var(--cf-text-dim);
-            margin-right: 4px;
-        }
-
-        /* Status Badges */
-        .cf-pill {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-weight: 500;
-        }
-
-        .cf-pill-green {
-            background: rgba(82, 181, 75, 0.15);
-            color: #6ee664;
-            border: 1px solid rgba(82, 181, 75, 0.4);
-        }
-
-        .cf-pill-blue {
-            background: rgba(0, 164, 220, 0.15);
-            color: #38bdf8;
-            border: 1px solid rgba(0, 164, 220, 0.4);
-        }
-
-        .cf-pill-gray {
-            background: rgba(156, 163, 175, 0.1);
-            color: #9ca3af;
-            border: 1px solid rgba(156, 163, 175, 0.25);
-        }
-
-        .cf-pill-amber {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.4);
-        }
-
-        .cf-pill-red {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-        }
-
-        /* Right Panel - Detail Workspace */
-        .cf-detail-card {
-            background: var(--cf-surface);
-            border: 1px solid var(--cf-border);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .cf-empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--cf-text-dim);
-        }
-
-        .cf-empty-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.6;
-        }
-
-        .cf-banner {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .cf-media-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0 0 6px 0;
-            line-height: 1.2;
-        }
-
-        .cf-media-sub {
-            font-size: 0.9rem;
-            color: var(--cf-text-muted);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .cf-actions-toolbar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        /* Modern Dropzone */
-        .cf-dropzone {
-            border: 2px dashed var(--cf-border);
-            background: var(--cf-bg);
-            border-radius: 8px;
-            padding: 24px 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 20px;
-        }
-
-        .cf-dropzone:hover, .cf-dropzone.dragover {
-            border-color: var(--cf-primary);
-            background: var(--cf-primary-glow);
-        }
-
-        .cf-dropzone-icon {
-            font-size: 28px;
-            margin-bottom: 6px;
-        }
-
-        .cf-dropzone-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .cf-dropzone-sub {
-            font-size: 0.8rem;
-            color: var(--cf-text-dim);
-            margin-top: 4px;
-        }
-
-        /* Metrics Bar & Category Chips */
-        .cf-metrics-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            padding: 12px 14px;
-            background: var(--cf-surface-elevated);
-            border-radius: 6px;
-            margin-bottom: 16px;
-        }
-
-        .cf-chips-container {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .cf-bulk-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .cf-mini-btn {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            background: var(--cf-surface);
-            border: 1px solid var(--cf-border);
-            color: var(--cf-text-muted);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .cf-mini-btn:hover {
-            background: var(--cf-surface-hover);
-            color: #fff;
-            border-color: var(--cf-text-dim);
-        }
-
-        /* Segments Table */
-        .cf-table-wrap {
-            overflow-x: auto;
-            margin-top: 12px;
-        }
-
-        .cf-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
-        .cf-table th {
-            text-align: left;
-            padding: 10px 12px;
-            background: var(--cf-bg);
-            color: var(--cf-text-dim);
-            font-weight: 600;
-            font-size: 0.76rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--cf-border);
-        }
-
-        .cf-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--cf-border-subtle);
-            vertical-align: middle;
-        }
-
-        .cf-table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .cf-table tr.none-action {
-            opacity: 0.4;
-        }
-
-        .cf-time-badge {
-            font-family: monospace;
-            font-size: 0.82rem;
-            background: var(--cf-bg);
-            padding: 3px 6px;
-            border-radius: 4px;
-            border: 1px solid var(--cf-border-subtle);
-            color: #e5e7eb;
-            display: inline-block;
-        }
-
-        .cf-duration-badge {
-            font-size: 0.72rem;
-            color: var(--cf-text-dim);
-            margin-left: 4px;
-        }
-
-        .cf-input-clean {
-            width: 100%;
-            box-sizing: border-box;
-            background: transparent;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            padding: 4px 8px;
-            color: #fff;
-            font-size: 0.85rem;
-            transition: all 0.15s;
-        }
-
-        .cf-input-clean:hover {
-            border-color: var(--cf-border);
-            background: var(--cf-bg);
-        }
-
-        .cf-input-clean:focus {
-            border-color: var(--cf-primary);
-            background: var(--cf-bg);
-            outline: none;
-        }
-
-        .cf-select-clean {
-            background: var(--cf-bg);
-            border: 1px solid var(--cf-border);
-            border-radius: 4px;
-            padding: 4px 8px;
-            color: #fff;
-            font-size: 0.82rem;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .cf-select-clean:focus {
-            border-color: var(--cf-primary);
-        }
-
-        /* Scan Progress Card */
-        .cf-scan-card {
-            background: var(--cf-surface-elevated);
-            border: 1px solid var(--cf-border);
-            border-radius: 6px;
-            padding: 14px 16px;
-            margin-bottom: 16px;
-            display: none;
-        }
-
-        .cf-progress-track {
-            width: 100%;
-            height: 8px;
-            background: var(--cf-bg);
-            border-radius: 999px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-
-        .cf-progress-fill {
-            height: 100%;
-            width: 0;
-            background: linear-gradient(90deg, #52b54b, #6ee664);
-            transition: width 0.3s ease;
-        }
-
-        /* Batch Import Modal */
-        .cf-batch-card {
-            background: var(--cf-surface-elevated);
-            border: 1px solid var(--cf-border);
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 16px;
-            display: none;
-        }
-
-        .cf-batch-list {
-            max-height: 180px;
-            overflow-y: auto;
-            margin-top: 8px;
-            font-size: 0.82rem;
-            border: 1px solid var(--cf-border);
-            border-radius: 4px;
-            padding: 6px;
-            background: var(--cf-bg);
-        }
-
-        .cf-spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: cf-spin 0.8s linear infinite;
-        }
-
-        @keyframes cf-spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
+    <title>Jellyfin Content Filter - Segments Studio</title>
 </head>
 <body>
     <div id="ContentFilterSegmentsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select">
+        <style>
+            :root {
+                --cf-bg: #101119;
+                --cf-surface: #171826;
+                --cf-surface-elevated: #1f2032;
+                --cf-surface-hover: #27283e;
+                --cf-border: rgba(255, 255, 255, 0.08);
+                --cf-border-subtle: rgba(255, 255, 255, 0.04);
+                --cf-border-focus: #00a4dc;
+                --cf-primary: #00a4dc;
+                --cf-primary-glow: rgba(0, 164, 220, 0.2);
+                --cf-green: #52b54b;
+                --cf-green-bg: rgba(82, 181, 75, 0.15);
+                --cf-amber: #f59e0b;
+                --cf-amber-bg: rgba(245, 158, 11, 0.15);
+                --cf-red: #ef4444;
+                --cf-red-bg: rgba(239, 68, 68, 0.15);
+                --cf-purple: #a855f7;
+                --cf-purple-bg: rgba(168, 85, 247, 0.15);
+                --cf-blue: #0284c7;
+                --cf-blue-bg: rgba(2, 132, 199, 0.15);
+                --cf-text-main: #f8fafc;
+                --cf-text-muted: #94a3b8;
+                --cf-text-dim: #64748b;
+            }
+
+            .cf-page-container {
+                max-width: 1680px;
+                margin: 0 auto;
+                padding: 12px 20px 28px;
+                color: var(--cf-text-main);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                box-sizing: border-box;
+            }
+
+            /* Main Studio Header */
+            .cf-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 16px;
+                padding-bottom: 14px;
+                margin-bottom: 16px;
+                border-bottom: 1px solid var(--cf-border);
+            }
+
+            .cf-header-title {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .cf-header-title h2 {
+                margin: 0;
+                font-size: 1.45rem;
+                font-weight: 700;
+                color: #fff;
+                letter-spacing: -0.01em;
+            }
+
+            .cf-header-tag {
+                font-size: 0.7rem;
+                font-weight: 700;
+                padding: 3px 9px;
+                border-radius: 9999px;
+                background: var(--cf-green-bg);
+                color: var(--cf-green);
+                border: 1px solid rgba(82, 181, 75, 0.35);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .cf-header-sub {
+                font-size: 0.85rem;
+                color: var(--cf-text-muted);
+                margin-top: 2px;
+            }
+
+            .cf-header-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            /* Studio Workspace Grid */
+            .cf-workspace {
+                display: grid;
+                grid-template-columns: 390px 1fr;
+                gap: 20px;
+                height: calc(100vh - 165px);
+                min-height: 600px;
+            }
+
+            @media (max-width: 1024px) {
+                .cf-workspace {
+                    grid-template-columns: 1fr;
+                    height: auto;
+                }
+            }
+
+            /* Left Browser Panel */
+            .cf-browser {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                overflow: hidden;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-browser-tabs {
+                display: flex;
+                background: var(--cf-surface-elevated);
+                border-bottom: 1px solid var(--cf-border);
+                padding: 4px;
+                gap: 4px;
+            }
+
+            .cf-tab-btn {
+                flex: 1;
+                padding: 9px 12px;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                color: var(--cf-text-muted);
+                font-size: 0.86rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.15s ease;
+            }
+
+            .cf-tab-btn:hover {
+                background: rgba(255, 255, 255, 0.05);
+                color: #fff;
+            }
+
+            .cf-tab-btn.active {
+                background: var(--cf-primary);
+                color: #fff;
+                box-shadow: 0 2px 8px var(--cf-primary-glow);
+            }
+
+            .cf-search-box {
+                padding: 10px 12px;
+                background: var(--cf-surface);
+                border-bottom: 1px solid var(--cf-border-subtle);
+                position: relative;
+            }
+
+            .cf-search-input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 32px 8px 12px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.84rem;
+                outline: none;
+                transition: border-color 0.15s ease;
+            }
+
+            .cf-search-input:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-search-clear {
+                position: absolute;
+                right: 20px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                color: var(--cf-text-dim);
+                cursor: pointer;
+                font-size: 0.85rem;
+                display: none;
+            }
+
+            .cf-search-clear:hover {
+                color: #fff;
+            }
+
+            .cf-media-tree {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px 10px;
+            }
+
+            .cf-media-tree::-webkit-scrollbar {
+                width: 6px;
+            }
+            .cf-media-tree::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .cf-media-tree::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+
+            /* TV Series Card */
+            .cf-tree-series {
+                margin-bottom: 6px;
+                border-radius: 7px;
+                border: 1px solid var(--cf-border-subtle);
+                background: rgba(255, 255, 255, 0.02);
+                overflow: hidden;
+                transition: border-color 0.15s ease;
+            }
+
+            .cf-tree-series:hover {
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .cf-tree-series-hdr {
+                padding: 9px 12px;
+                cursor: pointer;
+                user-select: none;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                font-size: 0.88rem;
+                background: transparent;
+                transition: background 0.15s ease;
+            }
+
+            .cf-tree-series-hdr:hover {
+                background: var(--cf-surface-hover);
+            }
+
+            .cf-series-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .cf-expand-arrow {
+                font-size: 0.72rem;
+                color: var(--cf-text-dim);
+                transition: transform 0.2s ease;
+                display: inline-block;
+                flex-shrink: 0;
+            }
+
+            .cf-expand-arrow.open {
+                transform: rotate(90deg);
+                color: var(--cf-primary);
+            }
+
+            .cf-series-title {
+                font-weight: 600;
+                color: #fff;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .cf-series-year {
+                font-size: 0.78rem;
+                color: var(--cf-text-dim);
+                flex-shrink: 0;
+            }
+
+            .cf-seasons-container {
+                display: none;
+                padding: 4px 6px 8px 14px;
+                background: rgba(0, 0, 0, 0.15);
+                border-top: 1px solid var(--cf-border-subtle);
+            }
+
+            /* Season Group */
+            .cf-season-grp {
+                margin: 4px 0 8px 0;
+            }
+
+            .cf-season-hdr {
+                padding: 6px 10px;
+                border-radius: 5px;
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: var(--cf-text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                user-select: none;
+                background: rgba(255, 255, 255, 0.03);
+                margin-bottom: 3px;
+                transition: background 0.15s ease, color 0.15s ease;
+            }
+
+            .cf-season-hdr:hover {
+                background: rgba(255, 255, 255, 0.07);
+                color: #fff;
+            }
+
+            .cf-season-episodes {
+                display: block;
+            }
+
+            /* Episode Item */
+            .cf-episode-item, .cf-movie-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 7px 10px;
+                margin: 2px 0;
+                border-radius: 5px;
+                font-size: 0.82rem;
+                color: var(--cf-text-muted);
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid transparent;
+                transition: all 0.12s ease;
+            }
+
+            .cf-episode-item:hover, .cf-movie-item:hover {
+                background: var(--cf-surface-hover);
+                color: #fff;
+            }
+
+            .cf-episode-item.selected, .cf-movie-item.selected {
+                background: rgba(0, 164, 220, 0.15);
+                color: #fff;
+                border-color: var(--cf-primary);
+                font-weight: 600;
+                box-shadow: 0 1px 6px rgba(0, 164, 220, 0.2);
+            }
+
+            .cf-ep-meta {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .cf-ep-num {
+                font-family: monospace;
+                font-size: 0.75rem;
+                font-weight: 700;
+                background: var(--cf-surface-elevated);
+                color: var(--cf-text-main);
+                padding: 2px 5px;
+                border-radius: 3px;
+                flex-shrink: 0;
+                border: 1px solid var(--cf-border-subtle);
+            }
+
+            .cf-ep-title {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Generic Pills & Badges */
+            .cf-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 2px 7px;
+                border-radius: 4px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .cf-pill-green  { background: var(--cf-green-bg); color: var(--cf-green); border: 1px solid rgba(82, 181, 75, 0.3); }
+            .cf-pill-blue   { background: var(--cf-blue-bg); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+            .cf-pill-amber  { background: var(--cf-amber-bg); color: var(--cf-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+            .cf-pill-red    { background: var(--cf-red-bg); color: var(--cf-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+            .cf-pill-purple { background: var(--cf-purple-bg); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
+            .cf-pill-gray   { background: rgba(255, 255, 255, 0.05); color: var(--cf-text-dim); border: 1px solid var(--cf-border-subtle); }
+
+            /* Right Detail Panel / Editor Workspace */
+            .cf-editor {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                overflow-y: auto;
+                padding: 20px 24px;
+                box-sizing: border-box;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-editor::-webkit-scrollbar {
+                width: 6px;
+            }
+            .cf-editor::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .cf-editor::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+
+            /* Empty State Card */
+            .cf-empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                text-align: center;
+                padding: 40px 20px;
+                color: var(--cf-text-muted);
+            }
+
+            .cf-empty-icon {
+                font-size: 3.5rem;
+                margin-bottom: 16px;
+                opacity: 0.8;
+            }
+
+            .cf-empty-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: #fff;
+                margin-bottom: 8px;
+            }
+
+            .cf-empty-desc {
+                font-size: 0.9rem;
+                max-width: 440px;
+                line-height: 1.5;
+                margin-bottom: 16px;
+            }
+
+            /* Media Hero Banner */
+            .cf-hero {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 16px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid var(--cf-border);
+                margin-bottom: 18px;
+                flex-wrap: wrap;
+            }
+
+            .cf-hero-meta {
+                min-width: 0;
+            }
+
+            .cf-hero-title {
+                margin: 0 0 4px 0;
+                font-size: 1.35rem;
+                font-weight: 700;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .cf-hero-sub {
+                font-size: 0.86rem;
+                color: var(--cf-text-muted);
+            }
+
+            .cf-hero-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            /* Button Styles */
+            .cf-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 7px 14px;
+                border-radius: 6px;
+                font-size: 0.84rem;
+                font-weight: 600;
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid var(--cf-border);
+                background: var(--cf-surface-elevated);
+                color: #fff;
+                transition: all 0.15s ease;
+            }
+
+            .cf-btn:hover {
+                background: var(--cf-surface-hover);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .cf-btn-primary {
+                background: var(--cf-primary);
+                border-color: var(--cf-primary);
+                box-shadow: 0 2px 8px var(--cf-primary-glow);
+            }
+
+            .cf-btn-primary:hover {
+                background: #0284c7;
+                border-color: #0284c7;
+            }
+
+            .cf-btn-danger {
+                background: var(--cf-red-bg);
+                color: var(--cf-red);
+                border-color: rgba(239, 68, 68, 0.4);
+            }
+
+            .cf-btn-danger:hover {
+                background: rgba(239, 68, 68, 0.25);
+            }
+
+            .cf-btn-sm {
+                padding: 4px 10px;
+                font-size: 0.78rem;
+            }
+
+            /* Sidecar Disk Alert Banner */
+            .cf-sidecar-alert {
+                display: none;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 10px 14px;
+                background: rgba(2, 132, 199, 0.12);
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                border-radius: 7px;
+                margin-bottom: 16px;
+                font-size: 0.85rem;
+            }
+
+            .cf-sidecar-alert-text {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #bae6fd;
+            }
+
+            /* Scan Tracker */
+            .cf-scan-card {
+                display: none;
+                padding: 14px 16px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                margin-bottom: 16px;
+            }
+
+            .cf-scan-hdr {
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.85rem;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+
+            .cf-progress-track {
+                width: 100%;
+                height: 7px;
+                background: rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                overflow: hidden;
+                margin-bottom: 6px;
+            }
+
+            .cf-progress-fill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #00a4dc, #52b54b);
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+
+            /* Drag & Drop Zone */
+            .cf-dropzone {
+                border: 2px dashed var(--cf-border);
+                border-radius: 8px;
+                padding: 22px 16px;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.01);
+                cursor: pointer;
+                transition: all 0.15s ease;
+                margin-bottom: 18px;
+            }
+
+            .cf-dropzone:hover, .cf-dropzone.dragover {
+                border-color: var(--cf-primary);
+                background: rgba(0, 164, 220, 0.06);
+            }
+
+            .cf-dropzone-icon {
+                font-size: 2rem;
+                margin-bottom: 6px;
+            }
+
+            .cf-dropzone-title {
+                font-weight: 600;
+                font-size: 0.95rem;
+                color: #fff;
+                margin-bottom: 4px;
+            }
+
+            .cf-dropzone-sub {
+                font-size: 0.8rem;
+                color: var(--cf-text-dim);
+            }
+
+            /* Batch Report Card */
+            .cf-batch-card {
+                display: none;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 16px;
+                font-size: 0.84rem;
+            }
+
+            .cf-batch-list {
+                max-height: 160px;
+                overflow-y: auto;
+                margin-top: 8px;
+                padding-right: 4px;
+            }
+
+            /* Segments Section */
+            .cf-segments-sec {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+            }
+
+            .cf-segments-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 10px 0;
+                margin-bottom: 8px;
+            }
+
+            .cf-cat-chips {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .cf-bulk-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            /* Segments Table */
+            .cf-table-container {
+                overflow-x: auto;
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                background: var(--cf-surface-elevated);
+            }
+
+            .cf-table {
+                width: 100%;
+                border-collapse: collapse;
+                text-align: left;
+                font-size: 0.83rem;
+            }
+
+            .cf-table th {
+                background: rgba(0, 0, 0, 0.25);
+                padding: 10px 14px;
+                color: var(--cf-text-muted);
+                font-weight: 700;
+                font-size: 0.74rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border-bottom: 1px solid var(--cf-border);
+            }
+
+            .cf-table td {
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--cf-border-subtle);
+                color: var(--cf-text-main);
+                vertical-align: middle;
+            }
+
+            .cf-table tbody tr:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            .cf-table tr.none-action td {
+                opacity: 0.45;
+            }
+
+            .cf-time-badge {
+                font-family: monospace;
+                font-size: 0.8rem;
+                font-weight: 600;
+                background: rgba(0, 0, 0, 0.25);
+                padding: 3px 6px;
+                border-radius: 4px;
+                border: 1px solid var(--cf-border-subtle);
+                white-space: nowrap;
+            }
+
+            .cf-duration-badge {
+                font-size: 0.72rem;
+                color: var(--cf-text-dim);
+                margin-left: 6px;
+            }
+
+            .cf-select-clean {
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid var(--cf-border);
+                color: #fff;
+                padding: 5px 8px;
+                border-radius: 5px;
+                font-size: 0.78rem;
+                font-weight: 600;
+                outline: none;
+                cursor: pointer;
+            }
+
+            .cf-select-clean:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-input-clean {
+                background: rgba(0, 0, 0, 0.2);
+                border: 1px solid transparent;
+                color: #fff;
+                padding: 5px 8px;
+                border-radius: 5px;
+                font-size: 0.82rem;
+                width: 100%;
+                box-sizing: border-box;
+                outline: none;
+                transition: all 0.15s ease;
+            }
+
+            .cf-input-clean:focus {
+                background: rgba(0, 0, 0, 0.4);
+                border-color: var(--cf-primary);
+            }
+
+            .cf-del-btn {
+                background: transparent;
+                border: none;
+                color: var(--cf-text-dim);
+                cursor: pointer;
+                font-size: 0.95rem;
+                padding: 4px 8px;
+                border-radius: 4px;
+                transition: all 0.15s ease;
+            }
+
+            .cf-del-btn:hover {
+                color: var(--cf-red);
+                background: var(--cf-red-bg);
+            }
+
+            /* Modal for Adding Segment */
+            .cf-modal-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.75);
+                z-index: 99999;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .cf-modal {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                width: 90%;
+                max-width: 480px;
+                padding: 24px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .cf-modal-hdr {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+
+            .cf-modal-title {
+                margin: 0;
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #fff;
+            }
+
+            .cf-form-row {
+                margin-bottom: 14px;
+            }
+
+            .cf-form-row label {
+                display: block;
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: var(--cf-text-muted);
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+
+            .cf-form-row input, .cf-form-row select {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 10px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.85rem;
+                outline: none;
+            }
+
+            .cf-form-row input:focus, .cf-form-row select:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-modal-footer {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 20px;
+            }
+
+            .cf-spinner {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: cf-spin 0.8s linear infinite;
+            }
+
+            @keyframes cf-spin {
+                to { transform: rotate(360deg); }
+            }
+        </style>
+
         <div data-role="content">
-            <div class="content-primary cf-page-wrapper">
+            <div class="content-primary cf-page-container">
                 
                 <!-- Main Header -->
                 <div class="cf-header">
-                    <div class="cf-header-title">
-                        <h2>Content Filter Studio</h2>
-                        <span class="cf-tag">JCF Manager</span>
+                    <div>
+                        <div class="cf-header-title">
+                            <h2>Content Filter Studio</h2>
+                            <span class="cf-header-tag">JCF Studio</span>
+                        </div>
+                        <div class="cf-header-sub">Review media cues, inspect disk sidecars, and manage playback filtering.</div>
                     </div>
                     <div class="cf-header-actions">
                         <button id="scanSidecarsBtn" is="emby-button" type="button" class="raised emby-button">
                             <span>🔄 Scan Disk Sidecars</span>
                         </button>
                         <button id="configPageBtn" is="emby-button" type="button" class="raised emby-button">
-                            <span>⚙️ Settings</span>
+                            <span>⚙️ Filter Settings</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Workspace Grid -->
+                <!-- Studio Grid Workspace -->
                 <div class="cf-workspace">
                     
                     <!-- Left Column: Library Browser -->
                     <div class="cf-browser">
                         <div class="cf-browser-tabs">
-                            <button id="tabShowsBtn" class="cf-tab-btn active" type="button">📺 TV Shows</button>
-                            <button id="tabMoviesBtn" class="cf-tab-btn" type="button">🎬 Movies</button>
+                            <button id="tabShowsBtn" class="cf-tab-btn active" type="button">
+                                <span>📺 TV Shows</span>
+                                <span id="showsCountBadge" class="cf-pill cf-pill-gray" style="font-size:0.68rem;">--</span>
+                            </button>
+                            <button id="tabMoviesBtn" class="cf-tab-btn" type="button">
+                                <span>🎬 Movies</span>
+                                <span id="moviesCountBadge" class="cf-pill cf-pill-gray" style="font-size:0.68rem;">--</span>
+                            </button>
                         </div>
                         <div class="cf-search-box">
-                            <input id="mediaFilterInput" class="cf-search-input" type="text" placeholder="Search shows, movies, or episodes…">
+                            <input id="mediaFilterInput" class="cf-search-input" type="text" placeholder="Filter shows, movies, or episodes…">
                             <button id="searchClearBtn" class="cf-search-clear" type="button">✕</button>
                         </div>
                         <div id="mediaTreeContainer" class="cf-media-tree">
-                            <div style="text-align:center; padding: 24px; color: var(--cf-text-dim);">Loading library media…</div>
+                            <div style="text-align:center; padding: 28px; color: var(--cf-text-dim);">
+                                <div class="cf-spinner"></div> Loading library media…
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Right Column: Detail & Segments Editor -->
-                    <div class="cf-detail-column">
+                    <!-- Right Column: Workspace & Editor -->
+                    <div class="cf-editor">
                         
-                        <!-- Batch Import Report (shown during multi-file drop) -->
-                        <div id="batchReportCard" class="cf-batch-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <strong id="batchTitle">Batch Import Progress</strong>
-                                <span id="batchSummary" class="cf-pill cf-pill-blue">Processing…</span>
+                        <!-- Empty State (when nothing is selected) -->
+                        <div id="emptyWorkspaceCard" class="cf-empty-state">
+                            <div class="cf-empty-icon">📺</div>
+                            <div class="cf-empty-title">Select Media from the Library</div>
+                            <div class="cf-empty-desc">
+                                Choose a TV Show or Movie from the left browser to review seasons, inspect cues, import .jcf files, or run automated scans.
                             </div>
-                            <div id="batchList" class="cf-batch-list"></div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-dim);">
+                                Tip: Drag &amp; drop any <code>.jcf</code> file directly onto this window to auto-match and import.
+                            </div>
                         </div>
 
-                        <!-- Scan Progress Tracker (shown during scan) -->
-                        <div id="scanTrackerCard" class="cf-scan-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span id="scanStatusTitle" style="font-weight:600;">Scanning Media…</span>
-                                <span id="scanPercentText" style="font-family:monospace; color:var(--cf-primary);">0.0%</span>
-                            </div>
-                            <div class="cf-progress-track">
-                                <div id="scanProgressBar" class="cf-progress-fill"></div>
-                            </div>
-                            <div id="scanDetailsText" style="font-size:0.78rem; color:var(--cf-text-dim); margin-top:6px;">Stage: initializing</div>
-                        </div>
-
-                        <!-- Main Media Detail Card -->
-                        <div id="mediaDetailCard" class="cf-detail-card" style="display:none;">
-                            <div class="cf-banner">
-                                <div>
-                                    <h1 id="detailTitle" class="cf-media-title">Media Title</h1>
-                                    <div class="cf-media-sub">
-                                        <span id="detailSubtext">Series Name · S01E01 · 2024</span>
-                                        <span id="detailStatusBadge" class="cf-pill cf-pill-gray">No Filter</span>
+                        <!-- Active Detail Workspace -->
+                        <div id="mediaDetailCard" style="display:none; flex-direction:column; flex:1;">
+                            
+                            <!-- Hero Metadata & Actions -->
+                            <div class="cf-hero">
+                                <div class="cf-hero-meta">
+                                    <div class="cf-hero-title">
+                                        <span id="detailTitle">Untitled Media</span>
+                                        <span id="detailStatusBadge" class="cf-pill cf-pill-gray">Loading…</span>
                                     </div>
+                                    <div id="detailSubtext" class="cf-hero-sub"></div>
                                 </div>
-                                <div class="cf-actions-toolbar">
-                                    <button id="uploadJcfBtn" is="emby-button" type="button" class="raised emby-button">
+                                <div class="cf-hero-actions">
+                                    <button id="uploadJcfBtn" class="cf-btn" type="button" title="Import JCF File">
                                         <span>📥 Import JCF</span>
                                     </button>
-                                    <button id="downloadJcfBtn" is="emby-button" type="button" class="raised emby-button">
+                                    <button id="downloadJcfBtn" class="cf-btn" type="button" title="Download JCF File">
                                         <span>⬇️ Download</span>
                                     </button>
-                                    <button id="scanMediaBtn" is="emby-button" type="button" class="raised emby-button">
-                                        <span>🔍 Scan Visual/Audio</span>
+                                    <button id="scanMediaBtn" class="cf-btn cf-btn-primary" type="button" title="Run Vision Scan">
+                                        <span>🔍 Scan Media</span>
                                     </button>
-                                    <button id="deleteFilterBtn" is="emby-button" type="button" class="raised emby-button" style="color:var(--cf-accent-red);">
+                                    <button id="deleteFilterBtn" class="cf-btn cf-btn-danger" type="button" title="Remove Filter">
                                         <span>🗑️ Clear</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Dropzone inside item -->
-                            <div id="itemDropzone" class="cf-dropzone">
-                                <div class="cf-dropzone-icon">📥</div>
-                                <div id="dropzoneMainText" class="cf-dropzone-title">Drop JCF file here to load or replace filter</div>
-                                <div id="dropzoneSubText" class="cf-dropzone-sub">Supports single JCF files or drag whole seasons to auto-match episodes</div>
-                                <input id="fileUploadInput" type="file" accept=".jcf,text/plain" multiple style="display:none;">
+                            <!-- On-Disk Sidecar Banner -->
+                            <div id="sidecarAlertBanner" class="cf-sidecar-alert">
+                                <div class="cf-sidecar-alert-text">
+                                    <span>📄</span>
+                                    <span>Disk sidecar detected: <code id="sidecarPathLabel" style="font-size:0.8rem; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;"></code></span>
+                                </div>
+                                <button id="reloadSidecarBtn" class="cf-btn cf-btn-sm" type="button">
+                                    <span>Re-import from Disk</span>
+                                </button>
                             </div>
 
-                            <!-- Segments Studio Area -->
-                            <div id="segmentsStudioArea">
-                                <div class="cf-metrics-bar">
-                                    <div id="categoryChips" class="cf-chips-container">
+                            <!-- Scan Progress Tracker -->
+                            <div id="scanTrackerCard" class="cf-scan-card">
+                                <div class="cf-scan-hdr">
+                                    <span id="scanStatusHeading">Automated Vision Scanning in Progress…</span>
+                                    <span id="scanPercentText" class="cf-pill cf-pill-blue">0%</span>
+                                </div>
+                                <div class="cf-progress-track">
+                                    <div id="scanProgressBar" class="cf-progress-fill"></div>
+                                </div>
+                                <div id="scanDetailsText" style="font-size:0.78rem; color:var(--cf-text-dim);">Connecting to local Vision LLM…</div>
+                            </div>
+
+                            <!-- Drop Zone -->
+                            <div id="itemDropzone" class="cf-dropzone">
+                                <div class="cf-dropzone-icon">☁️</div>
+                                <div id="dropzoneMainText" class="cf-dropzone-title">Drop JCF file for this media</div>
+                                <div id="dropzoneSubText" class="cf-dropzone-sub">
+                                    Drop a .jcf file to import cues (or drop multiple files to batch match this season)
+                                </div>
+                                <input type="file" id="fileUploadInput" accept=".jcf" multiple style="display:none;">
+                            </div>
+
+                            <!-- Batch Import Report -->
+                            <div id="batchReportCard" class="cf-batch-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span id="batchTitle" style="font-weight:700; color:#fff;">Batch Processing JCF Files…</span>
+                                    <span id="batchSummary" class="cf-pill cf-pill-blue">0 / 0</span>
+                                </div>
+                                <div id="batchList" class="cf-batch-list"></div>
+                            </div>
+
+                            <!-- Segments Table Section -->
+                            <div class="cf-segments-sec">
+                                <div class="cf-segments-toolbar">
+                                    <div id="categoryChips" class="cf-cat-chips">
                                         <span class="cf-pill cf-pill-gray">0 Segments</span>
                                     </div>
-                                    <div class="cf-bulk-controls">
-                                        <span style="font-size:0.75rem; color:var(--cf-text-dim); margin-right:4px;">Bulk:</span>
-                                        <button id="bulkSkipBtn" class="cf-mini-btn" type="button">Skip All</button>
-                                        <button id="bulkMuteBtn" class="cf-mini-btn" type="button">Mute All</button>
-                                        <button id="bulkNoneBtn" class="cf-mini-btn" type="button">Set All None</button>
+                                    <div class="cf-bulk-actions">
+                                        <button id="addSegmentBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">
+                                            <span>+ Add Segment</span>
+                                        </button>
+                                        <button id="bulkSkipBtn" class="cf-btn cf-btn-sm" type="button">Skip All</button>
+                                        <button id="bulkMuteBtn" class="cf-btn cf-btn-sm" type="button">Mute All</button>
+                                        <button id="bulkNoneBtn" class="cf-btn cf-btn-sm" type="button">Set None</button>
                                     </div>
                                 </div>
 
-                                <div class="cf-table-wrap">
+                                <div class="cf-table-container">
                                     <table class="cf-table">
                                         <thead>
                                             <tr>
                                                 <th style="width: 220px;">Time Range</th>
-                                                <th style="width: 170px;">Category</th>
-                                                <th style="width: 80px;">Channel</th>
-                                                <th style="width: 100px;">Action</th>
-                                                <th>Description</th>
+                                                <th style="width: 140px;">Category</th>
+                                                <th style="width: 90px;">Channel</th>
+                                                <th style="width: 110px;">Action</th>
+                                                <th>Description / Rationale</th>
+                                                <th style="width: 45px; text-align: center;">✕</th>
                                             </tr>
                                         </thead>
                                         <tbody id="segmentsTableBody">
                                             <tr>
-                                                <td colspan="5" style="text-align:center; color:var(--cf-text-dim); padding:30px;">
-                                                    No filter segments configured for this media item.
+                                                <td colspan="6" style="text-align:center; color:var(--cf-text-dim); padding:32px;">
+                                                    No filtered cues configured for this item.
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Empty State (when no item selected) -->
-                        <div id="emptyWorkspaceCard" class="cf-detail-card cf-empty-state">
-                            <div class="cf-empty-icon">📺</div>
-                            <h3 style="color:#fff; margin:0 0 8px 0;">Select Media from the Library</h3>
-                            <p style="margin:0 0 16px 0; font-size:0.9rem;">
-                                Choose a TV Show or Movie from the left panel to inspect its seasons, episodes, and content filter cues.
-                            </p>
-                            <p style="font-size:0.82rem; color:var(--cf-text-dim);">
-                                Tip: You can also drag &amp; drop any <code>.jcf</code> file directly onto this window to auto-match and import.
-                            </p>
                         </div>
 
                     </div>
                 </div>
 
+                <!-- Add Segment Modal -->
+                <div id="addSegmentModal" class="cf-modal-overlay">
+                    <div class="cf-modal">
+                        <div class="cf-modal-hdr">
+                            <h3 class="cf-modal-title">Add Content Filter Segment</h3>
+                            <button id="closeAddModalBtn" class="cf-del-btn" type="button">✕</button>
+                        </div>
+                        <form id="addSegmentForm">
+                            <div style="display:flex; gap:12px;">
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueStart">Start Time</label>
+                                    <input type="text" id="newCueStart" placeholder="00:01:30.000" required>
+                                </div>
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueEnd">End Time</label>
+                                    <input type="text" id="newCueEnd" placeholder="00:01:45.000" required>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px;">
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueCategory">Category</label>
+                                    <input type="text" id="newCueCategory" placeholder="Profanity, Violence, etc." required>
+                                </div>
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueChannel">Channel</label>
+                                    <select id="newCueChannel">
+                                        <option value="video">video</option>
+                                        <option value="audio">audio</option>
+                                        <option value="both" selected>both</option>
+                                        <option value="subtitles">subtitles</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="newCueAction">Action</label>
+                                <select id="newCueAction">
+                                    <option value="skip" selected>SKIP</option>
+                                    <option value="mute">MUTE</option>
+                                    <option value="none">NONE</option>
+                                </select>
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="newCueDescription">Description</label>
+                                <input type="text" id="newCueDescription" placeholder="Notes or reasoning for segment…">
+                            </div>
+                            <div class="cf-modal-footer">
+                                <button id="cancelAddModalBtn" class="cf-btn" type="button">Cancel</button>
+                                <button type="submit" class="cf-btn cf-btn-primary">Add Segment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </div>
+
         <script type="text/javascript">
             // Global State
             var currentMode = 'shows'; // 'shows' | 'movies'
@@ -780,7 +1116,7 @@
             var activeSeriesId = '';
             var showsCache = [];
             var moviesCache = [];
-            var episodesCache = {}; // seriesId -> episodes hierarchy
+            var episodesCache = {}; // seriesId -> data
             var scanPollHandle = null;
             var searchDebounceTimer = null;
 
@@ -803,7 +1139,6 @@
                     .replace(/"/g, '&quot;');
             }
 
-            // Duration calculator helper (e.g. 00:01:30.000 -> 00:01:45.000 gives 15s)
             function parseTimestampSeconds(ts) {
                 if (!ts) return 0;
                 var parts = ts.split(':');
@@ -827,21 +1162,20 @@
                 return mins + 'm ' + remSec + 's';
             }
 
-            // Category color mapper
             function getCategoryClass(cat) {
                 if (!cat) return 'cf-pill-gray';
                 var l = cat.toLowerCase();
-                if (l.includes('violence')) return 'cf-pill-red';
-                if (l.includes('language') || l.includes('profanity')) return 'cf-pill-amber';
+                if (l.includes('violence') || l.includes('blood') || l.includes('gore')) return 'cf-pill-red';
+                if (l.includes('language') || l.includes('profanity') || l.includes('curse')) return 'cf-pill-amber';
                 if (l.includes('sex') || l.includes('nudity')) return 'cf-pill-purple';
-                if (l.includes('substance')) return 'cf-pill-blue';
+                if (l.includes('substance') || l.includes('drug') || l.includes('alcohol')) return 'cf-pill-blue';
                 return 'cf-pill-green';
             }
 
             // --- API Data Loading ---
             function loadShows() {
                 var container = document.getElementById('mediaTreeContainer');
-                container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading TV Shows…</div>';
+                container.innerHTML = '<div style="text-align:center; padding:28px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading TV Shows…</div>';
                 
                 return fetch(apiUrl('ContentFilter/library/shows'), {
                     headers: { 'X-Emby-Token': ApiClient.accessToken() }
@@ -849,15 +1183,16 @@
                     return res.json();
                 }).then(function(shows) {
                     showsCache = shows || [];
+                    document.getElementById('showsCountBadge').textContent = showsCache.length;
                     renderShowsList(showsCache);
                 }).catch(function(err) {
-                    container.innerHTML = '<div style="padding:16px; color:var(--cf-accent-red);">Failed to load TV shows: ' + esc(err.message) + '</div>';
+                    container.innerHTML = '<div style="padding:16px; color:var(--cf-red);">Failed to load TV shows: ' + esc(err.message) + '</div>';
                 });
             }
 
             function loadMovies() {
                 var container = document.getElementById('mediaTreeContainer');
-                container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading Movies…</div>';
+                container.innerHTML = '<div style="text-align:center; padding:28px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading Movies…</div>';
 
                 return fetch(apiUrl('ContentFilter/library/movies'), {
                     headers: { 'X-Emby-Token': ApiClient.accessToken() }
@@ -865,9 +1200,10 @@
                     return res.json();
                 }).then(function(movies) {
                     moviesCache = movies || [];
+                    document.getElementById('moviesCountBadge').textContent = moviesCache.length;
                     renderMoviesList(moviesCache);
                 }).catch(function(err) {
-                    container.innerHTML = '<div style="padding:16px; color:var(--cf-accent-red);">Failed to load Movies: ' + esc(err.message) + '</div>';
+                    container.innerHTML = '<div style="padding:16px; color:var(--cf-red);">Failed to load Movies: ' + esc(err.message) + '</div>';
                 });
             }
 
@@ -886,13 +1222,13 @@
                 });
             }
 
-            // --- Rendering Media Tree ---
+            // --- Media Tree Rendering ---
             function renderShowsList(shows) {
                 var container = document.getElementById('mediaTreeContainer');
                 container.innerHTML = '';
 
                 if (!shows || shows.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--cf-text-dim);">No TV Shows found in library.</div>';
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--cf-text-dim);">No TV Shows found.</div>';
                     return;
                 }
 
@@ -905,11 +1241,12 @@
                     hdr.className = 'cf-tree-series-hdr';
                     hdr.innerHTML = 
                         '<div class="cf-series-info">' +
-                            '<span class="cf-expand-arrow">▶</span>' +
+                            '<span class="cf-expand-arrow">▸</span>' +
+                            '<span>📺</span>' +
                             '<span class="cf-series-title">' + esc(show.name) + '</span>' +
                             (show.year ? '<span class="cf-series-year">(' + show.year + ')</span>' : '') +
                         '</div>' +
-                        '<span class="cf-pill cf-pill-gray show-badge">Expand</span>';
+                        '<span class="cf-pill cf-pill-gray show-badge">Load</span>';
 
                     var seasonsContainer = document.createElement('div');
                     seasonsContainer.className = 'cf-seasons-container';
@@ -935,13 +1272,12 @@
                     return;
                 }
 
-                // Expand and fetch all episodes
                 arrow.classList.add('open');
                 seasonsContainer.style.display = 'block';
                 activeSeriesId = seriesId;
 
                 if (!seasonsContainer.hasChildNodes()) {
-                    seasonsContainer.innerHTML = '<div style="padding:10px; color:var(--cf-text-dim); font-size:0.8rem;"><div class="cf-spinner"></div> Loading all episodes…</div>';
+                    seasonsContainer.innerHTML = '<div style="padding:10px 4px; color:var(--cf-text-dim); font-size:0.8rem;"><div class="cf-spinner"></div> Loading all episodes…</div>';
                     
                     loadSeriesEpisodes(seriesId).then(function(data) {
                         seasonsContainer.innerHTML = '';
@@ -963,14 +1299,29 @@
                             return;
                         }
 
-                        data.seasons.forEach(function(season) {
+                        var isSingleSeason = (data.seasons.length === 1);
+
+                        data.seasons.forEach(function(season, sIdx) {
                             var grp = document.createElement('div');
                             grp.className = 'cf-season-grp';
 
                             var sHdr = document.createElement('div');
                             sHdr.className = 'cf-season-hdr';
-                            sHdr.innerHTML = '<span>' + esc(season.seasonName) + '</span><span>' + season.episodes.length + ' eps</span>';
-                            grp.appendChild(sHdr);
+                            sHdr.innerHTML = 
+                                '<span>' + (isSingleSeason ? '' : '▾ ') + esc(season.seasonName) + '</span>' +
+                                '<span>' + season.episodes.length + ' eps</span>';
+
+                            var epList = document.createElement('div');
+                            epList.className = 'cf-season-episodes';
+
+                            if (!isSingleSeason) {
+                                sHdr.addEventListener('click', function(e) {
+                                    e.stopPropagation();
+                                    var collapsed = (epList.style.display === 'none');
+                                    epList.style.display = collapsed ? 'block' : 'none';
+                                    sHdr.querySelector('span:first-child').textContent = (collapsed ? '▾ ' : '▸ ') + season.seasonName;
+                                });
+                            }
 
                             season.episodes.forEach(function(ep) {
                                 var epItem = document.createElement('div');
@@ -985,12 +1336,12 @@
                                     badgeHtml = '<span class="cf-pill cf-pill-blue">📄 Sidecar</span>';
                                 }
 
-                                var epNumberStr = (ep.episodeNumber != null) ? ('E' + String(ep.episodeNumber).padStart(2, '0')) : 'E--';
+                                var epNumStr = (ep.episodeNumber != null) ? ('E' + String(ep.episodeNumber).padStart(2, '0')) : 'E--';
 
                                 epItem.innerHTML = 
                                     '<div class="cf-ep-meta">' +
-                                        '<span class="cf-ep-num">' + epNumberStr + '</span>' +
-                                        '<span>' + esc(ep.name) + '</span>' +
+                                        '<span class="cf-ep-num">' + epNumStr + '</span>' +
+                                        '<span class="cf-ep-title" title="' + esc(ep.name) + '">' + esc(ep.name) + '</span>' +
                                     '</div>' +
                                     badgeHtml;
 
@@ -998,16 +1349,18 @@
                                     e.stopPropagation();
                                     document.querySelectorAll('.cf-episode-item, .cf-movie-item').forEach(function(el) { el.classList.remove('selected'); });
                                     epItem.classList.add('selected');
-                                    selectMediaItem(ep.id, ep.name, data.seriesName + ' · ' + season.seasonName + ' · ' + epNumberStr, ep);
+                                    selectMediaItem(ep.id, ep.name, data.seriesName + ' › ' + season.seasonName + ' · ' + epNumStr, ep);
                                 });
 
-                                grp.appendChild(epItem);
+                                epList.appendChild(epItem);
                             });
 
+                            grp.appendChild(sHdr);
+                            grp.appendChild(epList);
                             seasonsContainer.appendChild(grp);
                         });
                     }).catch(function(err) {
-                        seasonsContainer.innerHTML = '<div style="padding:10px; color:var(--cf-accent-red);">Error loading episodes: ' + esc(err.message) + '</div>';
+                        seasonsContainer.innerHTML = '<div style="padding:8px; color:var(--cf-red);">Error loading episodes: ' + esc(err.message) + '</div>';
                     });
                 }
             }
@@ -1036,7 +1389,8 @@
 
                     mItem.innerHTML = 
                         '<div class="cf-ep-meta">' +
-                            '<span>' + esc(movie.name) + '</span>' +
+                            '<span>🎬</span>' +
+                            '<span class="cf-ep-title" title="' + esc(movie.name) + '">' + esc(movie.name) + '</span>' +
                             (movie.year ? ' <span style="font-size:0.75rem; color:var(--cf-text-dim);">(' + movie.year + ')</span>' : '') +
                         '</div>' +
                         badgeHtml;
@@ -1081,7 +1435,7 @@
 
             function executeSearch(query) {
                 var container = document.getElementById('mediaTreeContainer');
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Searching library…</div>';
+                container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Searching…</div>';
 
                 fetch(apiUrl('ContentFilter/items/search?query=' + encodeURIComponent(query)), {
                     headers: { 'X-Emby-Token': ApiClient.accessToken() }
@@ -1098,21 +1452,22 @@
                         var row = document.createElement('div');
                         row.className = 'cf-movie-item';
                         
-                        var typePill = '<span class="cf-pill cf-pill-gray">' + (item.type || 'Media') + '</span>';
+                        var icon = item.type === 'Series' ? '📺' : (item.type === 'Episode' ? '🎞️' : '🎬');
                         var badgeHtml = item.hasFilter 
                             ? '<span class="cf-pill cf-pill-green">✓ Filter</span>'
                             : (item.hasSidecar ? '<span class="cf-pill cf-pill-blue">📄 Sidecar</span>' : '');
 
                         var displayTitle = esc(item.name);
                         if (item.seriesName) {
-                            displayTitle = esc(item.seriesName) + ' · ' + (item.seasonNumber != null ? 'S' + item.seasonNumber : '') + (item.episodeNumber != null ? 'E' + item.episodeNumber : '') + ' ' + displayTitle;
+                            displayTitle = esc(item.seriesName) + ' › ' + (item.seasonNumber != null ? 'S' + item.seasonNumber : '') + (item.episodeNumber != null ? 'E' + item.episodeNumber : '') + ' ' + displayTitle;
                         }
 
                         row.innerHTML = 
                             '<div class="cf-ep-meta">' +
-                                '<div>' + displayTitle + '</div>' +
+                                '<span>' + icon + '</span>' +
+                                '<span class="cf-ep-title">' + displayTitle + '</span>' +
                             '</div>' +
-                            '<div>' + typePill + ' ' + badgeHtml + '</div>';
+                            badgeHtml;
 
                         row.addEventListener('click', function() {
                             document.querySelectorAll('.cf-episode-item, .cf-movie-item').forEach(function(el) { el.classList.remove('selected'); });
@@ -1120,7 +1475,6 @@
                             
                             if (item.type === 'Series') {
                                 activeSeriesId = item.id;
-                                // Expand series
                                 document.getElementById('tabShowsBtn').click();
                                 setTimeout(function() {
                                     var targetShow = document.querySelector('[data-series-id="' + item.id + '"]');
@@ -1129,10 +1483,10 @@
                                         var hdr = targetShow.querySelector('.cf-tree-series-hdr');
                                         if (hdr) hdr.click();
                                     }
-                                }, 300);
+                                }, 250);
                             } else {
                                 if (item.seriesId) activeSeriesId = item.seriesId;
-                                var sub = item.seriesName ? (item.seriesName + ' · S' + (item.seasonNumber || 1) + 'E' + (item.episodeNumber || 1)) : ('Movie' + (item.year ? ' · ' + item.year : ''));
+                                var sub = item.seriesName ? (item.seriesName + ' › S' + (item.seasonNumber || 1) + ' · E' + (item.episodeNumber || 1)) : ('Movie' + (item.year ? ' · ' + item.year : ''));
                                 selectMediaItem(item.id, item.name, sub, item);
                             }
                         });
@@ -1140,7 +1494,7 @@
                         container.appendChild(row);
                     });
                 }).catch(function(err) {
-                    container.innerHTML = '<div style="padding:14px; color:var(--cf-accent-red);">Search failed: ' + esc(err.message) + '</div>';
+                    container.innerHTML = '<div style="padding:14px; color:var(--cf-red);">Search failed: ' + esc(err.message) + '</div>';
                 });
             }
 
@@ -1151,7 +1505,7 @@
 
                 document.getElementById('emptyWorkspaceCard').style.display = 'none';
                 var detailCard = document.getElementById('mediaDetailCard');
-                detailCard.style.display = 'block';
+                detailCard.style.display = 'flex';
 
                 document.getElementById('detailTitle').textContent = title || 'Untitled Media';
                 document.getElementById('detailSubtext').textContent = subtext || '';
@@ -1160,7 +1514,7 @@
                     activeSeriesId = rawItem.seriesId;
                 }
 
-                // Update dropzone contextual hint
+                // Contextual hints
                 if (activeSeriesId) {
                     document.getElementById('dropzoneMainText').textContent = 'Drop JCF file for this episode';
                     document.getElementById('dropzoneSubText').textContent = 'Or drop multiple files (e.g. S01E01.jcf, S01E02.jcf) to batch import this season!';
@@ -1178,6 +1532,9 @@
                 var statusBadge = document.getElementById('detailStatusBadge');
                 statusBadge.className = 'cf-pill cf-pill-gray';
                 statusBadge.textContent = 'Loading…';
+
+                var sidecarAlert = document.getElementById('sidecarAlertBanner');
+                sidecarAlert.style.display = 'none';
 
                 return fetch(apiUrl('ContentFilter/filters/' + itemId), {
                     headers: { 'X-Emby-Token': ApiClient.accessToken() }
@@ -1205,7 +1562,7 @@
                         cats[cat] = (cats[cat] || 0) + 1;
                     });
                     renderCategoryChips(cats);
-                }).catch(function(err) {
+                }).catch(function() {
                     statusBadge.className = 'cf-pill cf-pill-red';
                     statusBadge.textContent = 'Error loading filter';
                     renderSegmentsTable([]);
@@ -1240,7 +1597,7 @@
                 tbody.innerHTML = '';
 
                 if (!cues || cues.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--cf-text-dim); padding:32px;">No filtered cues configured for this item. Drop a .jcf file above or scan with Vision LLM.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--cf-text-dim); padding:32px;">No filtered cues configured for this item. Drop a .jcf file above or click "+ Add Segment".</td></tr>';
                     return;
                 }
 
@@ -1288,9 +1645,24 @@
                     descInput.type = 'text';
                     descInput.className = 'cf-input-clean';
                     descInput.value = cue.description || '';
-                    descInput.placeholder = 'Add segment notes or rationale…';
+                    descInput.placeholder = 'Segment notes…';
                     descTd.appendChild(descInput);
                     tr.appendChild(descTd);
+
+                    // Delete cell
+                    var delTd = document.createElement('td');
+                    delTd.style.textAlign = 'center';
+                    var delBtn = document.createElement('button');
+                    delBtn.className = 'cf-del-btn';
+                    delBtn.type = 'button';
+                    delBtn.title = 'Remove Segment';
+                    delBtn.textContent = '✕';
+                    delBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteSingleCue(cue.key);
+                    });
+                    delTd.appendChild(delBtn);
+                    tr.appendChild(delTd);
 
                     // Event handlers
                     sel.addEventListener('change', function() {
@@ -1320,6 +1692,20 @@
                 });
             }
 
+            function deleteSingleCue(cueKey) {
+                if (!activeItemId) return;
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/' + encodeURIComponent(cueKey)), {
+                    method: 'DELETE',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (res.ok) {
+                        loadFilterDetails(activeItemId);
+                    }
+                }).catch(function(err) {
+                    console.error('Delete cue failed', err);
+                });
+            }
+
             function applyBulkAction(action) {
                 if (!activeItemId) return;
                 fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/bulk-action'), {
@@ -1341,6 +1727,54 @@
             document.getElementById('bulkSkipBtn').addEventListener('click', function() { applyBulkAction('skip'); });
             document.getElementById('bulkMuteBtn').addEventListener('click', function() { applyBulkAction('mute'); });
             document.getElementById('bulkNoneBtn').addEventListener('click', function() { applyBulkAction('none'); });
+
+            // --- Add Segment Modal Logic ---
+            var addModal = document.getElementById('addSegmentModal');
+            document.getElementById('addSegmentBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                addModal.style.display = 'flex';
+                document.getElementById('newCueStart').focus();
+            });
+
+            function closeAddModal() {
+                addModal.style.display = 'none';
+                document.getElementById('addSegmentForm').reset();
+            }
+
+            document.getElementById('closeAddModalBtn').addEventListener('click', closeAddModal);
+            document.getElementById('cancelAddModalBtn').addEventListener('click', closeAddModal);
+
+            document.getElementById('addSegmentForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (!activeItemId) return;
+
+                var payload = {
+                    start: document.getElementById('newCueStart').value.trim(),
+                    end: document.getElementById('newCueEnd').value.trim(),
+                    category: document.getElementById('newCueCategory').value.trim(),
+                    channel: document.getElementById('newCueChannel').value,
+                    action: document.getElementById('newCueAction').value,
+                    description: document.getElementById('newCueDescription').value.trim()
+                };
+
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments'), {
+                    method: 'POST',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }).then(function(res) {
+                    if (res.ok) {
+                        closeAddModal();
+                        loadFilterDetails(activeItemId);
+                    } else {
+                        return res.text().then(function(t) { alert('Failed to add segment: ' + t); });
+                    }
+                }).catch(function(err) {
+                    alert('Error adding segment: ' + err.message);
+                });
+            });
 
             // --- Scan & Progress Polling ---
             function stopPollingScan() {
@@ -1547,12 +1981,12 @@
                     }).then(function(data) {
                         if (data.matched && data.saved) {
                             successCount++;
-                            row.innerHTML += '<span style="color:var(--cf-primary);">✓ Matched to ' + esc(data.item ? data.item.name : data.title) + ' (' + data.cues + ' cues)</span>';
+                            row.innerHTML += '<span style="color:var(--cf-green);">✓ Matched to ' + esc(data.item ? data.item.name : data.title) + ' (' + data.cues + ' cues)</span>';
                         } else {
-                            row.innerHTML += '<span style="color:var(--cf-accent-amber);">○ No unique match</span>';
+                            row.innerHTML += '<span style="color:var(--cf-amber);">○ No unique match</span>';
                         }
                     }).catch(function(err) {
-                        row.innerHTML += '<span style="color:var(--cf-accent-red);">✕ ' + esc(err.message) + '</span>';
+                        row.innerHTML += '<span style="color:var(--cf-red);">✕ ' + esc(err.message) + '</span>';
                     }).finally(function() {
                         idx++;
                         summary.textContent = idx + ' / ' + files.length;

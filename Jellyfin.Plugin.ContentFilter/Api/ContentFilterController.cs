@@ -518,6 +518,64 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Deletes a specific cue from a media item's filter.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="cueKey">The cue key to delete.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result.</returns>
+    [HttpDelete("filters/{itemId:guid}/segments/{cueKey}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCueAsync(Guid itemId, string cueKey, CancellationToken cancellationToken)
+    {
+        var success = await _filterStore.DeleteCueAsync(itemId, cueKey, cancellationToken).ConfigureAwait(false);
+        if (!success)
+        {
+            return NotFound();
+        }
+
+        return Ok();
+    }
+
+    /// <summary>
+    /// Adds a new cue to a media item's filter.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="request">The cue request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result.</returns>
+    [HttpPost("filters/{itemId:guid}/segments")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddCueAsync(Guid itemId, [FromBody] AddCueRequest? request, CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Start) || string.IsNullOrWhiteSpace(request.End))
+        {
+            return BadRequest("Start and End timestamps are required.");
+        }
+
+        if (!TimeSpan.TryParse(request.Start, CultureInfo.InvariantCulture, out var startTs) ||
+            !TimeSpan.TryParse(request.End, CultureInfo.InvariantCulture, out var endTs))
+        {
+            return BadRequest("Invalid timestamp format. Expected hh:mm:ss.fff");
+        }
+
+        var cue = new FilterCue
+        {
+            Start = startTs,
+            End = endTs,
+            Category = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category,
+            Channel = string.IsNullOrWhiteSpace(request.Channel) ? "video" : request.Channel,
+            Action = string.IsNullOrWhiteSpace(request.Action) ? "skip" : request.Action,
+            Description = request.Description
+        };
+
+        await _filterStore.AddCueAsync(itemId, cue, cancellationToken).ConfigureAwait(false);
+        return Ok(cue);
+    }
+
+    /// <summary>
     /// Gets the filtered subtitle file for a media item.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>
@@ -701,3 +759,40 @@ public sealed class SetBulkCueActionRequest
     /// </summary>
     public required string Action { get; set; }
 }
+
+/// <summary>
+/// Request payload for adding a new cue.
+/// </summary>
+public sealed class AddCueRequest
+{
+    /// <summary>
+    /// Gets or sets the start timestamp.
+    /// </summary>
+    public string Start { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the end timestamp.
+    /// </summary>
+    public string End { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the category.
+    /// </summary>
+    public string? Category { get; set; }
+
+    /// <summary>
+    /// Gets or sets the channel.
+    /// </summary>
+    public string? Channel { get; set; }
+
+    /// <summary>
+    /// Gets or sets the action.
+    /// </summary>
+    public string? Action { get; set; }
+
+    /// <summary>
+    /// Gets or sets the description.
+    /// </summary>
+    public string? Description { get; set; }
+}
+
