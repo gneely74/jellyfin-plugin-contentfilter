@@ -236,6 +236,45 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Shifts all cues in an item's filter by the specified offset in seconds.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="offsetSeconds">The offset in seconds (positive or negative).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The updated filter, or <see langword="null"/> if not found.</returns>
+    public async Task<JcfFilter?> ShiftCuesAsync(Guid itemId, double offsetSeconds, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null || filter.Cues.Count == 0)
+        {
+            return filter;
+        }
+
+        var offset = TimeSpan.FromSeconds(offsetSeconds);
+        foreach (var cue in filter.Cues)
+        {
+            var newStart = cue.Start + offset;
+            if (newStart < TimeSpan.Zero)
+            {
+                newStart = TimeSpan.Zero;
+            }
+
+            var newEnd = cue.End + offset;
+            if (newEnd <= newStart)
+            {
+                newEnd = newStart + TimeSpan.FromMilliseconds(500);
+            }
+
+            cue.Start = newStart;
+            cue.End = newEnd;
+        }
+
+        filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
+        await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        return filter;
+    }
+
+    /// <summary>
     /// Deletes a filter for an item and associated filtered subtitle output.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>

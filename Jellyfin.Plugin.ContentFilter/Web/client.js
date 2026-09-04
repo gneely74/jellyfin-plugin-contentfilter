@@ -6,15 +6,22 @@
     }
     window._jellyfinContentFilterLoaded = true;
 
-    console.log('[ContentFilter] Client playback enforcement loaded.');
+    console.log('[ContentFilter] Client playback enforcement & Cue Editor HUD loaded.');
 
     var activeFilter = null;
+    var activeItemId = null;
     var activeVideo = null;
     var pollInterval = null;
     var isMutedByFilter = false;
     var lastSkippedCue = null;
     var hudElement = null;
     var hudTimeout = null;
+
+    // HUD Editor state
+    var editorModal = null;
+    var launchBtn = null;
+    var editorTimeInterval = null;
+    var currentActiveTab = 'add';
 
     function parseTimecode(tc) {
         if (!tc) return 0;
@@ -27,6 +34,7 @@
     }
 
     function formatTime(sec) {
+        if (isNaN(sec) || sec < 0) sec = 0;
         var h = Math.floor(sec / 3600);
         var m = Math.floor((sec % 3600) / 60);
         var s = Math.floor(sec % 60);
@@ -36,38 +44,66 @@
         return m + ':' + (s < 10 ? '0' : '') + s;
     }
 
+    function formatTimecode(sec) {
+        if (isNaN(sec) || sec < 0) sec = 0;
+        var h = Math.floor(sec / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        var s = Math.floor(sec % 60);
+        var ms = Math.floor((sec - Math.floor(sec)) * 1000);
+        return (h < 10 ? '0' : '') + h + ':' +
+               (m < 10 ? '0' : '') + m + ':' +
+               (s < 10 ? '0' : '') + s + '.' +
+               (ms < 100 ? (ms < 10 ? '00' : '0') : '') + ms;
+    }
+
+    function getPlayerContainer() {
+        if (document.fullscreenElement) {
+            return document.fullscreenElement;
+        }
+        var container = document.querySelector('.videoPlayerContainer') ||
+                        document.querySelector('.htmlvideoplayer') ||
+                        (activeVideo && activeVideo.parentElement) ||
+                        document.body;
+        return container;
+    }
+
+    // --- Toast HUD ---
     function ensureHud() {
-        if (hudElement && document.body.contains(hudElement)) {
+        var container = getPlayerContainer();
+        if (hudElement && container.contains(hudElement)) {
             return hudElement;
         }
-        hudElement = document.createElement('div');
-        hudElement.id = 'contentFilterHud';
-        hudElement.style.cssText = [
-            'position: fixed',
-            'top: 24px',
-            'right: 24px',
-            'z-index: 999999',
-            'background: rgba(15, 23, 42, 0.92)',
-            'color: #38bdf8',
-            'border: 1px solid rgba(56, 189, 248, 0.4)',
-            'box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.2)',
-            'backdrop-filter: blur(12px)',
-            '-webkit-backdrop-filter: blur(12px)',
-            'padding: 10px 18px',
-            'border-radius: 12px',
-            'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            'font-size: 14px',
-            'font-weight: 600',
-            'display: flex',
-            'align-items: center',
-            'gap: 10px',
-            'opacity: 0',
-            'transform: translateY(-8px)',
-            'transition: opacity 0.25s ease, transform 0.25s ease',
-            'pointer-events: none'
-        ].join(';');
-
-        document.body.appendChild(hudElement);
+        if (!hudElement) {
+            hudElement = document.createElement('div');
+            hudElement.id = 'contentFilterHud';
+            hudElement.style.cssText = [
+                'position: fixed',
+                'top: 24px',
+                'right: 24px',
+                'z-index: 999999',
+                'background: rgba(15, 23, 42, 0.92)',
+                'color: #38bdf8',
+                'border: 1px solid rgba(56, 189, 248, 0.4)',
+                'box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.2)',
+                'backdrop-filter: blur(12px)',
+                '-webkit-backdrop-filter: blur(12px)',
+                'padding: 10px 18px',
+                'border-radius: 12px',
+                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                'font-size: 14px',
+                'font-weight: 600',
+                'display: flex',
+                'align-items: center',
+                'gap: 10px',
+                'opacity: 0',
+                'transform: translateY(-8px)',
+                'transition: opacity 0.25s ease, transform 0.25s ease',
+                'pointer-events: none'
+            ].join(';');
+        }
+        if (!container.contains(hudElement)) {
+            container.appendChild(hudElement);
+        }
         return hudElement;
     }
 
@@ -111,9 +147,10 @@
             if (!res.ok) return null;
             return res.json();
         }).then(function (data) {
-            if (!data || !data.cues || data.cues.length === 0) return null;
+            if (!data) return null;
 
-            var parsedCues = data.cues.map(function (c) {
+            var rawCues = data.cues || [];
+            var parsedCues = rawCues.map(function (c) {
                 return {
                     start: parseTimecode(c.start),
                     end: parseTimecode(c.end),
@@ -121,13 +158,15 @@
                     channel: (c.channel || 'both').toLowerCase(),
                     category: c.category || '',
                     description: c.description || c.category || 'Filtered Content',
-                    key: c.key || (c.start + '-' + c.end)
+                    key: c.key || (c.start + '-' + c.end + '-' + c.category)
                 };
             }).filter(function (c) {
                 return c.action !== 'none' && c.end > c.start;
             });
 
-            console.log('[ContentFilter] Loaded ' + parsedCues.length + ' active cue(s) for item ' + itemId);
+            parsedCues.sort(function (a, b) { return a.start - b.start; });
+
+            console.log('[ContentFilter] Loaded ' + parsedCues.length + ' cue(s) for item ' + itemId);
             return {
                 itemId: itemId,
                 title: data.title || '',
@@ -170,7 +209,7 @@
         }
 
         var cur = activeVideo.currentTime;
-        var cues = activeFilter.cues;
+        var cues = activeFilter.cues || [];
         var shouldMute = false;
         var muteDescription = '';
 
@@ -186,14 +225,11 @@
 
                         activeVideo.currentTime = cue.end;
 
-                        // Also inform Jellyfin playbackManager if possible
                         try {
                             if (window.playbackManager && typeof window.playbackManager.seek === 'function') {
                                 window.playbackManager.seek(Math.round(cue.end * 10000000));
                             }
-                        } catch (e) {
-                            // Video seek is sufficient
-                        }
+                        } catch (e) {}
 
                         var label = cue.description || cue.category.split('.').pop() || 'Filtered Scene';
                         showHud('Skipped ' + label + ' (' + formatTime(cue.start) + ' - ' + formatTime(cue.end) + ')', '⏩');
@@ -216,7 +252,6 @@
             }
         }
 
-        // Reset last skipped cue when safely past it
         if (lastSkippedCue) {
             var prevCue = cues.find(function (c) { return c.key === lastSkippedCue; });
             if (!prevCue || cur >= (prevCue.end + 1.0) || cur < (prevCue.start - 1.0)) {
@@ -224,7 +259,6 @@
             }
         }
 
-        // Apply muting
         if (shouldMute && !isMutedByFilter) {
             console.log('[ContentFilter] Muting audio for cue:', muteDescription);
             activeVideo.muted = true;
@@ -237,27 +271,764 @@
         }
     }
 
+    // --- Floating Cue Editor Launcher ---
+    function ensureLauncherButton() {
+        var container = getPlayerContainer();
+        if (launchBtn && container.contains(launchBtn)) {
+            return launchBtn;
+        }
+        if (!launchBtn) {
+            launchBtn = document.createElement('button');
+            launchBtn.id = 'cfEditorLaunchBtn';
+            launchBtn.title = 'Open Content Filter Cue Editor (Hotkey: C)';
+            launchBtn.innerHTML = '<span style="font-size:16px;">🛡️</span> <span>Cue Editor</span>';
+            launchBtn.style.cssText = [
+                'position: fixed',
+                'top: 24px',
+                'left: 24px',
+                'z-index: 999998',
+                'background: rgba(15, 23, 42, 0.85)',
+                'color: #38bdf8',
+                'border: 1px solid rgba(56, 189, 248, 0.4)',
+                'box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4)',
+                'backdrop-filter: blur(10px)',
+                '-webkit-backdrop-filter: blur(10px)',
+                'padding: 8px 16px',
+                'border-radius: 9999px',
+                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                'font-size: 13px',
+                'font-weight: 600',
+                'display: flex',
+                'align-items: center',
+                'gap: 8px',
+                'cursor: pointer',
+                'outline: none',
+                'transition: all 0.2s ease',
+                'user-select: none'
+            ].join(';');
+
+            launchBtn.addEventListener('mouseenter', function () {
+                launchBtn.style.background = 'rgba(56, 189, 248, 0.2)';
+                launchBtn.style.borderColor = '#38bdf8';
+                launchBtn.style.transform = 'scale(1.04)';
+            });
+            launchBtn.addEventListener('mouseleave', function () {
+                launchBtn.style.background = 'rgba(15, 23, 42, 0.85)';
+                launchBtn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                launchBtn.style.transform = 'scale(1)';
+            });
+            launchBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                toggleEditorModal();
+            });
+        }
+        if (!container.contains(launchBtn)) {
+            container.appendChild(launchBtn);
+        }
+        return launchBtn;
+    }
+
+    function removeLauncherButton() {
+        if (launchBtn && launchBtn.parentElement) {
+            launchBtn.parentElement.removeChild(launchBtn);
+        }
+    }
+
+    // --- In-Player Cue Editor Modal ---
+    function ensureEditorModal() {
+        var container = getPlayerContainer();
+        if (editorModal && container.contains(editorModal)) {
+            return editorModal;
+        }
+
+        if (!editorModal) {
+            editorModal = document.createElement('div');
+            editorModal.id = 'cfEditorModal';
+            editorModal.style.cssText = [
+                'position: fixed',
+                'top: 50%',
+                'left: 50%',
+                'transform: translate(-50%, -50%)',
+                'z-index: 1000001',
+                'width: 540px',
+                'max-width: 95vw',
+                'max-height: 88vh',
+                'overflow-y: auto',
+                'background: rgba(15, 23, 42, 0.96)',
+                'color: #f8fafc',
+                'border: 1px solid rgba(56, 189, 248, 0.4)',
+                'box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.2)',
+                'backdrop-filter: blur(20px)',
+                '-webkit-backdrop-filter: blur(20px)',
+                'border-radius: 18px',
+                'padding: 22px',
+                'box-sizing: border-box',
+                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                'font-size: 13px',
+                'display: none',
+                'flex-direction: column',
+                'gap: 16px'
+            ].join(';');
+
+            editorModal.innerHTML = [
+                // Header
+                '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">',
+                '  <div style="display:flex; align-items:center; gap:10px;">',
+                '    <span style="font-size:22px;">🛡️</span>',
+                '    <div>',
+                '      <div style="font-size:16px; font-weight:700; color:#38bdf8;">Content Filter • Cue Editor</div>',
+                '      <div id="cfModalItemTitle" style="font-size:12px; color:#94a3b8; max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Media Item</div>',
+                '    </div>',
+                '  </div>',
+                '  <button id="cfModalCloseBtn" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">✕</button>',
+                '</div>',
+
+                // Live Timecode Bar & Frame Nudge
+                '<div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">',
+                '  <div>',
+                '    <div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Playback Timecode</div>',
+                '    <div id="cfLiveTimecode" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:20px; font-weight:700; color:#38bdf8; margin-top:2px;">00:00:00.000</div>',
+                '  </div>',
+                '  <div style="display:flex; gap:6px; align-items:center;">',
+                '    <button id="cfFrameBack1" title="Step Back 1s" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">-1s</button>',
+                '    <button id="cfFrameBackFine" title="Step Back 0.1s" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">-0.1s</button>',
+                '    <button id="cfPlayPauseToggle" title="Play/Pause" style="background:#0284c7; border:none; color:#ffffff; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;">⏯️</button>',
+                '    <button id="cfFrameFwdFine" title="Step Forward 0.1s" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">+0.1s</button>',
+                '    <button id="cfFrameFwd1" title="Step Forward 1s" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">+1s</button>',
+                '  </div>',
+                '</div>',
+
+                // Navigation Tabs
+                '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">',
+                '  <button id="cfTabBtnAdd" style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.4); padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">➕ Set Cue Point</button>',
+                '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift All Cues</button>',
+                '  <button id="cfTabBtnList" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">📋 Active Cues (<span id="cfTabCuesCount">0</span>)</button>',
+                '</div>',
+
+                // Tab 1: Set / Add Cue View
+                '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px;">',
+                '  <!-- Start (In-Point) -->',
+                '  <div>',
+                '    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">',
+                '      <label style="font-weight:600; color:#cbd5e1;">Cue In (Start Time):</label>',
+                '      <div style="display:flex; gap:4px;">',
+                '        <button id="cfNudgeStartM1" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">-1s</button>',
+                '        <button id="cfNudgeStartM02" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">-0.2s</button>',
+                '        <button id="cfNudgeStartP02" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+0.2s</button>',
+                '        <button id="cfNudgeStartP1" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+1s</button>',
+                '      </div>',
+                '    </div>',
+                '    <div style="display:flex; gap:8px;">',
+                '      <input id="cfInputStart" type="text" placeholder="00:00:00.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px;">',
+                '      <button id="cfBtnMarkStart" style="background:#0284c7; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;">📍 Mark In (Now)</button>',
+                '    </div>',
+                '  </div>',
+
+                '  <!-- End (Out-Point) -->',
+                '  <div>',
+                '    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">',
+                '      <label style="font-weight:600; color:#cbd5e1;">Cue Out (End Time):</label>',
+                '      <div style="display:flex; gap:4px;">',
+                '        <button id="cfQuickDuration5" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+5s</button>',
+                '        <button id="cfQuickDuration15" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+15s</button>',
+                '        <button id="cfQuickDuration30" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+30s</button>',
+                '        <button id="cfNudgeEndM02" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">-0.2s</button>',
+                '        <button id="cfNudgeEndP02" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; padding:3px 6px; border-radius:4px; cursor:pointer; font-size:11px;">+0.2s</button>',
+                '      </div>',
+                '    </div>',
+                '    <div style="display:flex; gap:8px;">',
+                '      <input id="cfInputEnd" type="text" placeholder="00:00:00.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px;">',
+                '      <button id="cfBtnMarkEnd" style="background:#0284c7; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;">📍 Mark Out (Now)</button>',
+                '    </div>',
+                '  </div>',
+
+                '  <!-- Category & Channel/Action -->',
+                '  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">',
+                '    <div>',
+                '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Category:</label>',
+                '      <select id="cfSelectCategory" style="width:100%; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 10px; border-radius:8px; font-size:13px;">',
+                '        <option value="Violence.Tiers">Violence.Tiers (Violent scenes)</option>',
+                '        <option value="Violence">Violence (General)</option>',
+                '        <option value="Sex.Nudity">Sex.Nudity (Explicit scenes)</option>',
+                '        <option value="Sex.Suggestive">Sex.Suggestive</option>',
+                '        <option value="Profanity">Profanity (Language)</option>',
+                '        <option value="Gore">Gore / Blood</option>',
+                '        <option value="Gore.Graphic">Gore.Graphic</option>',
+                '        <option value="General">General Filter</option>',
+                '        <option value="__custom__">Custom Category...</option>',
+                '      </select>',
+                '      <input id="cfInputCustomCategory" type="text" placeholder="Enter custom category" style="display:none; width:100%; margin-top:6px; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 10px; border-radius:6px; font-size:12px;">',
+                '    </div>',
+                '    <div>',
+                '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Action & Channel:</label>',
+                '      <div style="display:flex; gap:6px;">',
+                '        <select id="cfSelectAction" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 6px; border-radius:8px; font-size:13px;">',
+                '          <option value="skip">Skip Scene</option>',
+                '          <option value="mute">Mute Audio</option>',
+                '        </select>',
+                '        <select id="cfSelectChannel" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 6px; border-radius:8px; font-size:13px;">',
+                '          <option value="video">Video</option>',
+                '          <option value="both">Both</option>',
+                '          <option value="audio">Audio</option>',
+                '        </select>',
+                '      </div>',
+                '    </div>',
+                '  </div>',
+
+                '  <!-- Description -->',
+                '  <div>',
+                '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Description (Optional):</label>',
+                '    <input id="cfInputDescription" type="text" placeholder="e.g. Battle decapitation" style="width:100%; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:13px;">',
+                '  </div>',
+
+                '  <!-- Save Button & Status -->',
+                '  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">',
+                '    <span id="cfAddStatusMsg" style="font-size:12px; color:#38bdf8; font-weight:600;"></span>',
+                '    <button id="cfBtnSaveCue" style="background:#10b981; color:#ffffff; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; transition:background 0.2s;">💾 Save Cue to Episode</button>',
+                '  </div>',
+                '</div>',
+
+                // Tab 2: Shift All Cues View
+                '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px;">',
+                '  <div style="background:rgba(30, 41, 59, 0.5); border:1px solid rgba(56, 189, 248, 0.2); border-radius:10px; padding:12px; color:#cbd5e1; font-size:12px; line-height:1.5;">',
+                '    💡 <strong>Shift All Cues:</strong> If the cues are off by a fixed amount because your video file has an extra logo or different cut, shift every cue across this episode earlier or later.',
+                '  </div>',
+
+                '  <div>',
+                '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:8px;">Quick Shift Presets:</label>',
+                '    <div style="display:flex; flex-wrap:wrap; gap:6px;">',
+                '      <button class="cf-shift-preset" data-sec="-10" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">-10s</button>',
+                '      <button class="cf-shift-preset" data-sec="-5" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">-5s</button>',
+                '      <button class="cf-shift-preset" data-sec="-2" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">-2s</button>',
+                '      <button class="cf-shift-preset" data-sec="-1" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">-1s</button>',
+                '      <button class="cf-shift-preset" data-sec="-0.5" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">-0.5s</button>',
+                '      <button class="cf-shift-preset" data-sec="0.5" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+0.5s</button>',
+                '      <button class="cf-shift-preset" data-sec="1" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+1s</button>',
+                '      <button class="cf-shift-preset" data-sec="2" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+2s</button>',
+                '      <button class="cf-shift-preset" data-sec="5" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+5s</button>',
+                '      <button class="cf-shift-preset" data-sec="10" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+10s</button>',
+                '    </div>',
+                '  </div>',
+
+                '  <div>',
+                '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Custom Offset (seconds, e.g. +3.5 or -2.4):</label>',
+                '    <div style="display:flex; gap:8px;">',
+                '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px;">',
+                '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Shift All Cues</button>',
+                '    </div>',
+                '  </div>',
+
+                '  <div id="cfShiftStatusMsg" style="font-size:12px; color:#10b981; font-weight:600; min-height:16px;"></div>',
+                '</div>',
+
+                // Tab 3: Active Cues List View
+                '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px;">',
+                '  <div id="cfCuesListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
+                '    <div style="text-align:center; color:#94a3b8; padding:20px;">No cues loaded</div>',
+                '  </div>',
+                '</div>'
+            ].join('\n');
+
+            wireEditorEvents(editorModal);
+        }
+
+        if (!container.contains(editorModal)) {
+            container.appendChild(editorModal);
+        }
+
+        return editorModal;
+    }
+
+    function wireEditorEvents(modal) {
+        var closeBtn = modal.querySelector('#cfModalCloseBtn');
+        closeBtn.addEventListener('click', closeEditorModal);
+
+        // Frame controls
+        modal.querySelector('#cfFrameBack1').addEventListener('click', function () {
+            if (activeVideo) activeVideo.currentTime = Math.max(0, activeVideo.currentTime - 1.0);
+        });
+        modal.querySelector('#cfFrameBackFine').addEventListener('click', function () {
+            if (activeVideo) activeVideo.currentTime = Math.max(0, activeVideo.currentTime - 0.1);
+        });
+        modal.querySelector('#cfFrameFwdFine').addEventListener('click', function () {
+            if (activeVideo) activeVideo.currentTime = Math.min(activeVideo.duration || 999999, activeVideo.currentTime + 0.1);
+        });
+        modal.querySelector('#cfFrameFwd1').addEventListener('click', function () {
+            if (activeVideo) activeVideo.currentTime = Math.min(activeVideo.duration || 999999, activeVideo.currentTime + 1.0);
+        });
+        modal.querySelector('#cfPlayPauseToggle').addEventListener('click', function () {
+            if (activeVideo) {
+                if (activeVideo.paused) activeVideo.play();
+                else activeVideo.pause();
+            }
+        });
+
+        // Tabs
+        var tabBtnAdd = modal.querySelector('#cfTabBtnAdd');
+        var tabBtnShift = modal.querySelector('#cfTabBtnShift');
+        var tabBtnList = modal.querySelector('#cfTabBtnList');
+        var paneAdd = modal.querySelector('#cfTabPaneAdd');
+        var paneShift = modal.querySelector('#cfTabPaneShift');
+        var paneList = modal.querySelector('#cfTabPaneList');
+
+        function switchTab(tab) {
+            currentActiveTab = tab;
+            tabBtnAdd.style.background = tab === 'add' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
+            tabBtnAdd.style.color = tab === 'add' ? '#38bdf8' : '#94a3b8';
+            tabBtnAdd.style.borderColor = tab === 'add' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
+
+            tabBtnShift.style.background = tab === 'shift' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
+            tabBtnShift.style.color = tab === 'shift' ? '#38bdf8' : '#94a3b8';
+            tabBtnShift.style.borderColor = tab === 'shift' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
+
+            tabBtnList.style.background = tab === 'list' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
+            tabBtnList.style.color = tab === 'list' ? '#38bdf8' : '#94a3b8';
+            tabBtnList.style.borderColor = tab === 'list' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
+
+            paneAdd.style.display = tab === 'add' ? 'flex' : 'none';
+            paneShift.style.display = tab === 'shift' ? 'flex' : 'none';
+            paneList.style.display = tab === 'list' ? 'flex' : 'none';
+
+            if (tab === 'list') {
+                renderActiveCuesList();
+            }
+        }
+
+        tabBtnAdd.addEventListener('click', function () { switchTab('add'); });
+        tabBtnShift.addEventListener('click', function () { switchTab('shift'); });
+        tabBtnList.addEventListener('click', function () { switchTab('list'); });
+
+        // Category dropdown custom trigger
+        var catSelect = modal.querySelector('#cfSelectCategory');
+        var customCatInput = modal.querySelector('#cfInputCustomCategory');
+        catSelect.addEventListener('change', function () {
+            if (catSelect.value === '__custom__') {
+                customCatInput.style.display = 'block';
+                customCatInput.focus();
+            } else {
+                customCatInput.style.display = 'none';
+            }
+        });
+
+        // Mark Start & Mark End
+        var startInput = modal.querySelector('#cfInputStart');
+        var endInput = modal.querySelector('#cfInputEnd');
+
+        modal.querySelector('#cfBtnMarkStart').addEventListener('click', function () {
+            if (activeVideo) {
+                startInput.value = formatTimecode(activeVideo.currentTime);
+                if (!endInput.value || parseTimecode(endInput.value) <= activeVideo.currentTime) {
+                    endInput.value = formatTimecode(activeVideo.currentTime + 10);
+                }
+            }
+        });
+
+        modal.querySelector('#cfBtnMarkEnd').addEventListener('click', function () {
+            if (activeVideo) {
+                endInput.value = formatTimecode(activeVideo.currentTime);
+                if (!startInput.value) {
+                    startInput.value = formatTimecode(Math.max(0, activeVideo.currentTime - 10));
+                }
+            }
+        });
+
+        // Start Nudges
+        function nudgeStart(delta) {
+            var val = parseTimecode(startInput.value || (activeVideo ? activeVideo.currentTime : 0));
+            startInput.value = formatTimecode(Math.max(0, val + delta));
+        }
+        modal.querySelector('#cfNudgeStartM1').addEventListener('click', function () { nudgeStart(-1.0); });
+        modal.querySelector('#cfNudgeStartM02').addEventListener('click', function () { nudgeStart(-0.2); });
+        modal.querySelector('#cfNudgeStartP02').addEventListener('click', function () { nudgeStart(0.2); });
+        modal.querySelector('#cfNudgeStartP1').addEventListener('click', function () { nudgeStart(1.0); });
+
+        // End Nudges & Durations
+        function nudgeEnd(delta) {
+            var val = parseTimecode(endInput.value || (activeVideo ? activeVideo.currentTime : 0));
+            endInput.value = formatTimecode(Math.max(0, val + delta));
+        }
+        function setRelativeDuration(dur) {
+            var startVal = parseTimecode(startInput.value || (activeVideo ? activeVideo.currentTime : 0));
+            endInput.value = formatTimecode(startVal + dur);
+        }
+        modal.querySelector('#cfQuickDuration5').addEventListener('click', function () { setRelativeDuration(5); });
+        modal.querySelector('#cfQuickDuration15').addEventListener('click', function () { setRelativeDuration(15); });
+        modal.querySelector('#cfQuickDuration30').addEventListener('click', function () { setRelativeDuration(30); });
+        modal.querySelector('#cfNudgeEndM02').addEventListener('click', function () { nudgeEnd(-0.2); });
+        modal.querySelector('#cfNudgeEndP02').addEventListener('click', function () { nudgeEnd(0.2); });
+
+        // Save Cue Handler
+        var saveBtn = modal.querySelector('#cfBtnSaveCue');
+        var addStatus = modal.querySelector('#cfAddStatusMsg');
+
+        saveBtn.addEventListener('click', function () {
+            var s = startInput.value.trim();
+            var e = endInput.value.trim();
+            if (!s || !e) {
+                addStatus.style.color = '#ef4444';
+                addStatus.textContent = 'Please set both Start and End time.';
+                return;
+            }
+
+            var startSec = parseTimecode(s);
+            var endSec = parseTimecode(e);
+            if (endSec <= startSec) {
+                addStatus.style.color = '#ef4444';
+                addStatus.textContent = 'End time must be greater than Start time.';
+                return;
+            }
+
+            var cat = catSelect.value === '__custom__' ? customCatInput.value.trim() : catSelect.value;
+            if (!cat) cat = 'General';
+
+            var channel = modal.querySelector('#cfSelectChannel').value;
+            var action = modal.querySelector('#cfSelectAction').value;
+            var desc = modal.querySelector('#cfInputDescription').value.trim();
+
+            var client = getApiClient();
+            if (!client || !activeItemId) {
+                addStatus.style.color = '#ef4444';
+                addStatus.textContent = 'No active media item or ApiClient.';
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            var payload = {
+                start: s,
+                end: e,
+                category: cat,
+                channel: channel,
+                action: action,
+                description: desc
+            };
+
+            var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments');
+            var token = client.accessToken ? client.accessToken() : '';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Emby-Token': token
+                },
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Cue to Episode';
+
+                if (res.ok) {
+                    addStatus.style.color = '#10b981';
+                    addStatus.textContent = '✅ Cue saved! (' + s + ' - ' + e + ')';
+
+                    if (!activeFilter) {
+                        activeFilter = { itemId: activeItemId, title: '', cues: [] };
+                    }
+                    var newCue = {
+                        start: startSec,
+                        end: endSec,
+                        category: cat,
+                        channel: channel,
+                        action: action,
+                        description: desc || cat,
+                        key: s + '-' + e + '-' + cat
+                    };
+                    activeFilter.cues.push(newCue);
+                    activeFilter.cues.sort(function (a, b) { return a.start - b.start; });
+
+                    updateCuesBadge();
+                    showHud('Added ' + cat + ' (' + formatTime(startSec) + ' - ' + formatTime(endSec) + ')', '✅');
+
+                    setTimeout(function () {
+                        switchTab('list');
+                    }, 600);
+                } else {
+                    res.text().then(function (txt) {
+                        addStatus.style.color = '#ef4444';
+                        addStatus.textContent = 'Failed: ' + txt;
+                    });
+                }
+            }).catch(function (err) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Cue to Episode';
+                addStatus.style.color = '#ef4444';
+                addStatus.textContent = 'Error: ' + err.message;
+            });
+        });
+
+        // Shift All Cues Presets & Apply
+        var shiftInput = modal.querySelector('#cfInputShiftSec');
+        var shiftStatus = modal.querySelector('#cfShiftStatusMsg');
+        var applyShiftBtn = modal.querySelector('#cfBtnApplyShift');
+
+        modal.querySelectorAll('.cf-shift-preset').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var sec = parseFloat(btn.getAttribute('data-sec')) || 0;
+                shiftInput.value = sec > 0 ? ('+' + sec) : sec;
+                executeShift(sec);
+            });
+        });
+
+        applyShiftBtn.addEventListener('click', function () {
+            var sec = parseFloat(shiftInput.value) || 0;
+            executeShift(sec);
+        });
+
+        function executeShift(sec) {
+            if (sec === 0) {
+                shiftStatus.textContent = 'Offset is 0 seconds.';
+                return;
+            }
+
+            var client = getApiClient();
+            if (!client || !activeItemId) {
+                shiftStatus.textContent = 'No active media item or ApiClient.';
+                return;
+            }
+
+            applyShiftBtn.disabled = true;
+            applyShiftBtn.textContent = 'Shifting...';
+
+            var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/offset');
+            var token = client.accessToken ? client.accessToken() : '';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Emby-Token': token
+                },
+                body: JSON.stringify({ offsetSeconds: sec })
+            }).then(function (res) {
+                applyShiftBtn.disabled = false;
+                applyShiftBtn.textContent = '⚡ Shift All Cues';
+
+                if (res.ok) {
+                    return res.json();
+                } else {
+                    throw new Error('Server returned ' + res.status);
+                }
+            }).then(function (data) {
+                shiftStatus.style.color = '#10b981';
+                shiftStatus.textContent = '✅ Successfully shifted ' + (data.totalCues || 0) + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's!';
+
+                fetchItemFilter(activeItemId).then(function (refreshed) {
+                    if (refreshed) activeFilter = refreshed;
+                    updateCuesBadge();
+                    if (currentActiveTab === 'list') renderActiveCuesList();
+                    showHud('Shifted cues by ' + (sec > 0 ? '+' : '') + sec + 's', '⏱️');
+                });
+            }).catch(function (err) {
+                applyShiftBtn.disabled = false;
+                applyShiftBtn.textContent = '⚡ Shift All Cues';
+                shiftStatus.style.color = '#ef4444';
+                shiftStatus.textContent = 'Shift failed: ' + err.message;
+            });
+        }
+    }
+
+    function updateCuesBadge() {
+        var count = (activeFilter && activeFilter.cues) ? activeFilter.cues.length : 0;
+        var badge = document.querySelector('#cfTabCuesCount');
+        if (badge) badge.textContent = count;
+    }
+
+    function renderActiveCuesList() {
+        var container = document.querySelector('#cfCuesListContainer');
+        if (!container) return;
+
+        var cues = (activeFilter && activeFilter.cues) ? activeFilter.cues : [];
+        if (cues.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:24px;">No cues configured for this item yet.<br><span style="font-size:12px; color:#38bdf8;">Use the "Set Cue Point" tab to add your first cue!</span></div>';
+            return;
+        }
+
+        container.innerHTML = cues.map(function (c, idx) {
+            var dur = (c.end - c.start).toFixed(1);
+            var catColor = c.category.indexOf('Violence') !== -1 ? '#f87171' :
+                           c.category.indexOf('Sex') !== -1 ? '#c084fc' :
+                           c.category.indexOf('Gore') !== -1 ? '#fb923c' : '#38bdf8';
+
+            return [
+                '<div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">',
+                '  <div>',
+                '    <div style="display:flex; align-items:center; gap:8px;">',
+                '      <span style="font-family:ui-monospace,monospace; font-weight:700; color:#f8fafc; font-size:13px;">' + formatTime(c.start) + ' - ' + formatTime(c.end) + '</span>',
+                '      <span style="font-size:11px; color:#94a3b8;">(' + dur + 's)</span>',
+                '      <span style="background:rgba(255,255,255,0.1); color:' + catColor + '; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px;">' + c.category + '</span>',
+                '      <span style="background:rgba(16, 185, 129, 0.2); color:#10b981; font-size:11px; font-weight:600; padding:2px 6px; border-radius:4px;">' + c.action + '</span>',
+                '    </div>',
+                c.description ? ('    <div style="font-size:11px; color:#94a3b8; margin-top:3px;">' + c.description + '</div>') : '',
+                '  </div>',
+                '  <div style="display:flex; gap:6px; align-items:center;">',
+                '    <button class="cf-cue-jump-btn" data-start="' + c.start + '" title="Jump to 2s before cue" style="background:#0284c7; border:none; color:#fff; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">▶ Jump (-2s)</button>',
+                '    <button class="cf-cue-del-btn" data-key="' + encodeURIComponent(c.key) + '" title="Delete Cue" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:12px;">🗑️</button>',
+                '  </div>',
+                '</div>'
+            ].join('\n');
+        }).join('\n');
+
+        // Wire jump buttons
+        container.querySelectorAll('.cf-cue-jump-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var start = parseFloat(btn.getAttribute('data-start')) || 0;
+                if (activeVideo) {
+                    activeVideo.currentTime = Math.max(0, start - 2.0);
+                    showHud('Jumped to ' + formatTime(Math.max(0, start - 2.0)), '▶');
+                }
+            });
+        });
+
+        // Wire delete buttons
+        container.querySelectorAll('.cf-cue-del-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var cueKey = decodeURIComponent(btn.getAttribute('data-key'));
+                if (!confirm('Are you sure you want to delete this cue?')) return;
+
+                var client = getApiClient();
+                if (!client || !activeItemId) return;
+
+                var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/' + encodeURIComponent(cueKey));
+                var token = client.accessToken ? client.accessToken() : '';
+
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: { 'X-Emby-Token': token }
+                }).then(function (res) {
+                    if (res.ok) {
+                        if (activeFilter && activeFilter.cues) {
+                            activeFilter.cues = activeFilter.cues.filter(function (c) { return c.key !== cueKey; });
+                        }
+                        updateCuesBadge();
+                        renderActiveCuesList();
+                        showHud('Deleted cue', '🗑️');
+                    } else {
+                        alert('Failed to delete cue.');
+                    }
+                }).catch(function (e) {
+                    alert('Error deleting cue: ' + e.message);
+                });
+            });
+        });
+    }
+
+    function openEditorModal() {
+        var modal = ensureEditorModal();
+        modal.style.display = 'flex';
+
+        var titleEl = modal.querySelector('#cfModalItemTitle');
+        if (titleEl) {
+            var t = (activeFilter && activeFilter.title) || '';
+            if (!t && window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
+                var itm = window.playbackManager.currentItem();
+                if (itm) t = (itm.SeriesName ? (itm.SeriesName + ' - ') : '') + (itm.Name || '');
+            }
+            titleEl.textContent = t || ('Item: ' + (activeItemId || 'Unknown'));
+        }
+
+        var startInput = modal.querySelector('#cfInputStart');
+        var endInput = modal.querySelector('#cfInputEnd');
+        if (activeVideo && !startInput.value) {
+            startInput.value = formatTimecode(activeVideo.currentTime);
+            endInput.value = formatTimecode(activeVideo.currentTime + 10);
+        }
+
+        updateCuesBadge();
+        if (currentActiveTab === 'list') {
+            renderActiveCuesList();
+        }
+
+        if (editorTimeInterval) clearInterval(editorTimeInterval);
+        var timecodeEl = modal.querySelector('#cfLiveTimecode');
+        editorTimeInterval = setInterval(function () {
+            if (activeVideo && timecodeEl) {
+                timecodeEl.textContent = formatTimecode(activeVideo.currentTime);
+            }
+        }, 80);
+    }
+
+    function closeEditorModal() {
+        if (editorModal) {
+            editorModal.style.display = 'none';
+        }
+        if (editorTimeInterval) {
+            clearInterval(editorTimeInterval);
+            editorTimeInterval = null;
+        }
+    }
+
+    function toggleEditorModal() {
+        var modal = ensureEditorModal();
+        if (modal.style.display === 'none' || !modal.style.display) {
+            openEditorModal();
+        } else {
+            closeEditorModal();
+        }
+    }
+
+    function onFullscreenChange() {
+        var target = getPlayerContainer();
+        if (launchBtn && !target.contains(launchBtn)) {
+            target.appendChild(launchBtn);
+        }
+        if (editorModal && !target.contains(editorModal)) {
+            target.appendChild(editorModal);
+        }
+        if (hudElement && !target.contains(hudElement)) {
+            target.appendChild(hudElement);
+        }
+    }
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            if (editorModal && editorModal.style.display === 'flex') {
+                closeEditorModal();
+                e.stopPropagation();
+            }
+            return;
+        }
+
+        if (e.key === 'c' || e.key === 'C') {
+            var tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                return;
+            }
+            if (activeVideo) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleEditorModal();
+            }
+        }
+    }, true);
+
     function attachToVideo(video, itemId) {
         if (!video || !itemId) return;
 
-        if (activeVideo === video && activeFilter && activeFilter.itemId === itemId) {
+        if (activeVideo === video && activeItemId === itemId) {
             return;
         }
 
         detach();
         activeVideo = video;
+        activeItemId = itemId;
+
+        ensureLauncherButton();
 
         fetchItemFilter(itemId).then(function (filter) {
-            if (!filter || filter.cues.length === 0) {
-                return;
-            }
+            activeFilter = filter || { itemId: itemId, title: '', cues: [] };
 
-            activeFilter = filter;
             video.addEventListener('timeupdate', checkCues);
             video.addEventListener('seeked', checkCues);
             pollInterval = setInterval(checkCues, 150);
 
-            showHud('Content Filter Active (' + filter.cues.length + ' cues)', '🛡️');
+            if (activeFilter.cues && activeFilter.cues.length > 0) {
+                showHud('Content Filter Active (' + activeFilter.cues.length + ' cues)', '🛡️');
+            }
         });
     }
 
@@ -269,15 +1040,17 @@
                 if (isMutedByFilter) {
                     activeVideo.muted = false;
                 }
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
         if (pollInterval) {
             clearInterval(pollInterval);
             pollInterval = null;
         }
+        closeEditorModal();
+        removeLauncherButton();
+
         activeFilter = null;
+        activeItemId = null;
         activeVideo = null;
         isMutedByFilter = false;
         lastSkippedCue = null;
@@ -309,16 +1082,15 @@
         document.addEventListener('playbackstart', onPlaybackStart);
         document.addEventListener('playbackprogress', function (e) {
             var video = document.querySelector('video');
-            if (video && (!activeVideo || !activeFilter)) {
+            if (video && (!activeVideo || !activeItemId)) {
                 var itemId = (e.detail && e.detail.ItemId) || resolveMediaItemId(video);
                 if (itemId) attachToVideo(video, itemId);
             }
         });
 
-        // Background polling fallback for player detection
         setInterval(function () {
             var video = document.querySelector('video');
-            if (video && (!activeVideo || !activeFilter)) {
+            if (video && (!activeVideo || !activeItemId)) {
                 var itemId = resolveMediaItemId(video);
                 if (itemId) {
                     attachToVideo(video, itemId);

@@ -576,6 +576,54 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Shifts all cues of a media item by a given offset in seconds.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="request">The offset request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result containing the updated cues.</returns>
+    [HttpPost("filters/{itemId:guid}/segments/offset")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ShiftCuesAsync(Guid itemId, [FromBody] ShiftCuesRequest? request, CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        var filter = await _filterStore.ShiftCuesAsync(itemId, request.OffsetSeconds, cancellationToken).ConfigureAwait(false);
+        if (filter is null)
+        {
+            return NotFound();
+        }
+
+        var cues = filter.Cues
+            .Select(cue => new
+            {
+                key = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{FormatTimestamp(cue.Start)}-{FormatTimestamp(cue.End)}-{cue.Category}"),
+                start = FormatTimestamp(cue.Start),
+                end = FormatTimestamp(cue.End),
+                description = cue.Description,
+                category = cue.Category,
+                channel = cue.Channel,
+                action = cue.Action
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            itemId,
+            offsetSeconds = request.OffsetSeconds,
+            totalCues = cues.Count,
+            cues
+        });
+    }
+
+    /// <summary>
     /// Gets the filtered subtitle file for a media item.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>
@@ -816,5 +864,16 @@ public sealed class AddCueRequest
     /// Gets or sets the description.
     /// </summary>
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// Request payload for shifting all cues by an offset.
+/// </summary>
+public sealed class ShiftCuesRequest
+{
+    /// <summary>
+    /// Gets or sets the offset in seconds (can be positive or negative).
+    /// </summary>
+    public double OffsetSeconds { get; set; }
 }
 
