@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.1.0",
+        "changelog": "Word-boundary profanity matching, background task cancellation fixes, seek target reset, and test suite.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.1/Jellyfin.Plugin.ContentFilter_1.0.1.0.zip",
+        "checksum": "d02b1571412e72be7f0d2e5687101f52",
+        "timestamp": "2026-09-04T00:00:00Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Initial release.",
         "targetAbi": "10.11.0.0",
