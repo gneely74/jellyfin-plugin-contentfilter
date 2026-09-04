@@ -288,7 +288,11 @@ public class SubtitleWordScanner
             {
                 var matching = streams.Where(s => (s.Language ?? "eng").StartsWith(normLang, StringComparison.OrdinalIgnoreCase)).ToList();
                 // Prioritize full dialogue subtitles over forced/commentary
-                matchedStream = matching.FirstOrDefault(s => !s.IsForced && (s.DisplayTitle == null || !s.DisplayTitle.Contains("forced", StringComparison.OrdinalIgnoreCase)))
+                matchedStream = matching.FirstOrDefault(s => (s.Title?.Contains("full", StringComparison.OrdinalIgnoreCase) == true) ||
+                                                             (s.DisplayTitle?.Contains("full", StringComparison.OrdinalIgnoreCase) == true))
+                                ?? matching.FirstOrDefault(s => !s.IsForced &&
+                                                             (s.Title == null || !s.Title.Contains("forced", StringComparison.OrdinalIgnoreCase)) &&
+                                                             (s.DisplayTitle == null || !s.DisplayTitle.Contains("forced", StringComparison.OrdinalIgnoreCase)))
                                 ?? matching.FirstOrDefault()
                                 ?? streams.FirstOrDefault(s => !s.IsForced && (s.Language ?? "").StartsWith("en", StringComparison.OrdinalIgnoreCase))
                                 ?? streams.FirstOrDefault();
