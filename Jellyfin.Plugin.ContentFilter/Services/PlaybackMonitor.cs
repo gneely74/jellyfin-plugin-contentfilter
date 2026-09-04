@@ -41,6 +41,15 @@ public class PlaybackMonitor : IHostedService
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        try
+        {
+            ClientScriptInjector.Initialize(_logger);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize ClientScriptInjector during PlaybackMonitor startup.");
+        }
+
         _monitorCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _monitorTask = Task.Run(() => MonitorLoopAsync(_monitorCts.Token), CancellationToken.None);
         return Task.CompletedTask;
@@ -61,30 +70,53 @@ public class PlaybackMonitor : IHostedService
     private async Task MonitorLoopAsync(CancellationToken ct)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
-        while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
+        while (!ct.IsCancellationRequested)
         {
-            var activeSessionIds = new HashSet<string>(StringComparer.Ordinal);
-            var sessions = _sessionManager.Sessions;
-            foreach (var session in sessions)
+            try
             {
-                if (string.IsNullOrWhiteSpace(session.Id))
+                if (!await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
                 {
-                    continue;
+                    break;
                 }
 
-                activeSessionIds.Add(session.Id);
-
-                if (session.NowPlayingItem is null || session.PlayState?.IsPaused == true)
+                var activeSessionIds = new HashSet<string>(StringComparer.Ordinal);
+                var sessions = _sessionManager.Sessions.ToArray();
+                foreach (var session in sessions)
                 {
-                    continue;
+                    if (string.IsNullOrWhiteSpace(session.Id))
+                    {
+                        continue;
+                    }
+
+                    activeSessionIds.Add(session.Id);
+
+                    if (session.NowPlayingItem is null || session.PlayState?.IsPaused == true)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await HandleSessionAsync(session, ct).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error handling playback session {SessionId}.", session.Id);
+                    }
                 }
 
-                await HandleSessionAsync(session, ct).ConfigureAwait(false);
+                foreach (var staleId in _sessionState.Keys.Where(id => !activeSessionIds.Contains(id)).ToArray())
+                {
+                    _sessionState.TryRemove(staleId, out _);
+                }
             }
-
-            foreach (var staleId in _sessionState.Keys.Where(id => !activeSessionIds.Contains(id)).ToArray())
+            catch (OperationCanceledException)
             {
-                _sessionState.TryRemove(staleId, out _);
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected exception in PlaybackMonitor loop.");
             }
         }
     }
@@ -113,7 +145,7 @@ public class PlaybackMonitor : IHostedService
 
         if ((isNewItem || state.FilteredSubtitleIndex != -1) && _subtitleFilter.HasFilteredSubtitle(itemId))
         {
-            await SendGeneralAsync(sessionId, GeneralCommandType.SetSubtitleStreamIndex, new Dictionary<string, string>
+            await SendGeneralToSessionOrGroupAsync(session, GeneralCommandType.SetSubtitleStreamIndex, new Dictionary<string, string>
             {
                 ["Index"] = "-1"
             }, ct).ConfigureAwait(false);
@@ -127,7 +159,7 @@ public class PlaybackMonitor : IHostedService
         {
             if (state.IsMuted)
             {
-                await SendUnmuteAsync(sessionId, ct).ConfigureAwait(false);
+                await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
                 _sessionState[sessionId] = state with { IsMuted = false };
             }
 
@@ -136,14 +168,15 @@ public class PlaybackMonitor : IHostedService
 
         var positionTicks = session.PlayState?.PositionTicks ?? 0;
         var position = positionTicks > 0 ? TimeSpan.FromTicks(positionTicks) : TimeSpan.Zero;
-        var windowEnd = position + TimeSpan.FromMilliseconds(500);
+        var windowEnd = position + TimeSpan.FromSeconds(3);
+
         var activeCues = filter.Cues
             .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
-            .Where(c => c.Start < windowEnd && c.End > position)
+            .Where(c => (c.Start <= windowEnd && c.End > position) ||
+                        (position >= c.Start - TimeSpan.FromSeconds(1) && position < c.End))
             .ToArray();
 
         // Only video/both-channel skip cues trigger a seek; audio-channel skips are treated as mutes
-        // because we cannot seek past audio content independently.
         var seekCue = activeCues
             .Where(c => string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase))
             .Where(c => !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase))
@@ -155,11 +188,11 @@ public class PlaybackMonitor : IHostedService
             var seekTarget = seekCue.End.Ticks;
             if (state.LastSeekTarget != seekTarget)
             {
-                _logger.LogDebug(
-                    "Session {SessionId}: seeking past {Category} cue ({Channel}) to {End}",
-                    sessionId, seekCue.Category, seekCue.Channel, seekCue.End);
+                _logger.LogInformation(
+                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: seeking past {Category} cue ({Channel}) to {End:mm\\:ss}",
+                    sessionId, session.UserName, session.DeviceName, position, seekCue.Category, seekCue.Channel, seekCue.End);
 
-                await SendPlaystateAsync(sessionId, new PlaystateRequest
+                await SendPlaystateToSessionOrGroupAsync(session, new PlaystateRequest
                 {
                     Command = PlaystateCommand.Seek,
                     SeekPositionTicks = seekTarget
@@ -168,7 +201,7 @@ public class PlaybackMonitor : IHostedService
                 // If we were muted for a prior audio cue, clear it so the next poll unmutes.
                 if (state.IsMuted)
                 {
-                    await SendUnmuteAsync(sessionId, ct).ConfigureAwait(false);
+                    await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
                     state = state with { IsMuted = false };
                 }
 
@@ -179,14 +212,17 @@ public class PlaybackMonitor : IHostedService
             return;
         }
 
-        // When not inside any active seek cue, reset LastSeekTarget so subsequent passes/rewinds skip again.
+        // When not inside any active seek cue, reset LastSeekTarget when playback moves safely past target or rewinds.
         if (state.LastSeekTarget != 0)
         {
-            state = state with { LastSeekTarget = 0 };
-            _sessionState[sessionId] = state;
+            if (positionTicks >= state.LastSeekTarget || positionTicks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
+            {
+                state = state with { LastSeekTarget = 0 };
+                _sessionState[sessionId] = state;
+            }
         }
 
-        // Mute when: explicit mute-action cue, OR audio-channel skip cue (best we can do for audio-only).
+        // Mute when: explicit mute-action cue, OR audio-channel skip cue.
         var shouldMute = activeCues.Any(c =>
             string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
             (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
@@ -194,15 +230,72 @@ public class PlaybackMonitor : IHostedService
 
         if (shouldMute && !state.IsMuted)
         {
-            _logger.LogDebug("Session {SessionId}: muting for active cue(s)", sessionId);
-            await SendMuteAsync(sessionId, ct).ConfigureAwait(false);
+            _logger.LogInformation(
+                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: muting for active cue(s)",
+                sessionId, session.UserName, session.DeviceName, position);
+            await SendMuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
             _sessionState[sessionId] = state with { IsMuted = true };
         }
         else if (!shouldMute && state.IsMuted)
         {
-            _logger.LogDebug("Session {SessionId}: unmuting — no active mute cues", sessionId);
-            await SendUnmuteAsync(sessionId, ct).ConfigureAwait(false);
+            _logger.LogInformation(
+                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: unmuting — no active mute cues",
+                sessionId, session.UserName, session.DeviceName, position);
+            await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
             _sessionState[sessionId] = state with { IsMuted = false };
+        }
+    }
+
+    private HashSet<string> GetTargetSessionIds(SessionInfo session)
+    {
+        var targets = new HashSet<string>(StringComparer.Ordinal);
+        if (!string.IsNullOrWhiteSpace(session.Id))
+        {
+            targets.Add(session.Id);
+        }
+
+        // If the playing session has no active controllers, check other sessions with same device ID or user ID
+        if (session.SessionControllers.Count == 0)
+        {
+            foreach (var candidate in _sessionManager.Sessions)
+            {
+                if (candidate.SessionControllers.Count > 0 &&
+                    ((!string.IsNullOrEmpty(session.DeviceId) && candidate.DeviceId == session.DeviceId) ||
+                     (candidate.UserId != Guid.Empty && candidate.UserId == session.UserId)))
+                {
+                    targets.Add(candidate.Id);
+                }
+            }
+        }
+
+        return targets;
+    }
+
+    private async Task SendPlaystateToSessionOrGroupAsync(SessionInfo session, PlaystateRequest request, CancellationToken ct)
+    {
+        var targetSessionIds = GetTargetSessionIds(session);
+        foreach (var targetId in targetSessionIds)
+        {
+            await SendPlaystateAsync(targetId, request, ct).ConfigureAwait(false);
+        }
+    }
+
+    private async Task SendMuteToSessionOrGroupAsync(SessionInfo session, CancellationToken ct)
+    {
+        await SendGeneralToSessionOrGroupAsync(session, GeneralCommandType.Mute, null, ct).ConfigureAwait(false);
+    }
+
+    private async Task SendUnmuteToSessionOrGroupAsync(SessionInfo session, CancellationToken ct)
+    {
+        await SendGeneralToSessionOrGroupAsync(session, GeneralCommandType.Unmute, null, ct).ConfigureAwait(false);
+    }
+
+    private async Task SendGeneralToSessionOrGroupAsync(SessionInfo session, GeneralCommandType commandType, Dictionary<string, string>? arguments, CancellationToken ct)
+    {
+        var targetSessionIds = GetTargetSessionIds(session);
+        foreach (var targetId in targetSessionIds)
+        {
+            await SendGeneralAsync(targetId, commandType, arguments, ct).ConfigureAwait(false);
         }
     }
 
@@ -214,18 +307,8 @@ public class PlaybackMonitor : IHostedService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to send playstate command {Command} to session {SessionId}", request.Command, sessionId);
+            _logger.LogWarning(ex, "Failed to send playstate command {Command} to session {SessionId}", request.Command, sessionId);
         }
-    }
-
-    private async Task SendMuteAsync(string sessionId, CancellationToken ct)
-    {
-        await SendGeneralAsync(sessionId, GeneralCommandType.Mute, null, ct).ConfigureAwait(false);
-    }
-
-    private async Task SendUnmuteAsync(string sessionId, CancellationToken ct)
-    {
-        await SendGeneralAsync(sessionId, GeneralCommandType.Unmute, null, ct).ConfigureAwait(false);
     }
 
     private async Task SendGeneralAsync(string sessionId, GeneralCommandType commandType, Dictionary<string, string>? arguments, CancellationToken ct)
@@ -249,7 +332,7 @@ public class PlaybackMonitor : IHostedService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to send general command {Command} to session {SessionId}", commandType, sessionId);
+            _logger.LogWarning(ex, "Failed to send general command {Command} to session {SessionId}", commandType, sessionId);
         }
     }
 

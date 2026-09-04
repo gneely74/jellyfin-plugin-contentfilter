@@ -106,7 +106,7 @@ public class ContentFilterController : ControllerBase
         {
             var ep = item as MediaBrowser.Controller.Entities.TV.Episode;
             var series = item as MediaBrowser.Controller.Entities.TV.Series;
-            var filter = _filterStore.GetFilter(item.Id);
+            var summary = _filterStore.GetFilterSummary(item.Id);
 
             return new
             {
@@ -118,9 +118,9 @@ public class ContentFilterController : ControllerBase
                 seriesId = ep?.SeriesId,
                 seasonNumber = ep?.ParentIndexNumber,
                 episodeNumber = ep?.IndexNumber,
-                hasFilter = _filterStore.HasFilter(item.Id),
-                hasSidecar = _filterStore.GetSidecarPath(item.Id) is not null,
-                cuesCount = filter?.Cues.Count ?? 0
+                hasFilter = summary.HasFilter,
+                hasSidecar = summary.HasSidecar,
+                cuesCount = summary.CuesCount
             };
         });
 
@@ -173,15 +173,15 @@ public class ContentFilterController : ControllerBase
             .OrderBy(m => m.Name)
             .Select(m =>
             {
-                var filter = _filterStore.GetFilter(m.Id);
+                var summary = _filterStore.GetFilterSummary(m.Id);
                 return new
                 {
                     id = m.Id,
                     name = m.Name,
                     year = m.ProductionYear,
-                    hasFilter = _filterStore.HasFilter(m.Id),
-                    hasSidecar = _filterStore.GetSidecarPath(m.Id) is not null,
-                    cuesCount = filter?.Cues.Count ?? 0
+                    hasFilter = summary.HasFilter,
+                    hasSidecar = summary.HasSidecar,
+                    cuesCount = summary.CuesCount
                 };
             })
             .ToList();
@@ -226,22 +226,22 @@ public class ContentFilterController : ControllerBase
                 seasonName = g.Key == 0 ? "Specials" : $"Season {g.Key}",
                 episodes = g.Select(ep =>
                 {
-                    var filter = _filterStore.GetFilter(ep.Id);
+                    var summary = _filterStore.GetFilterSummary(ep.Id);
                     return new
                     {
                         id = ep.Id,
                         name = ep.Name,
                         seasonNumber = ep.ParentIndexNumber,
                         episodeNumber = ep.IndexNumber,
-                        hasFilter = _filterStore.HasFilter(ep.Id),
-                        hasSidecar = _filterStore.GetSidecarPath(ep.Id) is not null,
-                        cuesCount = filter?.Cues.Count ?? 0
+                        hasFilter = summary.HasFilter,
+                        hasSidecar = summary.HasSidecar,
+                        cuesCount = summary.CuesCount
                     };
                 }).ToList()
             }).ToList();
 
         var totalEpisodes = allEpisodes.Count;
-        var filteredEpisodes = allEpisodes.Count(e => _filterStore.HasFilter(e.Id));
+        var filteredEpisodes = seasons.Sum(s => s.episodes.Count(e => e.hasFilter));
 
         return Ok(new
         {
@@ -725,6 +725,28 @@ public class ContentFilterController : ControllerBase
         }
 
         return candidates.DistinctBy(c => c.Id).Take(10).ToList();
+    }
+
+    /// <summary>
+    /// Serves the client-side playback enforcement script for Jellyfin Web.
+    /// </summary>
+    /// <returns>The javascript file content.</returns>
+    [HttpGet("client.js")]
+    [AllowAnonymous]
+    [Produces("application/javascript")]
+    public ActionResult GetClientScript()
+    {
+        var assembly = typeof(Plugin).Assembly;
+        var resourceName = $"{typeof(Plugin).Namespace}.Web.client.js";
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            return NotFound("client.js embedded resource not found.");
+        }
+
+        using var reader = new StreamReader(stream);
+        var content = reader.ReadToEnd();
+        return Content(content, "application/javascript");
     }
 }
 

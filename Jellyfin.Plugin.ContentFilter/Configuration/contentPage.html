@@ -3479,7 +3479,11 @@
                 document.getElementById('tabMoviesBtn').classList.remove('active');
                 filterInput.value = '';
                 searchClearBtn.style.display = 'none';
-                loadShows();
+                if (showsCache && showsCache.length > 0) {
+                    renderShowsList(showsCache);
+                } else {
+                    loadShows();
+                }
             });
 
             document.getElementById('tabMoviesBtn').addEventListener('click', function() {
@@ -3488,7 +3492,11 @@
                 document.getElementById('tabShowsBtn').classList.remove('active');
                 filterInput.value = '';
                 searchClearBtn.style.display = 'none';
-                loadMovies();
+                if (moviesCache && moviesCache.length > 0) {
+                    renderMoviesList(moviesCache);
+                } else {
+                    loadMovies();
+                }
             });
 
             var cfgBtn = document.getElementById('configPageBtn'); if (cfgBtn) cfgBtn.addEventListener('click', function() {
@@ -3497,6 +3505,19 @@
 
             // --- Initial Page Boot ---
             (function init() {
+                try {
+                    var topDoc = window.top ? window.top.document : document;
+                    if (topDoc && !topDoc.getElementById('cfClientScript')) {
+                        var s = topDoc.createElement('script');
+                        s.id = 'cfClientScript';
+                        s.src = '../ContentFilter/client.js';
+                        s.defer = true;
+                        topDoc.head.appendChild(s);
+                    }
+                } catch (e) {
+                    // Ignore cross-origin restriction
+                }
+
                 loadShows();
                 var initialItemId = getQueryParam('itemId');
                 if (initialItemId) {

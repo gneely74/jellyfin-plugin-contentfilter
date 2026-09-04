@@ -16,6 +16,10 @@ public class FilterStore
     private readonly SubtitleFilter _subtitleFilter;
     private readonly ILibraryManager _libraryManager;
     private readonly ConcurrentDictionary<Guid, JcfFilter> _cache = new();
+    private readonly ConcurrentDictionary<Guid, bool> _customFilterIds = new();
+    private readonly ConcurrentDictionary<Guid, string?> _sidecarCache = new();
+    private volatile bool _customFiltersIndexed;
+    private readonly object _indexLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilterStore"/> class.
@@ -31,6 +35,54 @@ public class FilterStore
     }
 
     private string FiltersPath => Path.Combine(Plugin.Instance!.DataFolderPath, "filters");
+
+    private void EnsureCustomFiltersIndexed()
+    {
+        if (_customFiltersIndexed)
+        {
+            return;
+        }
+
+        lock (_indexLock)
+        {
+            if (_customFiltersIndexed)
+            {
+                return;
+            }
+
+            try
+            {
+                if (Directory.Exists(FiltersPath))
+                {
+                    foreach (var file in Directory.EnumerateFiles(FiltersPath, "*.jcf"))
+                    {
+                        var name = Path.GetFileNameWithoutExtension(file);
+                        if (Guid.TryParse(name, out var id))
+                        {
+                            _customFilterIds[id] = true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to index custom filters directory.");
+            }
+
+            _customFiltersIndexed = true;
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a custom filter file exists in the plugin filters folder for an item.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <returns><see langword="true"/> if a custom filter exists; otherwise <see langword="false"/>.</returns>
+    public bool HasCustomFilter(Guid itemId)
+    {
+        EnsureCustomFiltersIndexed();
+        return _customFilterIds.ContainsKey(itemId);
+    }
 
     /// <summary>
     /// Loads a filter for an item, checking memory cache, custom filters folder, and disk sidecars.
@@ -81,6 +133,7 @@ public class FilterStore
         await File.WriteAllTextAsync(path, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
         _cache[itemId] = filter;
+        _customFilterIds[itemId] = true;
         await _subtitleFilter.RegenerateAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
     }
 
@@ -189,6 +242,8 @@ public class FilterStore
     public void DeleteFilter(Guid itemId)
     {
         _cache.TryRemove(itemId, out _);
+        _customFilterIds.TryRemove(itemId, out _);
+        _sidecarCache.TryRemove(itemId, out _);
 
         var path = GetJcfPath(itemId);
         if (File.Exists(path))
@@ -200,13 +255,39 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Returns filter summary information for an item using fast in-memory indexing and sidecar caching.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <returns>A tuple indicating whether a filter exists, whether a sidecar exists, and the number of cues.</returns>
+    public (bool HasFilter, bool HasSidecar, int CuesCount) GetFilterSummary(Guid itemId)
+    {
+        if (_cache.TryGetValue(itemId, out var cached))
+        {
+            var sidecar = GetSidecarPath(itemId);
+            return (true, sidecar is not null, cached.Cues.Count);
+        }
+
+        var hasCustom = HasCustomFilter(itemId);
+        var sidecarPath = GetSidecarPath(itemId);
+        var hasSidecar = sidecarPath is not null;
+
+        if (!hasCustom && !hasSidecar)
+        {
+            return (false, false, 0);
+        }
+
+        var filter = GetFilter(itemId);
+        return (filter is not null, hasSidecar, filter?.Cues.Count ?? 0);
+    }
+
+    /// <summary>
     /// Determines whether a filter exists for an item.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <returns><see langword="true"/> when a filter exists; otherwise <see langword="false"/>.</returns>
     public bool HasFilter(Guid itemId)
     {
-        return _cache.ContainsKey(itemId) || File.Exists(GetJcfPath(itemId)) || GetSidecarPath(itemId) is not null;
+        return _cache.ContainsKey(itemId) || HasCustomFilter(itemId) || GetSidecarPath(itemId) is not null;
     }
 
     /// <summary>
@@ -225,6 +306,11 @@ public class FilterStore
     /// <param name="itemId">The item identifier.</param>
     /// <returns>The sidecar path if found; otherwise <see langword="null"/>.</returns>
     public string? GetSidecarPath(Guid itemId)
+    {
+        return _sidecarCache.GetOrAdd(itemId, ResolveSidecarPath);
+    }
+
+    private string? ResolveSidecarPath(Guid itemId)
     {
         if (_libraryManager.GetItemById(itemId) is not BaseItem item || string.IsNullOrWhiteSpace(item.Path))
         {
@@ -256,10 +342,9 @@ public class FilterStore
     /// <returns>The effective JCF path if found; otherwise <see langword="null"/>.</returns>
     public string? GetEffectiveFilterPath(Guid itemId)
     {
-        var customPath = GetJcfPath(itemId);
-        if (File.Exists(customPath))
+        if (HasCustomFilter(itemId))
         {
-            return customPath;
+            return GetJcfPath(itemId);
         }
 
         return GetSidecarPath(itemId);
