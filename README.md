@@ -10,6 +10,7 @@ A Jellyfin plugin that scans media for objectionable content using a local [Olla
 - **Filter categories** — Violence, Language, Sexual Content, Nudity, Substance Use, Frightening, and Thematic content, each independently enabled/disabled with a skip or mute action.
 - **Playback enforcement** — The playback monitor intercepts sessions and issues skip/mute commands when a flagged segment is reached.
 - **Legacy MCF support** — Existing `.mcf` WebVTT sidecar files from the original Movie Content Filter project are parsed and mapped to JCF categories automatically.
+- **Community JCF Database (700+ titles)** — Over 700+ movies and TV shows pre-filtered and cataloged with 12,400+ cues harvested from Reddit timecodes. See [JCF Database Utility Documentation](docs/JCF_DATABASE_UTILITY.md).
 
 ## Installation
 
@@ -56,11 +57,37 @@ TITLE Example Movie
 YEAR 2024
 
 00:10:00.000 --> 00:10:05.000
-category: Violence.BloodGore
+category: Violence.Tiers
 channel: video
 action: skip
 description: Brief injury shot
 ```
+
+## Pre-built JCF Database & Scraper
+
+The repository includes a curated database of **700+ movies and TV series** with **12,400+ cues** harvested from Reddit timecodes and community repositories:
+
+```bash
+# Search for titles
+python tools/jcf_db.py search "Deadpool"
+
+# Show database summary stats
+python tools/jcf_db.py stats
+
+# Export sidecars directly to your media library
+python tools/jcf_db.py export --target /path/to/media/Movies
+```
+
+For complete documentation, scraper details, and category mapping, see [docs/JCF_DATABASE_UTILITY.md](docs/JCF_DATABASE_UTILITY.md).
+
+## Community Timestamp Tools
+
+The repository includes tools for importing community timestamps:
+
+- **TheTimestampDudes (Buy Me a Coffee)**: Download and convert timestamps from [TheTimestampDudes](https://buymeacoffee.com/thetimestampdudes) into discrete `.jcf` sidecar files:
+  - `./download_bmc_posts.py` — Authenticates with Buy Me a Coffee (with 2FA support), downloads all creator posts, and exports clean metadata.
+  - `./process_to_jcf.py` — Converts timestamps, corrects typos, maps categories, and emits compliant `.jcf` files.
+  - See the full [TheTimestampDudes Guide](docs/buymeacoffee_thetimestampdudes.md) for details.
 
 ## Legal
 

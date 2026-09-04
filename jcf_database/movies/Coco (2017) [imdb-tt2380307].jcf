@@ -1,0 +1,36 @@
+WEBVTT JCF
+
+NOTE
+TITLE Coco
+YEAR 2017
+IMDB tt2380307
+SOURCE cleanstream / videoskip open database (reddit)
+
+00:10:22.900 --> 00:10:24.160
+category: Language.Blasphemy
+channel: audio
+action: skip
+description: idiomatic blasphemy - Dios
+
+00:22:25.000 --> 00:22:26.180
+category: Language.Blasphemy
+channel: audio
+action: skip
+description: idiomatic blasphemy - Dios
+
+00:37:51.090 --> 00:37:55.760
+category: SexAndNudity.OnscreenActivity
+channel: video
+action: skip
+description: implied nudity
+
+00:44:58.120 --> 00:45:07.830
+category: SexAndNudity.OnscreenActivity
+channel: both
+action: skip
+
+01:16:27.770 --> 01:16:28.800
+category: Language.Blasphemy
+channel: audio
+action: skip
+description: idiomatic blasphemy - Dios

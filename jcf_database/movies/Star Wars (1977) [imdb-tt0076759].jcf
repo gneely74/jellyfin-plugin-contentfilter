@@ -1,0 +1,43 @@
+WEBVTT JCF
+
+NOTE
+TITLE Star Wars
+YEAR 1977
+IMDB tt0076759
+SOURCE cleanstream / videoskip open database (reddit)
+
+00:05:40.290 --> 00:06:04.370
+category: Violence.Tiers
+channel: both
+action: skip
+description: a man is interrogated while being suffocated
+
+00:33:27.100 --> 00:33:28.200
+category: Language.GeneralProfanity
+channel: audio
+action: skip
+description: da**
+
+00:40:25.480 --> 00:40:41.080
+category: Violence.Tiers
+channel: both
+action: skip
+description: two skeletal corpses are seen
+
+00:47:00.750 --> 00:47:07.530
+category: Violence.Tiers
+channel: both
+action: skip
+description: humanoid alien dismemberment
+
+00:47:07.000 --> 00:47:14.740
+category: Violence.Tiers
+channel: audio
+action: skip
+description: a humanoid alien groans in pain off-camera from dismemberment
+
+01:18:25.000 --> 01:18:25.750
+category: Language.GeneralProfanity
+channel: audio
+action: skip
+description: he**

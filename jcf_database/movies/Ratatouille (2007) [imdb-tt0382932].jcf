@@ -1,0 +1,31 @@
+WEBVTT JCF
+
+NOTE
+TITLE Ratatouille
+YEAR 2007
+IMDB tt0382932
+SOURCE cleanstream / videoskip open database (reddit)
+
+00:22:38.110 --> 00:22:39.400
+category: Language.Blasphemy
+channel: audio
+action: skip
+description: idiomatic blasphemy
+
+00:35:06.980 --> 00:35:08.170
+category: Language.GeneralProfanity
+channel: audio
+action: skip
+description: he**
+
+01:08:38.810 --> 01:08:42.790
+category: SexAndNudity.OnscreenActivity
+channel: both
+action: skip
+description: a man looks at a woman's rear
+
+01:26:15.730 --> 01:26:16.810
+category: Language.GeneralProfanity
+channel: audio
+action: skip
+description: bl***y
