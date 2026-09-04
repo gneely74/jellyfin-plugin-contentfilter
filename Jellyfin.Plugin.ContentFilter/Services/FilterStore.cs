@@ -275,6 +275,46 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Updates an existing cue in an item's filter.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="oldCueKey">The old cue key.</param>
+    /// <param name="updatedCue">The updated cue.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> if updated; otherwise <see langword="false"/>.</returns>
+    public async Task<bool> UpdateCueAsync(Guid itemId, string oldCueKey, FilterCue updatedCue, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return false;
+        }
+
+        var idx = filter.Cues.FindIndex(c => c.Key.Equals(oldCueKey, StringComparison.Ordinal));
+        if (idx == -1)
+        {
+            var oldStart = oldCueKey.Split('-').FirstOrDefault() ?? string.Empty;
+            idx = filter.Cues.FindIndex(c => FormatTimestamp(c.Start).StartsWith(oldStart, StringComparison.Ordinal));
+            if (idx == -1)
+            {
+                return false;
+            }
+        }
+
+        filter.Cues[idx] = updatedCue;
+        filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
+        await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    private static string FormatTimestamp(TimeSpan value)
+    {
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}.{value.Milliseconds:000}");
+    }
+
+    /// <summary>
     /// Deletes a filter for an item and associated filtered subtitle output.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>

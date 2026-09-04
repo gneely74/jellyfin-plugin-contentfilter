@@ -555,10 +555,10 @@ public class ContentFilterController : ControllerBase
             return BadRequest("Start and End timestamps are required.");
         }
 
-        if (!TimeSpan.TryParse(request.Start, CultureInfo.InvariantCulture, out var startTs) ||
-            !TimeSpan.TryParse(request.End, CultureInfo.InvariantCulture, out var endTs))
+        if (!ParseFlexibleTimestamp(request.Start, out var startTs) ||
+            !ParseFlexibleTimestamp(request.End, out var endTs))
         {
-            return BadRequest("Invalid timestamp format. Expected hh:mm:ss.fff");
+            return BadRequest("Invalid timestamp format. Expected hh:mm:ss.fff, mm:ss, or seconds.");
         }
 
         var cue = new FilterCue
@@ -573,6 +573,98 @@ public class ContentFilterController : ControllerBase
 
         await _filterStore.AddCueAsync(itemId, cue, cancellationToken).ConfigureAwait(false);
         return Ok(cue);
+    }
+
+    /// <summary>
+    /// Updates an existing cue in a media item's filter.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="cueKey">The existing cue key to update.</param>
+    /// <param name="request">The updated cue data.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result.</returns>
+    [HttpPut("filters/{itemId:guid}/segments/{cueKey}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateCueAsync(Guid itemId, string cueKey, [FromBody] AddCueRequest? request, CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Start) || string.IsNullOrWhiteSpace(request.End))
+        {
+            return BadRequest("Start and End timestamps are required.");
+        }
+
+        if (!ParseFlexibleTimestamp(request.Start, out var startTs) ||
+            !ParseFlexibleTimestamp(request.End, out var endTs))
+        {
+            return BadRequest("Invalid timestamp format. Expected hh:mm:ss.fff, mm:ss, or seconds.");
+        }
+
+        var newCue = new FilterCue
+        {
+            Start = startTs,
+            End = endTs,
+            Category = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category,
+            Channel = string.IsNullOrWhiteSpace(request.Channel) ? "video" : request.Channel,
+            Action = string.IsNullOrWhiteSpace(request.Action) ? "skip" : request.Action,
+            Description = request.Description
+        };
+
+        var success = await _filterStore.UpdateCueAsync(itemId, cueKey, newCue, cancellationToken).ConfigureAwait(false);
+        if (!success)
+        {
+            return NotFound();
+        }
+
+        return Ok(newCue);
+    }
+
+    private static bool ParseFlexibleTimestamp(string? input, out TimeSpan result)
+    {
+        result = TimeSpan.Zero;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return false;
+        }
+
+        var s = input.Trim().Replace(',', '.');
+        var parts = s.Split(':');
+        try
+        {
+            if (parts.Length == 3)
+            {
+                if (double.TryParse(parts[0], CultureInfo.InvariantCulture, out var h) &&
+                    double.TryParse(parts[1], CultureInfo.InvariantCulture, out var m) &&
+                    double.TryParse(parts[2], CultureInfo.InvariantCulture, out var sec))
+                {
+                    result = TimeSpan.FromHours(h) + TimeSpan.FromMinutes(m) + TimeSpan.FromSeconds(sec);
+                    return true;
+                }
+            }
+            else if (parts.Length == 2)
+            {
+                if (double.TryParse(parts[0], CultureInfo.InvariantCulture, out var m) &&
+                    double.TryParse(parts[1], CultureInfo.InvariantCulture, out var sec))
+                {
+                    result = TimeSpan.FromMinutes(m) + TimeSpan.FromSeconds(sec);
+                    return true;
+                }
+            }
+            else if (parts.Length == 1)
+            {
+                if (double.TryParse(parts[0], CultureInfo.InvariantCulture, out var sec))
+                {
+                    result = TimeSpan.FromSeconds(sec);
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Fall through
+        }
+
+        return TimeSpan.TryParse(input, CultureInfo.InvariantCulture, out result);
     }
 
     /// <summary>

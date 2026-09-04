@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Add in-player Video Cue Editor HUD overlay with Mark Start/End, frame nudging, Active Cues management, and backend global cue offset (time-shift) API.",
+  "changelog": "Draggable in-player Cue Editor HUD, edit existing cue tags and parameters, flexible timecode typing (mm:ss, seconds), and isolated player input handling.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,5 +9,5 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-09-04T00:00:00Z",
-  "version": "1.0.11.0"
+  "version": "1.0.12.0"
 }

@@ -22,15 +22,31 @@
     var launchBtn = null;
     var editorTimeInterval = null;
     var currentActiveTab = 'add';
+    var editingCueKey = null; // When non-null, editing an existing cue
 
     function parseTimecode(tc) {
         if (!tc) return 0;
-        var parts = tc.trim().split(':');
-        if (parts.length < 3) return 0;
-        var h = parseFloat(parts[0]) || 0;
-        var m = parseFloat(parts[1]) || 0;
-        var s = parseFloat(parts[2].replace(',', '.')) || 0;
-        return (h * 3600) + (m * 60) + s;
+        tc = String(tc).trim();
+        // Pure seconds string, e.g. "1880" or "45.5"
+        if (/^\d+(?:\.\d+)?$/.test(tc)) {
+            return parseFloat(tc) || 0;
+        }
+        var parts = tc.split(':');
+        if (parts.length === 3) {
+            // hh:mm:ss[.fff]
+            var h = parseFloat(parts[0]) || 0;
+            var m = parseFloat(parts[1]) || 0;
+            var s = parseFloat(parts[2].replace(',', '.')) || 0;
+            return (h * 3600) + (m * 60) + s;
+        } else if (parts.length === 2) {
+            // mm:ss[.fff]
+            var m2 = parseFloat(parts[0]) || 0;
+            var s2 = parseFloat(parts[1].replace(',', '.')) || 0;
+            return (m2 * 60) + s2;
+        } else if (parts.length === 1) {
+            return parseFloat(parts[0].replace(',', '.')) || 0;
+        }
+        return 0;
     }
 
     function formatTime(sec) {
@@ -76,7 +92,7 @@
                 'position: fixed',
                 'top: 24px',
                 'right: 24px',
-                'z-index: 999999',
+                'z-index: 2147483646',
                 'background: rgba(15, 23, 42, 0.92)',
                 'color: #38bdf8',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
@@ -282,7 +298,7 @@
                 'top: 76px',
                 'left: 24px',
                 'z-index: 2147483647',
-                'pointer-events: auto',
+                'pointer-events: auto !important',
                 'background: rgba(15, 23, 42, 0.88)',
                 'color: #38bdf8',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
@@ -331,6 +347,16 @@
         }
     }
 
+    // Helper to stop key events from leaking to Jellyfin player shortcuts
+    function isolateInput(input) {
+        if (!input) return;
+        ['keydown', 'keyup', 'keypress'].forEach(function (evType) {
+            input.addEventListener(evType, function (e) {
+                e.stopPropagation();
+            }, true);
+        });
+    }
+
     // --- In-Player Cue Editor Modal ---
     function ensureEditorModal() {
         var container = getPlayerContainer();
@@ -346,12 +372,12 @@
                 'top: 50%',
                 'left: 50%',
                 'transform: translate(-50%, -50%)',
-                'z-index: 1000001',
+                'z-index: 2147483647',
                 'width: 540px',
                 'max-width: 95vw',
                 'max-height: 88vh',
                 'overflow-y: auto',
-                'background: rgba(15, 23, 42, 0.96)',
+                'background: rgba(15, 23, 42, 0.97)',
                 'color: #f8fafc',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
                 'box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.2)',
@@ -364,17 +390,21 @@
                 'font-size: 13px',
                 'display: none',
                 'flex-direction: column',
-                'gap: 16px'
+                'gap: 16px',
+                'user-select: none'
             ].join(';');
 
             editorModal.innerHTML = [
-                // Header
-                '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">',
+                // Draggable Header
+                '<div id="cfEditorHeader" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px; cursor:grab; user-select:none;">',
                 '  <div style="display:flex; align-items:center; gap:10px;">',
                 '    <span style="font-size:22px;">🛡️</span>',
                 '    <div>',
-                '      <div style="font-size:16px; font-weight:700; color:#38bdf8;">Content Filter • Cue Editor</div>',
-                '      <div id="cfModalItemTitle" style="font-size:12px; color:#94a3b8; max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Media Item</div>',
+                '      <div style="font-size:16px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:8px;">',
+                '        <span>Content Filter • Cue Editor</span>',
+                '        <span style="font-size:10px; background:rgba(255,255,255,0.1); color:#94a3b8; padding:2px 6px; border-radius:4px; font-weight:500;">⋮⋮ Drag to Move</span>',
+                '      </div>',
+                '      <div id="cfModalItemTitle" style="font-size:12px; color:#94a3b8; max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Media Item</div>',
                 '    </div>',
                 '  </div>',
                 '  <button id="cfModalCloseBtn" style="background:rgba(255,255,255,0.1); border:none; color:#f8fafc; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">✕</button>',
@@ -402,8 +432,14 @@
                 '  <button id="cfTabBtnList" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">📋 Active Cues (<span id="cfTabCuesCount">0</span>)</button>',
                 '</div>',
 
-                // Tab 1: Set / Add Cue View
+                // Tab 1: Set / Add / Edit Cue View
                 '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px;">',
+                '  <!-- Edit Banner (hidden unless editing) -->',
+                '  <div id="cfEditBanner" style="display:none; justify-content:space-between; align-items:center; background:rgba(234, 179, 8, 0.15); border:1px solid rgba(234, 179, 8, 0.4); border-radius:8px; padding:8px 12px; color:#fef08a; font-size:12px;">',
+                '    <div id="cfEditBannerText">✏️ Editing Cue</div>',
+                '    <button id="cfBtnCancelEdit" style="background:transparent; border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;">Cancel Edit</button>',
+                '  </div>',
+
                 '  <!-- Start (In-Point) -->',
                 '  <div>',
                 '    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">',
@@ -416,7 +452,7 @@
                 '      </div>',
                 '    </div>',
                 '    <div style="display:flex; gap:8px;">',
-                '      <input id="cfInputStart" type="text" placeholder="00:00:00.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px;">',
+                '      <input id="cfInputStart" type="text" placeholder="e.g. 31:20 or 00:31:20.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnMarkStart" style="background:#0284c7; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;">📍 Mark In (Now)</button>',
                 '    </div>',
                 '  </div>',
@@ -434,7 +470,7 @@
                 '      </div>',
                 '    </div>',
                 '    <div style="display:flex; gap:8px;">',
-                '      <input id="cfInputEnd" type="text" placeholder="00:00:00.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px;">',
+                '      <input id="cfInputEnd" type="text" placeholder="e.g. 31:45 or 00:31:45.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnMarkEnd" style="background:#0284c7; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;">📍 Mark Out (Now)</button>',
                 '    </div>',
                 '  </div>',
@@ -442,7 +478,7 @@
                 '  <!-- Category & Channel/Action -->',
                 '  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">',
                 '    <div>',
-                '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Category:</label>',
+                '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Category Tag:</label>',
                 '      <select id="cfSelectCategory" style="width:100%; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 10px; border-radius:8px; font-size:13px;">',
                 '        <option value="Violence.Tiers">Violence.Tiers (Violent scenes)</option>',
                 '        <option value="Violence">Violence (General)</option>',
@@ -454,7 +490,7 @@
                 '        <option value="General">General Filter</option>',
                 '        <option value="__custom__">Custom Category...</option>',
                 '      </select>',
-                '      <input id="cfInputCustomCategory" type="text" placeholder="Enter custom category" style="display:none; width:100%; margin-top:6px; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 10px; border-radius:6px; font-size:12px;">',
+                '      <input id="cfInputCustomCategory" type="text" placeholder="Enter custom category" style="display:none; width:100%; margin-top:6px; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 10px; border-radius:6px; font-size:12px; user-select:text;">',
                 '    </div>',
                 '    <div>',
                 '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Action & Channel:</label>',
@@ -475,7 +511,7 @@
                 '  <!-- Description -->',
                 '  <div>',
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Description (Optional):</label>',
-                '    <input id="cfInputDescription" type="text" placeholder="e.g. Battle decapitation" style="width:100%; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:13px;">',
+                '    <input id="cfInputDescription" type="text" placeholder="e.g. Battle decapitation" style="width:100%; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:13px; user-select:text;">',
                 '  </div>',
 
                 '  <!-- Save Button & Status -->',
@@ -510,7 +546,7 @@
                 '  <div>',
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Custom Offset (seconds, e.g. +3.5 or -2.4):</label>',
                 '    <div style="display:flex; gap:8px;">',
-                '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px;">',
+                '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Shift All Cues</button>',
                 '    </div>',
                 '  </div>',
@@ -536,7 +572,77 @@
         return editorModal;
     }
 
+    function makeDraggable(modal, handle) {
+        var isDragging = false;
+        var startX, startY, initialLeft, initialTop;
+
+        function startDrag(e) {
+            // Only drag on left mouse click or touch, and not on buttons/inputs
+            if (e.type === 'mousedown' && e.button !== 0) return;
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+            isDragging = true;
+            handle.style.cursor = 'grabbing';
+
+            var point = e.touches ? e.touches[0] : e;
+            startX = point.clientX;
+            startY = point.clientY;
+
+            var rect = modal.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            modal.style.transform = 'none';
+            modal.style.left = initialLeft + 'px';
+            modal.style.top = initialTop + 'px';
+
+            document.addEventListener('mousemove', onDrag, true);
+            document.addEventListener('mouseup', stopDrag, true);
+            document.addEventListener('touchmove', onDrag, { passive: false, capture: true });
+            document.addEventListener('touchend', stopDrag, true);
+
+            e.preventDefault();
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            var point = e.touches ? e.touches[0] : e;
+            var dx = point.clientX - startX;
+            var dy = point.clientY - startY;
+
+            var newLeft = initialLeft + dx;
+            var newTop = initialTop + dy;
+
+            // Clamp inside window
+            var maxLeft = window.innerWidth - modal.offsetWidth - 10;
+            var maxTop = window.innerHeight - modal.offsetHeight - 10;
+            newLeft = Math.max(10, Math.min(maxLeft, newLeft));
+            newTop = Math.max(10, Math.min(maxTop, newTop));
+
+            modal.style.left = newLeft + 'px';
+            modal.style.top = newTop + 'px';
+
+            if (e.cancelable) e.preventDefault();
+        }
+
+        function stopDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            handle.style.cursor = 'grab';
+            document.removeEventListener('mousemove', onDrag, true);
+            document.removeEventListener('mouseup', stopDrag, true);
+            document.removeEventListener('touchmove', onDrag, true);
+            document.removeEventListener('touchend', stopDrag, true);
+        }
+
+        handle.addEventListener('mousedown', startDrag);
+        handle.addEventListener('touchstart', startDrag, { passive: false });
+    }
+
     function wireEditorEvents(modal) {
+        var header = modal.querySelector('#cfEditorHeader');
+        makeDraggable(modal, header);
+
         var closeBtn = modal.querySelector('#cfModalCloseBtn');
         closeBtn.addEventListener('click', closeEditorModal);
 
@@ -607,10 +713,34 @@
             }
         });
 
-        // Mark Start & Mark End
+        // Inputs
         var startInput = modal.querySelector('#cfInputStart');
         var endInput = modal.querySelector('#cfInputEnd');
+        var descInput = modal.querySelector('#cfInputDescription');
+        var shiftInput = modal.querySelector('#cfInputShiftSec');
 
+        // Isolate inputs from global Jellyfin hotkeys
+        isolateInput(startInput);
+        isolateInput(endInput);
+        isolateInput(descInput);
+        isolateInput(shiftInput);
+        isolateInput(customCatInput);
+
+        // Normalize inputs on blur if user typed freeform (e.g. "31:20" -> "00:31:20.000")
+        startInput.addEventListener('blur', function () {
+            if (startInput.value.trim()) {
+                var s = parseTimecode(startInput.value);
+                if (s > 0) startInput.value = formatTimecode(s);
+            }
+        });
+        endInput.addEventListener('blur', function () {
+            if (endInput.value.trim()) {
+                var e = parseTimecode(endInput.value);
+                if (e > 0) endInput.value = formatTimecode(e);
+            }
+        });
+
+        // Mark Start & Mark End
         modal.querySelector('#cfBtnMarkStart').addEventListener('click', function () {
             if (activeVideo) {
                 startInput.value = formatTimecode(activeVideo.currentTime);
@@ -654,33 +784,55 @@
         modal.querySelector('#cfNudgeEndM02').addEventListener('click', function () { nudgeEnd(-0.2); });
         modal.querySelector('#cfNudgeEndP02').addEventListener('click', function () { nudgeEnd(0.2); });
 
-        // Save Cue Handler
+        // Cancel Edit handler
+        var editBanner = modal.querySelector('#cfEditBanner');
+        var btnCancelEdit = modal.querySelector('#cfBtnCancelEdit');
         var saveBtn = modal.querySelector('#cfBtnSaveCue');
         var addStatus = modal.querySelector('#cfAddStatusMsg');
 
+        function cancelEditing() {
+            editingCueKey = null;
+            editBanner.style.display = 'none';
+            saveBtn.textContent = '💾 Save Cue to Episode';
+            saveBtn.style.background = '#10b981';
+            tabBtnAdd.textContent = '➕ Set Cue Point';
+            startInput.value = '';
+            endInput.value = '';
+            descInput.value = '';
+            catSelect.value = 'Violence.Tiers';
+            customCatInput.style.display = 'none';
+            customCatInput.value = '';
+            addStatus.textContent = '';
+        }
+        btnCancelEdit.addEventListener('click', cancelEditing);
+
+        // Save / Update Cue Handler
         saveBtn.addEventListener('click', function () {
-            var s = startInput.value.trim();
-            var e = endInput.value.trim();
-            if (!s || !e) {
+            var sRaw = startInput.value.trim();
+            var eRaw = endInput.value.trim();
+            if (!sRaw || !eRaw) {
                 addStatus.style.color = '#ef4444';
-                addStatus.textContent = 'Please set both Start and End time.';
+                addStatus.textContent = 'Please provide Start and End time.';
                 return;
             }
 
-            var startSec = parseTimecode(s);
-            var endSec = parseTimecode(e);
+            var startSec = parseTimecode(sRaw);
+            var endSec = parseTimecode(eRaw);
             if (endSec <= startSec) {
                 addStatus.style.color = '#ef4444';
                 addStatus.textContent = 'End time must be greater than Start time.';
                 return;
             }
 
+            var sFormatted = formatTimecode(startSec);
+            var eFormatted = formatTimecode(endSec);
+
             var cat = catSelect.value === '__custom__' ? customCatInput.value.trim() : catSelect.value;
             if (!cat) cat = 'General';
 
             var channel = modal.querySelector('#cfSelectChannel').value;
             var action = modal.querySelector('#cfSelectAction').value;
-            var desc = modal.querySelector('#cfInputDescription').value.trim();
+            var desc = descInput.value.trim();
 
             var client = getApiClient();
             if (!client || !activeItemId) {
@@ -689,23 +841,28 @@
                 return;
             }
 
+            var isEdit = !!editingCueKey;
             saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
+            saveBtn.textContent = isEdit ? 'Updating...' : 'Saving...';
 
             var payload = {
-                start: s,
-                end: e,
+                start: sFormatted,
+                end: eFormatted,
                 category: cat,
                 channel: channel,
                 action: action,
                 description: desc
             };
 
-            var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments');
+            var url = isEdit
+                ? client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/' + encodeURIComponent(editingCueKey))
+                : client.getUrl('ContentFilter/filters/' + activeItemId + '/segments');
+
+            var method = isEdit ? 'PUT' : 'POST';
             var token = client.accessToken ? client.accessToken() : '';
 
             fetch(url, {
-                method: 'POST',
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Emby-Token': token
@@ -713,15 +870,18 @@
                 body: JSON.stringify(payload)
             }).then(function (res) {
                 saveBtn.disabled = false;
-                saveBtn.textContent = '💾 Save Cue to Episode';
+                saveBtn.textContent = isEdit ? '💾 Update Cue' : '💾 Save Cue to Episode';
 
                 if (res.ok) {
                     addStatus.style.color = '#10b981';
-                    addStatus.textContent = '✅ Cue saved! (' + s + ' - ' + e + ')';
+                    addStatus.textContent = isEdit
+                        ? '✅ Cue updated! (' + sFormatted + ' - ' + eFormatted + ')'
+                        : '✅ Cue saved! (' + sFormatted + ' - ' + eFormatted + ')';
 
                     if (!activeFilter) {
                         activeFilter = { itemId: activeItemId, title: '', cues: [] };
                     }
+
                     var newCue = {
                         start: startSec,
                         end: endSec,
@@ -729,17 +889,29 @@
                         channel: channel,
                         action: action,
                         description: desc || cat,
-                        key: s + '-' + e + '-' + cat
+                        key: sFormatted + '-' + eFormatted + '-' + cat
                     };
-                    activeFilter.cues.push(newCue);
+
+                    if (isEdit) {
+                        var idx = activeFilter.cues.findIndex(function (c) { return c.key === editingCueKey; });
+                        if (idx !== -1) {
+                            activeFilter.cues[idx] = newCue;
+                        } else {
+                            activeFilter.cues.push(newCue);
+                        }
+                    } else {
+                        activeFilter.cues.push(newCue);
+                    }
+
                     activeFilter.cues.sort(function (a, b) { return a.start - b.start; });
 
+                    cancelEditing();
                     updateCuesBadge();
-                    showHud('Added ' + cat + ' (' + formatTime(startSec) + ' - ' + formatTime(endSec) + ')', '✅');
+                    showHud((isEdit ? 'Updated ' : 'Added ') + cat + ' (' + formatTime(startSec) + ' - ' + formatTime(endSec) + ')', '✅');
 
                     setTimeout(function () {
                         switchTab('list');
-                    }, 600);
+                    }, 500);
                 } else {
                     res.text().then(function (txt) {
                         addStatus.style.color = '#ef4444';
@@ -748,14 +920,13 @@
                 }
             }).catch(function (err) {
                 saveBtn.disabled = false;
-                saveBtn.textContent = '💾 Save Cue to Episode';
+                saveBtn.textContent = isEdit ? '💾 Update Cue' : '💾 Save Cue to Episode';
                 addStatus.style.color = '#ef4444';
                 addStatus.textContent = 'Error: ' + err.message;
             });
         });
 
         // Shift All Cues Presets & Apply
-        var shiftInput = modal.querySelector('#cfInputShiftSec');
         var shiftStatus = modal.querySelector('#cfShiftStatusMsg');
         var applyShiftBtn = modal.querySelector('#cfBtnApplyShift');
 
@@ -831,6 +1002,51 @@
         if (badge) badge.textContent = count;
     }
 
+    function startEditingCue(cue) {
+        if (!cue) return;
+        editingCueKey = cue.key;
+
+        var modal = ensureEditorModal();
+        var editBanner = modal.querySelector('#cfEditBanner');
+        var editBannerText = modal.querySelector('#cfEditBannerText');
+        var saveBtn = modal.querySelector('#cfBtnSaveCue');
+        var startInput = modal.querySelector('#cfInputStart');
+        var endInput = modal.querySelector('#cfInputEnd');
+        var descInput = modal.querySelector('#cfInputDescription');
+        var catSelect = modal.querySelector('#cfSelectCategory');
+        var customCatInput = modal.querySelector('#cfInputCustomCategory');
+        var channelSelect = modal.querySelector('#cfSelectChannel');
+        var actionSelect = modal.querySelector('#cfSelectAction');
+        var tabBtnAdd = modal.querySelector('#cfTabBtnAdd');
+
+        editBanner.style.display = 'flex';
+        editBannerText.textContent = '✏️ Editing Cue: ' + formatTime(cue.start) + ' - ' + formatTime(cue.end) + ' (' + cue.category + ')';
+        tabBtnAdd.textContent = '✏️ Edit Cue';
+        saveBtn.textContent = '💾 Update Cue';
+        saveBtn.style.background = '#eab308';
+
+        startInput.value = formatTimecode(cue.start);
+        endInput.value = formatTimecode(cue.end);
+        descInput.value = cue.description || '';
+
+        // Match category
+        var knownOption = Array.from(catSelect.options).some(function (opt) { return opt.value === cue.category; });
+        if (knownOption) {
+            catSelect.value = cue.category;
+            customCatInput.style.display = 'none';
+        } else {
+            catSelect.value = '__custom__';
+            customCatInput.style.display = 'block';
+            customCatInput.value = cue.category;
+        }
+
+        channelSelect.value = cue.channel || 'video';
+        actionSelect.value = cue.action || 'skip';
+
+        // Switch to Add/Edit tab
+        tabBtnAdd.click();
+    }
+
     function renderActiveCuesList() {
         var container = document.querySelector('#cfCuesListContainer');
         if (!container) return;
@@ -860,6 +1076,7 @@
                 '  </div>',
                 '  <div style="display:flex; gap:6px; align-items:center;">',
                 '    <button class="cf-cue-jump-btn" data-start="' + c.start + '" title="Jump to 2s before cue" style="background:#0284c7; border:none; color:#fff; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">▶ Jump (-2s)</button>',
+                '    <button class="cf-cue-edit-btn" data-idx="' + idx + '" title="Edit Cue" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.4); color:#fef08a; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">✏️ Edit</button>',
                 '    <button class="cf-cue-del-btn" data-key="' + encodeURIComponent(c.key) + '" title="Delete Cue" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:12px;">🗑️</button>',
                 '  </div>',
                 '</div>'
@@ -873,6 +1090,16 @@
                 if (activeVideo) {
                     activeVideo.currentTime = Math.max(0, start - 2.0);
                     showHud('Jumped to ' + formatTime(Math.max(0, start - 2.0)), '▶');
+                }
+            });
+        });
+
+        // Wire edit buttons
+        container.querySelectorAll('.cf-cue-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                if (!isNaN(idx) && activeFilter && activeFilter.cues && activeFilter.cues[idx]) {
+                    startEditingCue(activeFilter.cues[idx]);
                 }
             });
         });
@@ -926,7 +1153,7 @@
 
         var startInput = modal.querySelector('#cfInputStart');
         var endInput = modal.querySelector('#cfInputEnd');
-        if (activeVideo && !startInput.value) {
+        if (activeVideo && !startInput.value && !editingCueKey) {
             startInput.value = formatTimecode(activeVideo.currentTime);
             endInput.value = formatTimecode(activeVideo.currentTime + 10);
         }
