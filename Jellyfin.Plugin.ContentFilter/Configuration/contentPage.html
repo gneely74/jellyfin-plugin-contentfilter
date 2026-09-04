@@ -2173,87 +2173,69 @@
                 });
             });
 
-            // --- Filter Hierarchy Configuration Logic ---
+            // --- Filter Hierarchy Configuration Logic (IMDb Parents Guide & VidAngel Standard) ---
             var FH = [
-                { g:'Language', label:'Language & Profanity', cats:[
-                    { key:'Language.GeneralProfanity', label:'General Profanity', badge:'word',
-                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','cock','crap','cunt','damn','dick','douche','fuck','fucking','fucker','hell','piss','prick','pussy','screw','shit','twat','wank'] },
-                    { key:'Language.Blasphemy', label:'Blasphemy', badge:'word',
-                      items:['Jesus Christ','Oh God'] },
-                    { key:'Language.RacialAndBigotedSlurs', label:'Racial & Bigoted Slurs', badge:'word',
-                      items:['chink','cracker','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
-                    { key:'Language.ChildishLanguage', label:'Childish Language', badge:'word',
-                      items:['bum','butt','dumb','fart','stupid'] },
-                    { key:'Language.CaptionsWithProfanity', label:'Captions with Profanity', badge:'word',
-                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','damn','fuck','fucking','fucker','hell','shit'] }
-                ]},
-                { g:'SexualReferences', label:'Sexual References & Dialogue', cats:[
-                    { key:'SexualReferences.ExplicitWords', label:'Explicit Words', badge:'word',
-                      items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunillingus','dick','dildo','dink','douche','ejaculate','fag','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','picker','penis','porn','prick','piss','pussy','queer','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
-                    { key:'SexualReferences.ContextualDialogue', label:'Contextual Dialogue', badge:'visual',
-                      items:['A man makes a sexual remark to a man.','A man makes a sexual remark to a woman.','A woman makes a sexual remark to a man.','A woman makes a sexual remark to a woman.'] },
-                    { key:'SexualReferences.Visuals', label:'Visuals', badge:'visual',
-                      items:['Vulgar Gestures'] }
-                ]},
                 { g:'SexAndNudity', label:'Sex & Nudity', cats:[
-                    { key:'SexAndNudity.Graphic', label:'Graphic Sex', badge:'visual',
-                      items:['Explicit Sexual Intercourse','Sex with Nudity','Oral Sex','Masturbation','Erotic Acts'] },
-                    { key:'SexAndNudity.ImpliedSex', label:'Implied Sex', badge:'visual',
-                      items:['Sex without Nudity','Implied Sex','Sexually Suggestive Activity','Sensual Bedroom Scenes','Suggestive Dancing'] },
-                    { key:'SexAndNudity.SexualAssault', label:'Sexual Assault', badge:'visual',
-                      items:['Sexual Assault','Rape','Non-consensual Sexual Behavior','Molestation'] },
                     { key:'SexAndNudity.FullNudity', label:'Full Nudity', badge:'visual',
-                      items:['Female Frontal Nudity','Male Frontal Nudity','Full Nudity','Unclad Exposure'] },
-                    { key:'SexAndNudity.PartialNudity', label:'Partial Nudity', badge:'visual',
-                      items:['Underwear or Lingerie','Topless Silhouette','Bare Buttocks','Revealing Attire or Cleavage','Immodest Exposure'] },
-                    { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
-                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)','Sensual Caressing','Prolonged Making Out'] },
-                    { key:'SexAndNudity.Mild', label:'Mild Nudity & Kissing', badge:'visual',
-                      items:['Swimwear & Beach Attire','Mild Immodesty','Brief Non-sexual Kissing','Nude Statues & Paintings'] },
-                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity (Legacy)', badge:'legacy',
-                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
-                    { key:'SexAndNudity.NudityProfiles', label:'Nudity Profiles (Legacy)', badge:'legacy',
-                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] }
+                      items:['Female Frontal Nudity','Male Frontal Nudity','Bare Buttocks','Full Nudity','Unclad Exposure'] },
+                    { key:'SexAndNudity.PartialNudity', label:'Partial Nudity & Immodesty', badge:'visual',
+                      items:['Underwear or Lingerie','Topless Silhouette','Revealing Attire or Cleavage','Swimwear & Beach Attire','Immodest Exposure'] },
+                    { key:'SexAndNudity.Graphic', label:'Graphic Sex & Intercourse', badge:'visual',
+                      items:['Explicit Sexual Intercourse','Sex with Nudity','Oral Sex','Masturbation','Erotic Acts'] },
+                    { key:'SexAndNudity.ImpliedSex', label:'Implied Sex & Suggestive Scenes', badge:'visual',
+                      items:['Sex without Nudity','Implied Sex','Sexually Suggestive Activity','Sensual Bedroom Scenes','Suggestive Dancing'] },
+                    { key:'SexAndNudity.PhysicalIntimacy', label:'Passionate Kissing & Intimacy', badge:'visual',
+                      items:['Passionate Kissing','Prolonged Making Out','Sensual Caressing'] },
+                    { key:'SexAndNudity.SexualAssault', label:'Sexual Assault & Violence', badge:'visual',
+                      items:['Sexual Assault','Rape','Non-consensual Sexual Behavior','Molestation'] },
+                    { key:'SexualReferences.ContextualDialogue', label:'Sexual Dialogue & Innuendo', badge:'visual',
+                      items:['Sexual Dialogue & Innuendo','Suggestive Remarks & Propositions','Obscene / Vulgar Gestures'] }
                 ]},
-                { g:'Violence', label:'Violence & Horror', cats:[
-                    { key:'Violence.Mild', label:'Mild Violence', badge:'visual',
-                      items:['Comic Action','Slaps','Bloodless Fistfights','Playful Wrestling or Shoving'] },
-                    { key:'Violence.Moderate', label:'Moderate Violence', badge:'visual',
+                { g:'Violence', label:'Violence & Gore', cats:[
+                    { key:'Violence.Graphic', label:'Graphic Violence & Brutality', badge:'visual',
+                      items:['Severe Physical Trauma','Visceral Wounds','Close-range Shootings','Fatal Stabbings','Brutal Attacks'] },
+                    { key:'Violence.Gore', label:'Blood & Gore', badge:'visual',
+                      items:['Dismemberment & Severed Limbs','Decapitation','Mutilation','Exposed Organs or Entrails','Graphic Blood Splatter'] },
+                    { key:'Violence.Moderate', label:'Moderate Violence & Combat', badge:'visual',
                       items:['Realistic Combat','Shootouts','Stabbings','Non-graphic Violence','Blood on Clothing','Car Crashes and Explosions'] },
-                    { key:'Violence.Graphic', label:'Graphic Violence', badge:'visual',
-                      items:['Visceral Wounds','Severe Physical Trauma','Graphic Violence','Close-range Shootings','Fatal Stabbings','Brutal Attacks'] },
-                    { key:'Violence.Gore', label:'Gore & Blood', badge:'visual',
-                      items:['Gore','Dismemberment','Decapitation','Severed Limbs or Heads','Mutilation','Exposed Organs or Entrails','Graphic Blood Splatter'] },
-                    { key:'Violence.JumpScares', label:'Jump Scares', badge:'visual',
-                      items:['Horror Jump Scares','Sudden Shock Sequences','Startling Creature Reveals','Startling Sounds with Visual Jump'] },
-                    { key:'Violence.Disturbing', label:'Disturbing & Psychological Horror', badge:'visual',
-                      items:['Disturbing Images','Psychological Horror','Corpses and Skeletal Remains','Suicide or Self-Harm Themes','Torture Sequences','Objectionable, Disturbing, or Scary'] },
-                    { key:'Violence.Tiers', label:'Violence Tiers (Legacy)', badge:'legacy',
-                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
+                    { key:'Violence.Mild', label:'Mild & Comic Action', badge:'visual',
+                      items:['Slaps & Shoving','Bloodless Fistfights','Comic Action','Playful Wrestling'] }
                 ]},
-                { g:'Substances', label:'Substance Use', cats:[
-                    { key:'Substances.Tobacco', label:'Tobacco & Smoking', badge:'visual',
-                      items:['Smoking Cigarettes','Smoking Cigars or Pipes','Vaping or E-Cigarettes','Tobacco Product Use'] },
-                    { key:'Substances.Alcohol', label:'Alcohol & Drinking', badge:'visual',
-                      items:['Alcohol Consumption','Drunkenness and Intoxication','Beer, Wine, or Liquor Drinking','Bar Scenes with Heavy Drinking'] },
+                { g:'Language', label:'Profanity', cats:[
+                    { key:'Language.GeneralProfanity', label:'General & Harsh Profanity', badge:'word',
+                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','cunt','damn','douche','fuck','fucking','fucker','hell','piss','screw','shit'] },
+                    { key:'Language.Blasphemy', label:'Religious Profanity & Blasphemy', badge:'word',
+                      items:['Jesus Christ','Oh God','God damn','Holy shit'] },
+                    { key:'Language.RacialAndBigotedSlurs', label:'Racial, Ethnic & Bigoted Slurs', badge:'word',
+                      items:['chink','cracker','fag','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
+                    { key:'SexualReferences.ExplicitWords', label:'Crude & Anatomical Vulgarities', badge:'word',
+                      items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunnilingus','dick','dildo','dink','ejaculate','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','penis','porn','prick','pussy','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
+                    { key:'Language.ChildishLanguage', label:'Crude Humor & Childish Words', badge:'word',
+                      items:['bum','butt','dumb','fart','poop','stupid'] }
+                ]},
+                { g:'Substances', label:'Alcohol, Drugs & Smoking', cats:[
                     { key:'Substances.IllegalDrugs', label:'Illegal Drugs & Narcotics', badge:'visual',
                       items:['Illicit Drug Use','Narcotics Consumption','Smoking Marijuana / Weed','Snorting Cocaine / Heroin','Drug Injections and Paraphernalia','Drug Overdose or Intoxication'] },
-                    { key:'Substances.Usage', label:'Substance Usage (Legacy)', badge:'legacy',
-                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
+                    { key:'Substances.Alcohol', label:'Alcohol & Drunkenness', badge:'visual',
+                      items:['Alcohol Consumption','Drunkenness and Intoxication','Beer, Wine, or Liquor Drinking','Bar Scenes with Heavy Drinking'] },
+                    { key:'Substances.Tobacco', label:'Tobacco & Smoking', badge:'visual',
+                      items:['Smoking Cigarettes','Smoking Cigars or Pipes','Vaping or E-Cigarettes','Tobacco Product Use'] }
                 ]},
-                { g:'Medical', label:'Medical & Biological Processes', cats:[
-                    { key:'Medical.Events', label:'Medical Procedures & Trauma', badge:'visual',
-                      items:['Medical Graphic','Medical Procedures','Surgical Operations','Needles and Injections','Severe Hospital Trauma'] },
-                    { key:'Medical.BodilyFunctions', label:'Bodily Functions & Humor', badge:'visual',
-                      items:['Vomiting or Barfing','Gross Bodily Functions','Flatulence and Toilet Humor'] }
+                { g:'Frightening', label:'Frightening & Intense Scenes', cats:[
+                    { key:'Violence.Disturbing', label:'Disturbing & Psychological Horror', badge:'visual',
+                      items:['Disturbing Images','Psychological Horror','Corpses and Skeletal Remains','Suicide or Self-Harm Themes','Torture Sequences','Objectionable, Disturbing, or Scary'] },
+                    { key:'Violence.JumpScares', label:'Jump Scares & Startling Shocks', badge:'visual',
+                      items:['Horror Jump Scares','Sudden Shock Sequences','Startling Creature Reveals','Startling Sounds with Visual Jump'] }
                 ]},
-                { g:'Structural', label:'Structural Timestamps', cats:[
+                { g:'Other', label:'Other / Playback & Medical Filters', cats:[
                     { key:'Structural.Credits', label:'Credits', badge:'visual',
                       items:['Opening Credits','Closing Credits'] },
                     { key:'Structural.IntroRecap', label:'Intro & Recap', badge:'visual',
                       items:['Opening Intro Sequence','Episode Recap','Outtakes and Bloopers'] },
-                    { key:'Structural.Timestamps', label:'Structural Timestamps (Legacy)', badge:'legacy',
-                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
+                    { key:'Medical.Events', label:'Medical Procedures & Surgery', badge:'visual',
+                      items:['Medical Graphic','Medical Procedures','Surgical Operations','Needles and Injections','Severe Hospital Trauma'] },
+                    { key:'Medical.BodilyFunctions', label:'Bodily Functions & Gross Humor', badge:'visual',
+                      items:['Vomiting or Barfing','Gross Bodily Functions','Flatulence and Toilet Humor'] }
                 ]}
             ];
 
@@ -2447,8 +2429,14 @@
 
                 FH.forEach(function(gDef) {
                     var isGroupEnabled = true;
-                    if (groupEnabledMap && (gDef.g + 'Enabled') in groupEnabledMap) {
-                        isGroupEnabled = groupEnabledMap[gDef.g + 'Enabled'] !== false;
+                    if (groupEnabledMap) {
+                        if (gDef.g === 'Frightening') {
+                            isGroupEnabled = groupEnabledMap.FrighteningEnabled !== false;
+                        } else if (gDef.g === 'Other') {
+                            isGroupEnabled = groupEnabledMap.OtherEnabled === true || groupEnabledMap.StructuralEnabled === true || groupEnabledMap.MedicalEnabled === true;
+                        } else if ((gDef.g + 'Enabled') in groupEnabledMap) {
+                            isGroupEnabled = groupEnabledMap[gDef.g + 'Enabled'] !== false;
+                        }
                     }
 
                     gDef.cats.forEach(function(cat) {
@@ -2494,7 +2482,15 @@
                 FH.forEach(function(gDef) {
                     var gEl = container.querySelector('[data-group="' + gDef.g + '"]');
                     var gCb = gEl ? gEl.querySelector('[data-gcb]') : null;
-                    groups[gDef.g + 'Enabled'] = gCb ? (gCb.checked || gCb.indeterminate) : true;
+                    var enabled = gCb ? (gCb.checked || gCb.indeterminate) : true;
+                    groups[gDef.g + 'Enabled'] = enabled;
+
+                    if (gDef.g === 'SexAndNudity') {
+                        groups['SexualReferencesEnabled'] = enabled;
+                    } else if (gDef.g === 'Other') {
+                        groups['StructuralEnabled'] = enabled;
+                        groups['MedicalEnabled'] = enabled;
+                    }
 
                     gDef.cats.forEach(function(cat) {
                         var catEl = container.querySelector('[data-fc="' + cat.key + '"]');

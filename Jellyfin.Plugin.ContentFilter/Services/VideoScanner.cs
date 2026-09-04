@@ -807,12 +807,14 @@ public class VideoScanner : IHostedService
         return group switch
         {
             "Language" => config.LanguageEnabled,
-            "SexualReferences" => config.SexualReferencesEnabled,
+            "SexualReferences" => config.SexualReferencesEnabled || config.SexAndNudityEnabled,
             "SexAndNudity" => config.SexAndNudityEnabled,
             "Violence" => config.ViolenceEnabled,
+            "Frightening" => config.FrighteningEnabled,
             "Substances" => config.SubstancesEnabled,
-            "Medical" => config.MedicalEnabled,
-            "Structural" => config.StructuralEnabled,
+            "Medical" => config.MedicalEnabled || config.OtherEnabled,
+            "Structural" => config.StructuralEnabled || config.OtherEnabled,
+            "Other" => config.OtherEnabled,
             _ => true
         };
     }

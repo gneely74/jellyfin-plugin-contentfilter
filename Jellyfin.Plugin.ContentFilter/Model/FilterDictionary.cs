@@ -14,30 +14,24 @@ public static class FilterDictionary
         ["Language.GeneralProfanity"] =
         [
             "arse", "ass", "bastard", "bitch", "bloody", "bollocks", "bugger",
-            "cock", "crap", "cunt", "damn", "dick", "douche", "fuck", "fucking",
-            "fucker", "hell", "piss", "prick", "pussy", "screw", "shit", "twat", "wank",
+            "crap", "cunt", "damn", "douche", "fuck", "fucking",
+            "fucker", "hell", "piss", "screw", "shit",
         ],
 
         ["Language.Blasphemy"] =
         [
-            "Jesus Christ", "Oh God",
+            "Jesus Christ", "Oh God", "God damn", "Holy shit",
         ],
 
         ["Language.RacialAndBigotedSlurs"] =
         [
-            "chink", "cracker", "heeb", "jap", "jiz", "kike", "kraut", "nigger",
+            "chink", "cracker", "fag", "heeb", "jap", "jiz", "kike", "kraut", "nigger",
             "pollack", "wetback", "wop",
         ],
 
         ["Language.ChildishLanguage"] =
         [
-            "bum", "butt", "dumb", "fart", "stupid",
-        ],
-
-        ["Language.CaptionsWithProfanity"] =
-        [
-            "arse", "ass", "bastard", "bitch", "bloody", "bollocks", "bugger",
-            "crap", "damn", "fuck", "fucking", "fucker", "hell", "shit",
+            "bum", "butt", "dumb", "fart", "poop", "stupid",
         ],
 
         // --- 2. SEXUAL REFERENCES (subtitle word match + Ollama visual) ---
@@ -105,17 +99,15 @@ public static class FilterDictionary
             "Topless Silhouette",
             "Bare Buttocks",
             "Revealing Attire or Cleavage",
+            "Swimwear & Beach Attire",
             "Immodest Exposure",
         ],
 
         ["SexAndNudity.PhysicalIntimacy"] =
         [
-            "Heterosexual Kissing (Normal)",
-            "Heterosexual Kissing (Passionate)",
-            "Homosexual Kissing (Normal)",
-            "Homosexual Kissing (Passionate)",
-            "Sensual Caressing",
+            "Passionate Kissing",
             "Prolonged Making Out",
+            "Sensual Caressing",
         ],
 
         ["SexAndNudity.Mild"] =
@@ -299,9 +291,23 @@ public static class FilterDictionary
         "Language.Blasphemy",
         "Language.RacialAndBigotedSlurs",
         "Language.ChildishLanguage",
-        "Language.CaptionsWithProfanity",
         "SexualReferences.ExplicitWords",
     ];
+
+    /// <summary>
+    /// Gets the canonical mapping for legacy categories to modern IMDb/VidAngel standards.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string[]> LegacyAliases { get; } = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Violence.Tiers"] = ["Violence.Graphic", "Violence.Gore", "Violence.Moderate", "Violence.Disturbing"],
+        ["SexAndNudity.OnscreenActivity"] = ["SexAndNudity.Graphic", "SexAndNudity.ImpliedSex", "SexAndNudity.SexualAssault"],
+        ["SexAndNudity.NudityProfiles"] = ["SexAndNudity.FullNudity", "SexAndNudity.PartialNudity"],
+        ["SexAndNudity.Mild"] = ["SexAndNudity.PartialNudity"],
+        ["SexualReferences.Visuals"] = ["SexualReferences.ContextualDialogue"],
+        ["Substances.Usage"] = ["Substances.IllegalDrugs", "Substances.Alcohol", "Substances.Tobacco"],
+        ["Structural.Timestamps"] = ["Structural.Credits", "Structural.IntroRecap"],
+        ["Language.CaptionsWithProfanity"] = ["Language.GeneralProfanity"],
+    };
 
     private static readonly IReadOnlyDictionary<string, string> DefaultChannels = new Dictionary<string, string>
     {

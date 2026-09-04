@@ -214,13 +214,13 @@ public class FilterRuleService
         }
 
         // Category explicitly disabled in item override
-        if (itemOverride.DisabledCategories.Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase)))
+        if (IsCategoryDisabled(category, itemOverride.DisabledCategories))
         {
             return false;
         }
 
         // Category explicitly enabled in item override (even if globally disabled)
-        if (itemOverride.EnabledCategories.Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase)))
+        if (IsCategoryEnabled(category, itemOverride.EnabledCategories))
         {
             return true;
         }
@@ -238,12 +238,14 @@ public class FilterRuleService
         var groupEnabled = group switch
         {
             "Language" => config.LanguageEnabled,
-            "SexualReferences" => config.SexualReferencesEnabled,
+            "SexualReferences" => config.SexualReferencesEnabled || config.SexAndNudityEnabled,
             "SexAndNudity" => config.SexAndNudityEnabled,
             "Violence" => config.ViolenceEnabled,
+            "Frightening" => config.FrighteningEnabled,
             "Substances" => config.SubstancesEnabled,
-            "Medical" => config.MedicalEnabled,
-            "Structural" => config.StructuralEnabled,
+            "Medical" => config.MedicalEnabled || config.OtherEnabled,
+            "Structural" => config.StructuralEnabled || config.OtherEnabled,
+            "Other" => config.OtherEnabled,
             _ => true
         };
 
@@ -252,9 +254,16 @@ public class FilterRuleService
             return false;
         }
 
+        // Frightening check (JumpScares & Disturbing scenes)
+        if ((string.Equals(category, "Violence.JumpScares", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(category, "Violence.Disturbing", StringComparison.OrdinalIgnoreCase)) &&
+            !config.FrighteningEnabled)
+        {
+            return false;
+        }
+
         // Check category-level disabled list
-        if (config.DisabledCategories != null &&
-            config.DisabledCategories.Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase)))
+        if (IsCategoryDisabled(category, config.DisabledCategories))
         {
             return false;
         }
@@ -270,6 +279,75 @@ public class FilterRuleService
         }
 
         return true;
+    }
+
+    private static bool IsCategoryDisabled(string category, IEnumerable<string>? disabledList)
+    {
+        if (disabledList is null)
+        {
+            return false;
+        }
+
+        var list = disabledList as ICollection<string> ?? disabledList.ToList();
+        if (list.Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        // Check if a legacy category disabled in config covers this category
+        foreach (var (legacyKey, targets) in FilterDictionary.LegacyAliases)
+        {
+            if (targets.Contains(category, StringComparer.OrdinalIgnoreCase) &&
+                list.Any(c => string.Equals(c, legacyKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        // If this cue has a legacy category, check if all mapped modern categories are disabled
+        if (FilterDictionary.LegacyAliases.TryGetValue(category, out var modernTargets))
+        {
+            if (modernTargets.All(t => list.Any(c => string.Equals(c, t, StringComparison.OrdinalIgnoreCase))))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsCategoryEnabled(string category, IEnumerable<string>? enabledList)
+    {
+        if (enabledList is null)
+        {
+            return false;
+        }
+
+        var list = enabledList as ICollection<string> ?? enabledList.ToList();
+        if (list.Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        // Check legacy alias mappings
+        foreach (var (legacyKey, targets) in FilterDictionary.LegacyAliases)
+        {
+            if (targets.Contains(category, StringComparer.OrdinalIgnoreCase) &&
+                list.Any(c => string.Equals(c, legacyKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        if (FilterDictionary.LegacyAliases.TryGetValue(category, out var modernTargets))
+        {
+            if (modernTargets.Any(t => list.Any(c => string.Equals(c, t, StringComparison.OrdinalIgnoreCase))))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

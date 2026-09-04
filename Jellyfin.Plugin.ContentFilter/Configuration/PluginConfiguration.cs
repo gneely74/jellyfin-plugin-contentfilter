@@ -30,6 +30,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether substances filtering is enabled.</summary>
     public bool SubstancesEnabled { get; set; } = true;
 
+    /// <summary>Gets or sets a value indicating whether frightening and intense scene filtering is enabled (IMDb/VidAngel standard).</summary>
+    public bool FrighteningEnabled { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether other playback and medical filtering is enabled.</summary>
+    public bool OtherEnabled { get; set; } = false;
+
     /// <summary>Gets or sets a value indicating whether medical filtering is enabled.</summary>
     public bool MedicalEnabled { get; set; } = false;
 
