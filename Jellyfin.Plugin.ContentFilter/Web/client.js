@@ -139,6 +139,31 @@
         });
     }
 
+    function resolveMediaItemId(video) {
+        if (video) {
+            var src = video.currentSrc || video.src || '';
+            var m = src.match(/(?:\/videos\/|[?&]mediasourceid=|\/items\/|\/videos\/transcode\/)([a-f0-9]{32})/i);
+            if (m) return m[1];
+
+            var poster = video.poster || '';
+            var pm = poster.match(/\/items\/([a-f0-9]{32})/i);
+            if (pm) return pm[1];
+        }
+
+        try {
+            if (window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
+                var curItem = window.playbackManager.currentItem();
+                if (curItem && curItem.Id) return curItem.Id;
+            }
+        } catch (e) {}
+
+        var hash = window.location.hash || '';
+        var match = hash.match(/[?&]id=([a-f0-9]{32})/i);
+        if (match) return match[1];
+
+        return null;
+    }
+
     function checkCues() {
         if (!activeFilter || !activeVideo || activeVideo.paused) {
             return;
@@ -154,7 +179,7 @@
 
             // 1. Skip check (video or both channels)
             if (cue.action === 'skip' && cue.channel !== 'audio') {
-                if (cur >= (cue.start - 0.05) && cur < cue.end) {
+                if (cur >= (cue.start - 0.2) && cur < (cue.end - 0.1)) {
                     if (lastSkippedCue !== cue.key) {
                         lastSkippedCue = cue.key;
                         console.log('[ContentFilter] Skipping cue:', cue.category, 'from', cur, 'to', cue.end);
@@ -184,7 +209,7 @@
 
             // 2. Mute check (mute action or audio-channel skip)
             if (cue.action === 'mute' || (cue.action === 'skip' && cue.channel === 'audio')) {
-                if (cur >= (cue.start - 0.05) && cur < cue.end) {
+                if (cur >= (cue.start - 0.2) && cur < cue.end) {
                     shouldMute = true;
                     muteDescription = cue.description || cue.category.split('.').pop() || 'Audio Filtered';
                 }
@@ -213,7 +238,7 @@
     }
 
     function attachToVideo(video, itemId) {
-        if (!video) return;
+        if (!video || !itemId) return;
 
         if (activeVideo === video && activeFilter && activeFilter.itemId === itemId) {
             return;
@@ -229,6 +254,7 @@
 
             activeFilter = filter;
             video.addEventListener('timeupdate', checkCues);
+            video.addEventListener('seeked', checkCues);
             pollInterval = setInterval(checkCues, 150);
 
             showHud('Content Filter Active (' + filter.cues.length + ' cues)', '🛡️');
@@ -239,6 +265,7 @@
         if (activeVideo) {
             try {
                 activeVideo.removeEventListener('timeupdate', checkCues);
+                activeVideo.removeEventListener('seeked', checkCues);
                 if (isMutedByFilter) {
                     activeVideo.muted = false;
                 }
@@ -257,22 +284,13 @@
     }
 
     function onPlaybackStart(e, state) {
-        var item = state ? (state.Item || state.NowPlayingItem) : null;
-        if (!item && window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
-            item = window.playbackManager.currentItem();
-        }
-
-        var itemId = item ? item.Id : null;
-        if (!itemId) {
-            // Check URL hash for itemId
-            var hash = window.location.hash || '';
-            var match = hash.match(/[?&]id=([a-f0-9]+)/i);
-            if (match) {
-                itemId = match[1];
-            }
-        }
-
         var video = document.querySelector('video');
+        var itemId = resolveMediaItemId(video);
+        if (state) {
+            var item = state.Item || state.NowPlayingItem;
+            if (item && item.Id) itemId = item.Id;
+        }
+
         if (video && itemId) {
             attachToVideo(video, itemId);
         }
@@ -288,27 +306,27 @@
             window.Events.on(window.playbackManager || document, 'playbackstop', onPlaybackStop);
         }
 
+        document.addEventListener('playbackstart', onPlaybackStart);
+        document.addEventListener('playbackprogress', function (e) {
+            var video = document.querySelector('video');
+            if (video && (!activeVideo || !activeFilter)) {
+                var itemId = (e.detail && e.detail.ItemId) || resolveMediaItemId(video);
+                if (itemId) attachToVideo(video, itemId);
+            }
+        });
+
         // Background polling fallback for player detection
         setInterval(function () {
             var video = document.querySelector('video');
-            if (video && !video.paused && (!activeVideo || !activeFilter)) {
-                var itemId = null;
-                if (window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
-                    var curItem = window.playbackManager.currentItem();
-                    if (curItem) itemId = curItem.Id;
-                }
-                if (!itemId) {
-                    var hash = window.location.hash || '';
-                    var match = hash.match(/[?&]id=([a-f0-9]+)/i);
-                    if (match) itemId = match[1];
-                }
-                if (video && itemId) {
+            if (video && (!activeVideo || !activeFilter)) {
+                var itemId = resolveMediaItemId(video);
+                if (itemId) {
                     attachToVideo(video, itemId);
                 }
             } else if (!video && activeVideo) {
                 detach();
             }
-        }, 1000);
+        }, 800);
     }
 
     if (document.readyState === 'loading') {
