@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Jellyfin.Plugin.ContentFilter.Models;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ContentFilter.Services;
@@ -12,6 +14,7 @@ public class FilterStore
 {
     private readonly ILogger<FilterStore> _logger;
     private readonly SubtitleFilter _subtitleFilter;
+    private readonly ILibraryManager _libraryManager;
     private readonly ConcurrentDictionary<Guid, JcfFilter> _cache = new();
 
     /// <summary>
@@ -19,16 +22,18 @@ public class FilterStore
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="subtitleFilter">The subtitle filtering service.</param>
-    public FilterStore(ILogger<FilterStore> logger, SubtitleFilter subtitleFilter)
+    /// <param name="libraryManager">The Jellyfin library manager.</param>
+    public FilterStore(ILogger<FilterStore> logger, SubtitleFilter subtitleFilter, ILibraryManager libraryManager)
     {
         _logger = logger;
         _subtitleFilter = subtitleFilter;
+        _libraryManager = libraryManager;
     }
 
     private string FiltersPath => Path.Combine(Plugin.Instance!.DataFolderPath, "filters");
 
     /// <summary>
-    /// Loads a filter for an item.
+    /// Loads a filter for an item, checking memory cache, custom filters folder, and disk sidecars.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <returns>The filter if found; otherwise <see langword="null"/>.</returns>
@@ -39,8 +44,8 @@ public class FilterStore
             return cached;
         }
 
-        var path = GetJcfPath(itemId);
-        if (!File.Exists(path))
+        var path = GetEffectiveFilterPath(itemId);
+        if (path is null || !File.Exists(path))
         {
             return null;
         }
@@ -131,16 +136,62 @@ public class FilterStore
     /// <returns><see langword="true"/> when a filter exists; otherwise <see langword="false"/>.</returns>
     public bool HasFilter(Guid itemId)
     {
-        return _cache.ContainsKey(itemId) || File.Exists(GetJcfPath(itemId));
+        return _cache.ContainsKey(itemId) || File.Exists(GetJcfPath(itemId)) || GetSidecarPath(itemId) is not null;
     }
 
     /// <summary>
-    /// Gets the on-disk JCF path for an item.
+    /// Gets the custom on-disk JCF path in the plugin data folder for an item.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <returns>The absolute JCF path.</returns>
     public string GetJcfPath(Guid itemId)
     {
         return Path.Combine(FiltersPath, $"{itemId:N}.jcf");
+    }
+
+    /// <summary>
+    /// Gets the sidecar JCF file path adjacent to the media file on disk, if it exists.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <returns>The sidecar path if found; otherwise <see langword="null"/>.</returns>
+    public string? GetSidecarPath(Guid itemId)
+    {
+        if (_libraryManager.GetItemById(itemId) is not BaseItem item || string.IsNullOrWhiteSpace(item.Path))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(item.Path);
+        var stem = Path.GetFileNameWithoutExtension(item.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem))
+        {
+            return null;
+        }
+
+        string[] candidates =
+        [
+            Path.Combine(dir, $"{stem}.jcf"),
+            Path.Combine(dir, $"{stem}.JCF"),
+            Path.ChangeExtension(item.Path, ".jcf"),
+            Path.ChangeExtension(item.Path, ".JCF")
+        ];
+
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
+    /// <summary>
+    /// Gets the effective JCF path for an item, preferring user-customized plugin filters over disk sidecars.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <returns>The effective JCF path if found; otherwise <see langword="null"/>.</returns>
+    public string? GetEffectiveFilterPath(Guid itemId)
+    {
+        var customPath = GetJcfPath(itemId);
+        if (File.Exists(customPath))
+        {
+            return customPath;
+        }
+
+        return GetSidecarPath(itemId);
     }
 }

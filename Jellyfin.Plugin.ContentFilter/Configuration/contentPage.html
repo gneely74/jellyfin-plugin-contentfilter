@@ -9,6 +9,7 @@
             gap: 8px;
             align-items: center;
             margin-bottom: 12px;
+            flex-wrap: wrap;
         }
 
         .progressContainer {
@@ -25,6 +26,123 @@
             width: 0;
             background: #52b54b;
             transition: width 0.2s ease;
+        }
+
+        .dropZone {
+            border: 2px dashed #52b54b;
+            border-radius: 8px;
+            padding: 24px 16px;
+            text-align: center;
+            background: rgba(82, 181, 75, 0.06);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+            margin-bottom: 16px;
+        }
+
+        .dropZone.dragover {
+            background: rgba(82, 181, 75, 0.22);
+            border-color: #6ee664;
+        }
+
+        .dropZoneIcon {
+            font-size: 30px;
+            margin-bottom: 6px;
+        }
+
+        .dropZoneTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .dropZoneSubtitle {
+            font-size: 12px;
+            color: #9e9e9e;
+            margin-top: 4px;
+        }
+
+        .searchResults {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #1c1c1c;
+            margin-top: -6px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .searchResultItem {
+            padding: 9px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .searchResultItem:hover {
+            background: #2a2a2a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 3px;
+            background: #333;
+            color: #ddd;
+            margin-left: 6px;
+        }
+
+        .badge-green {
+            background: #2e7d32;
+            color: #fff;
+        }
+
+        .badge-blue {
+            background: #1565c0;
+            color: #fff;
+        }
+
+        .badge-orange {
+            background: #e65100;
+            color: #fff;
+        }
+
+        .previewCard {
+            background: #232323;
+            border: 1px solid #52b54b;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+        .previewHeader {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .previewDetails {
+            font-size: 13px;
+            color: #ccc;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .batchReport {
+            background: #232323;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            display: none;
+            font-size: 13px;
         }
 
         table {
@@ -50,25 +168,58 @@
             <div class="content-primary">
                 <h2>Jellyfin Content Filter - Segments</h2>
 
+                <!-- Library Media Search -->
+                <div class="inputContainer" style="margin-bottom: 8px;">
+                    <label class="inputLabel inputLabelUnfocused" for="mediaSearchInput">Search Library Media</label>
+                    <input id="mediaSearchInput" type="text" is="emby-input" placeholder="Type movie or episode title to search...">
+                </div>
+                <div id="searchResultsList" class="searchResults"></div>
+
                 <div class="row">
-                    <div class="inputContainer" style="flex:1;">
-                        <label class="inputLabel inputLabelUnfocused" for="itemIdInput">Item ID</label>
+                    <div class="inputContainer" style="flex:1; min-width: 250px;">
+                        <label class="inputLabel inputLabelUnfocused" for="itemIdInput">Item ID (GUID)</label>
                         <input id="itemIdInput" type="text" is="emby-input">
                     </div>
-                    <button id="loadItemButton" is="emby-button" type="button" class="raised emby-button">Load</button>
+                    <button id="loadItemButton" is="emby-button" type="button" class="raised emby-button">Load Item</button>
+                    <button id="scanSidecarsButton" is="emby-button" type="button" class="raised emby-button">Scan Disk Sidecars</button>
                 </div>
 
-                <div id="itemSummary" style="margin-bottom:10px;">No item loaded.</div>
-                <div id="statusText" style="margin-bottom:10px;">Status: idle</div>
+                <!-- Drag and Drop Zone -->
+                <div id="dropZone" class="dropZone">
+                    <div class="dropZoneIcon">📥</div>
+                    <div class="dropZoneTitle">Drag &amp; Drop JCF File(s) Here</div>
+                    <div class="dropZoneSubtitle">or click to browse from computer (supports single files or entire seasons)</div>
+                    <input id="uploadFileInput" type="file" accept=".jcf,text/plain" multiple style="display:none;">
+                </div>
+
+                <!-- Import Preview Card -->
+                <div id="previewCard" class="previewCard">
+                    <div class="previewHeader">
+                        <span id="previewTitle">JCF Filter Preview</span>
+                        <button id="previewCloseButton" type="button" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;">✕</button>
+                    </div>
+                    <div id="previewDetails" class="previewDetails"></div>
+                    <div id="previewCandidatesList" style="margin-bottom:10px; display:none;"></div>
+                    <div class="row" style="margin-bottom:0;">
+                        <button id="previewConfirmButton" is="emby-button" type="button" class="raised emby-button">Save &amp; Apply Filter</button>
+                    </div>
+                </div>
+
+                <!-- Batch Import Report -->
+                <div id="batchReport" class="batchReport">
+                    <div style="font-weight:600; margin-bottom:6px;" id="batchReportTitle">Batch Import Progress</div>
+                    <div id="batchReportContent"></div>
+                </div>
+
+                <div id="itemSummary" style="margin-bottom:8px; font-weight:600; font-size:15px;">No item loaded.</div>
+                <div id="statusText" style="margin-bottom:8px;">Status: idle</div>
                 <div class="progressContainer">
                     <div id="scanProgressBar" class="progressBar"></div>
                 </div>
 
                 <div class="row">
-                    <button id="scanButton" is="emby-button" type="button" class="raised emby-button">Scan</button>
+                    <button id="scanButton" is="emby-button" type="button" class="raised emby-button">Scan Visual &amp; Audio</button>
                     <button id="downloadButton" is="emby-button" type="button" class="raised emby-button">Download JCF</button>
-                    <input id="uploadFileInput" type="file" accept=".jcf,text/plain">
-                    <button id="uploadButton" is="emby-button" type="button" class="raised emby-button">Upload JCF</button>
                 </div>
 
                 <table id="segmentsTable">
@@ -88,6 +239,9 @@
         <script type="text/javascript">
             var currentItemId = '';
             var pollHandle = null;
+            var searchTimeout = null;
+            var pendingImportFile = null;
+            var pendingImportData = null;
 
             function getQueryParam(name) {
                 var hash = window.location.hash || '';
@@ -107,7 +261,6 @@
                 if (typeof value !== 'number' || isNaN(value)) {
                     return 0;
                 }
-
                 var normalized = value <= 1 ? value * 100 : value;
                 return Math.max(0, Math.min(100, normalized));
             }
@@ -209,13 +362,94 @@
                     renderSegments((payload && payload.cues) || []);
                 }).catch(function (err) {
                     if (err && err.status === 404) {
-                        getEl('itemSummary').textContent = 'No filter found for this item.';
+                        getEl('itemSummary').textContent = 'No filter active for this item.';
                         renderSegments([]);
                     } else {
                         getEl('itemSummary').textContent = 'Failed to load filter.';
                     }
                 });
             }
+
+            function selectItem(id, name, yearText) {
+                currentItemId = id;
+                getEl('itemIdInput').value = id;
+                getEl('searchResultsList').style.display = 'none';
+                getEl('itemSummary').textContent = name + (yearText ? (' (' + yearText + ')') : '');
+                stopPolling();
+                loadFilter();
+                refreshStatus();
+            }
+
+            // Real-time library search
+            getEl('mediaSearchInput').addEventListener('input', function (e) {
+                var query = e.target.value.trim();
+                clearTimeout(searchTimeout);
+                if (query.length < 2) {
+                    getEl('searchResultsList').style.display = 'none';
+                    return;
+                }
+
+                searchTimeout = setTimeout(function () {
+                    fetch(apiUrl('ContentFilter/items/search?query=' + encodeURIComponent(query)), {
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                    }).then(function (res) {
+                        return res.json();
+                    }).then(function (items) {
+                        var list = getEl('searchResultsList');
+                        list.innerHTML = '';
+                        if (!items || items.length === 0) {
+                            list.style.display = 'none';
+                            return;
+                        }
+
+                        items.forEach(function (item) {
+                            var row = document.createElement('div');
+                            row.className = 'searchResultItem';
+
+                            var titleSpan = document.createElement('span');
+                            var title = item.name || 'Untitled';
+                            if (item.seriesName) {
+                                title = item.seriesName + ' - ' + (item.seasonNumber != null ? ('S' + String(item.seasonNumber).padStart(2, '0')) : '') + (item.episodeNumber != null ? ('E' + String(item.episodeNumber).padStart(2, '0') + ' ') : ' ') + title;
+                            }
+                            if (item.year) {
+                                title += ' (' + item.year + ')';
+                            }
+                            titleSpan.textContent = title;
+                            row.appendChild(titleSpan);
+
+                            var badgesSpan = document.createElement('span');
+                            if (item.hasFilter) {
+                                var b = document.createElement('span');
+                                b.className = 'badge badge-green';
+                                b.textContent = 'Filter Active';
+                                badgesSpan.appendChild(b);
+                            } else if (item.hasSidecar) {
+                                var b2 = document.createElement('span');
+                                b2.className = 'badge badge-blue';
+                                b2.textContent = 'Sidecar Found';
+                                badgesSpan.appendChild(b2);
+                            }
+                            row.appendChild(badgesSpan);
+
+                            row.addEventListener('click', function () {
+                                selectItem(item.id, item.name, item.year);
+                            });
+                            list.appendChild(row);
+                        });
+
+                        list.style.display = 'block';
+                    }).catch(function () {
+                        getEl('searchResultsList').style.display = 'none';
+                    });
+                }, 250);
+            });
+
+            // Close search results on outer click
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#mediaSearchInput') && !e.target.closest('#searchResultsList')) {
+                    getEl('searchResultsList').style.display = 'none';
+                }
+            });
 
             function updateCue(cueKey, action, description) {
                 if (!currentItemId) return;
@@ -229,7 +463,7 @@
 
             function startScan() {
                 if (!currentItemId) {
-                    getEl('statusText').textContent = 'Status: Enter an Item ID and click Load first.';
+                    getEl('statusText').textContent = 'Status: Search or select an item first.';
                     return;
                 }
                 ApiClient.ajax({
@@ -241,7 +475,6 @@
                     refreshStatus();
                 }).catch(function (err) {
                     if (err && err.status === 409) {
-                        // already scanning
                         stopPolling();
                         pollHandle = setInterval(refreshStatus, 2000);
                         refreshStatus();
@@ -251,45 +484,205 @@
                 });
             }
 
-            function uploadFilter() {
-                if (!currentItemId) {
-                    getEl('statusText').textContent = 'Status: Enter an Item ID and click Load first.';
-                    return;
-                }
-                var fileInput = getEl('uploadFileInput');
-                if (!fileInput.files || fileInput.files.length === 0) {
-                    getEl('statusText').textContent = 'Status: Choose a .jcf file first.';
-                    return;
-                }
+            // Drag and drop handlers
+            var dropZone = getEl('dropZone');
+            var fileInput = getEl('uploadFileInput');
 
-                // Jellyfin ApiClient.ajax URL-encodes object bodies and does not support
-                // multipart FormData (jQuery-style contentType/processData flags are ignored).
-                // Use fetch so the browser sets multipart boundaries correctly.
-                var form = new FormData();
-                form.append('file', fileInput.files[0], fileInput.files[0].name);
+            dropZone.addEventListener('click', function () {
+                fileInput.click();
+            });
 
-                getEl('statusText').textContent = 'Status: Uploading…';
-                fetch(apiUrl('ContentFilter/filters/' + currentItemId), {
-                    method: 'POST',
-                    headers: {
-                        'X-Emby-Token': ApiClient.accessToken()
-                    },
-                    body: form
-                }).then(function (response) {
-                    if (!response.ok) {
-                        return response.text().then(function (text) {
-                            var detail = (text || '').trim();
-                            throw new Error(response.status + (detail ? (': ' + detail) : ''));
+            dropZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', function () {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleIncomingFiles(e.dataTransfer.files);
+                }
+            });
+
+            fileInput.addEventListener('change', function () {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    handleIncomingFiles(fileInput.files);
+                }
+            });
+
+            function handleIncomingFiles(fileList) {
+                if (fileList.length === 1) {
+                    processSingleFile(fileList[0]);
+                } else {
+                    processBatchFiles(fileList);
+                }
+            }
+
+            function renderCategoryBadges(categories) {
+                if (!categories) return '';
+                return Object.keys(categories).map(function (cat) {
+                    return '<span class="badge">' + cat + ': ' + categories[cat] + '</span>';
+                }).join(' ');
+            }
+
+            function showPreviewCard(title, detailsHtml, candidates, onConfirm) {
+                getEl('previewTitle').textContent = title;
+                getEl('previewDetails').innerHTML = detailsHtml;
+
+                var candidatesList = getEl('previewCandidatesList');
+                candidatesList.innerHTML = '';
+                if (candidates && candidates.length > 0) {
+                    candidatesList.style.display = 'block';
+                    var prompt = document.createElement('div');
+                    prompt.style.fontWeight = '600';
+                    prompt.style.marginBottom = '6px';
+                    prompt.textContent = 'Multiple library matches found — choose one:';
+                    candidatesList.appendChild(prompt);
+
+                    candidates.forEach(function (cand) {
+                        var candRow = document.createElement('div');
+                        candRow.className = 'searchResultItem';
+                        candRow.style.borderRadius = '4px';
+                        candRow.style.marginBottom = '4px';
+                        candRow.textContent = cand.name + (cand.year ? (' (' + cand.year + ')') : '') + ' [' + (cand.type || 'Media') + ']';
+                        candRow.addEventListener('click', function () {
+                            candidatesList.style.display = 'none';
+                            onConfirm(cand.id);
                         });
+                        candidatesList.appendChild(candRow);
+                    });
+                    getEl('previewConfirmButton').style.display = 'none';
+                } else {
+                    candidatesList.style.display = 'none';
+                    getEl('previewConfirmButton').style.display = 'inline-block';
+                    getEl('previewConfirmButton').onclick = function () {
+                        onConfirm(currentItemId);
+                    };
+                }
+
+                getEl('previewCard').style.display = 'block';
+            }
+
+            getEl('previewCloseButton').addEventListener('click', function () {
+                getEl('previewCard').style.display = 'none';
+            });
+
+            function processSingleFile(file) {
+                var form = new FormData();
+                form.append('file', file, file.name);
+
+                var queryUrl = currentItemId
+                    ? ('ContentFilter/filters/import?itemId=' + currentItemId)
+                    : 'ContentFilter/filters/import?saveIfMatched=true';
+
+                getEl('statusText').textContent = 'Status: Inspecting JCF file ' + file.name + '…';
+
+                fetch(apiUrl(queryUrl), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() },
+                    body: form
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (data) {
+                    if (data.matched && data.saved) {
+                        // Unique match saved
+                        var targetId = (data.item && data.item.id) || currentItemId;
+                        selectItem(targetId, (data.item && data.item.name) || data.title, (data.item && data.item.year) || data.year);
+                        getEl('statusText').textContent = 'Status: Successfully imported ' + data.cues + ' cues for ' + ((data.item && data.item.name) || data.title) + '!';
+                        getEl('previewCard').style.display = 'none';
+                    } else if (!data.matched && data.candidates && data.candidates.length > 0) {
+                        // Ambiguous matches: prompt user to pick
+                        var details = 'File: <b>' + file.name + '</b><br>' +
+                                      'Cues: <b>' + (data.preview && data.preview.cues) + '</b> ' +
+                                      renderCategoryBadges(data.preview && data.preview.categories);
+
+                        showPreviewCard('Select Target Media for ' + file.name, details, data.candidates, function (chosenId) {
+                            var saveForm = new FormData();
+                            saveForm.append('file', file, file.name);
+                            fetch(apiUrl('ContentFilter/filters/import?itemId=' + chosenId), {
+                                method: 'POST',
+                                headers: { 'X-Emby-Token': ApiClient.accessToken() },
+                                body: saveForm
+                            }).then(function () {
+                                selectItem(chosenId, file.name, '');
+                                getEl('previewCard').style.display = 'none';
+                                getEl('statusText').textContent = 'Status: Filter successfully saved to selected item!';
+                            });
+                        });
+                    } else {
+                        getEl('statusText').textContent = 'Status: No matching media found in library for ' + file.name + '. Select an item above first.';
                     }
-                    getEl('statusText').textContent = 'Status: Upload complete';
-                    return loadFilter();
                 }).catch(function (err) {
-                    getEl('statusText').textContent = 'Status: Upload failed (' + (err && err.message ? err.message : err) + ')';
+                    getEl('statusText').textContent = 'Status: Import failed: ' + err.message;
                 });
             }
 
-            // Auto-load item ID from URL parameter (?itemId=... or &itemId=...)
+            function processBatchFiles(files) {
+                var report = getEl('batchReport');
+                var content = getEl('batchReportContent');
+                report.style.display = 'block';
+                content.innerHTML = 'Starting batch import for ' + files.length + ' files…<br>';
+
+                var index = 0;
+                function next() {
+                    if (index >= files.length) {
+                        content.innerHTML += '<br><b>Batch import completed!</b>';
+                        if (currentItemId) loadFilter();
+                        return;
+                    }
+
+                    var file = files[index];
+                    var form = new FormData();
+                    form.append('file', file, file.name);
+
+                    content.innerHTML += 'Processing [' + (index + 1) + '/' + files.length + '] ' + file.name + '… ';
+
+                    fetch(apiUrl('ContentFilter/filters/import?saveIfMatched=true'), {
+                        method: 'POST',
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() },
+                        body: form
+                    }).then(function (res) {
+                        return res.json();
+                    }).then(function (data) {
+                        if (data.matched && data.saved) {
+                            content.innerHTML += '<span style="color:#52b54b;">Matched to ' + (data.item ? data.item.name : data.title) + ' (' + data.cues + ' cues) ✓</span><br>';
+                        } else {
+                            content.innerHTML += '<span style="color:#ff9800;">No unique match found in library.</span><br>';
+                        }
+                    }).catch(function (err) {
+                        content.innerHTML += '<span style="color:#f44336;">Failed: ' + err.message + '</span><br>';
+                    }).finally(function () {
+                        index++;
+                        next();
+                    });
+                }
+
+                next();
+            }
+
+            // Disk sidecar scanning
+            getEl('scanSidecarsButton').addEventListener('click', function () {
+                getEl('statusText').textContent = 'Status: Scanning library for disk sidecars (.jcf)…';
+                fetch(apiUrl('ContentFilter/filters/scan-sidecars'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (data) {
+                    var total = data.total || 0;
+                    getEl('statusText').textContent = 'Status: Discovered ' + total + ' JCF sidecar file(s) on disk.';
+                    if (currentItemId) loadFilter();
+                }).catch(function (err) {
+                    getEl('statusText').textContent = 'Status: Sidecar scan failed (' + err.message + ')';
+                });
+            });
+
+            // Initial load
             (function () {
                 var id = getQueryParam('itemId');
                 if (id) {
@@ -312,7 +705,6 @@
             });
 
             getEl('scanButton').addEventListener('click', startScan);
-            getEl('uploadButton').addEventListener('click', uploadFilter);
 
             getEl('downloadButton').addEventListener('click', function () {
                 if (!currentItemId) return;
