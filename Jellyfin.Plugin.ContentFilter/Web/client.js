@@ -204,15 +204,25 @@
 
         // 2. Jellyfin playbackManager
         try {
-            if (window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
-                var curItem = window.playbackManager.currentItem();
-                if (curItem && curItem.Id) return curItem.Id;
+            if (window.playbackManager) {
+                var curItem = null;
+                if (typeof window.playbackManager.currentItem === 'function') {
+                    curItem = window.playbackManager.currentItem();
+                } else if (typeof window.playbackManager.getCurrentItem === 'function') {
+                    curItem = window.playbackManager.getCurrentItem();
+                } else if (window.playbackManager.currentItem) {
+                    curItem = window.playbackManager.currentItem;
+                }
+                if (curItem) {
+                    var id = curItem.Id || curItem.id || curItem.ItemId;
+                    if (id) return id;
+                }
             }
         } catch (e) {}
 
-        // 3. Current URL hash
-        var hash = window.location.hash || '';
-        var match = hash.match(/[?&]id=([a-f0-9]{32})/i);
+        // 3. Current URL hash, search, or href
+        var urlStr = (window.location.hash || '') + ' ' + (window.location.search || '') + ' ' + (window.location.href || '');
+        var match = urlStr.match(/[?&#](?:id|itemId)=([a-f0-9]{32})/i);
         if (match) return match[1];
 
         return null;
@@ -874,26 +884,26 @@
                 '  </div>',
                 '</div>',
                 '',
-                '                // Tab 5: Rules & Category Overrides View',
-                '                \'<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:14px;">\',',
-                '                \'  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">\',',
-                '                \'    <div>\',',
-                '                \'      <div style="font-weight:700; color:#38bdf8; font-size:13px;" id="cfPlayerRulesSource">Rules: Global Defaults</div>\',',
-                '                \'      <div style="font-size:11px; color:#94a3b8;" id="cfPlayerRulesDesc">Filters active globally are applied to this media.</div>\',',
-                '                \'    </div>\',',
-                '                \'    <div style="display:flex; gap:6px;">\',',
-                '                \'      <button id="cfPlayerSaveRulesBtn" style="background:#0284c7; border:none; color:#ffffff; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">💾 Save Rules</button>\',',
-                '                \'      <button id="cfPlayerResetRulesBtn" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">↺ Revert</button>\',',
-                '                \'    </div>\',',
-                '                \'  </div>\',',
-                '                \'  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">\',',
-                '                \'    <input type="checkbox" id="cfPlayerCustomRulesToggle" style="cursor:pointer; width:15px; height:15px;">\',',
-                '                \'    <span style="font-weight:600; color:#f8fafc; font-size:12px;">Override rules for this specific show / movie</span>\',',
-                '                \'  </label>\',',
-                '                \'  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; max-height:42vh; overflow-y:auto; padding-right:4px;"></div>\',',
-                '                \'  <div id="cfPlayerRulesStatus" style="font-size:11px; color:#4ade80;"></div>\',',
-                '                \'</div>\'',
-                '            ].join(\'\\n\');'
+                // Tab 5: Rules & Category Overrides View
+                '<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:14px;">',
+                '  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">',
+                '    <div>',
+                '      <div style="font-weight:700; color:#38bdf8; font-size:13px;" id="cfPlayerRulesSource">Rules: Global Defaults</div>',
+                '      <div style="font-size:11px; color:#94a3b8;" id="cfPlayerRulesDesc">Filters active globally are applied to this media.</div>',
+                '    </div>',
+                '    <div style="display:flex; gap:6px;">',
+                '      <button id="cfPlayerSaveRulesBtn" style="background:#0284c7; border:none; color:#ffffff; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">💾 Save Rules</button>',
+                '      <button id="cfPlayerResetRulesBtn" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">↺ Revert</button>',
+                '    </div>',
+                '  </div>',
+                '  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">',
+                '    <input type="checkbox" id="cfPlayerCustomRulesToggle" style="cursor:pointer; width:15px; height:15px;">',
+                '    <span style="font-weight:600; color:#f8fafc; font-size:12px;">Override rules for this specific show / movie</span>',
+                '  </label>',
+                '  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; max-height:42vh; overflow-y:auto; padding-right:4px;"></div>',
+                '  <div id="cfPlayerRulesStatus" style="font-size:11px; color:#4ade80;"></div>',
+                '</div>'
+            ].join('\n');
 
             wireEditorEvents(editorModal);
         }
@@ -2268,7 +2278,12 @@
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
                 return;
             }
-            if (activeVideo) {
+            var vid = activeVideo || document.querySelector('video');
+            if (vid) {
+                if (!activeVideo) {
+                    var iid = resolveMediaItemId(vid);
+                    if (iid) attachToVideo(vid, iid);
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 toggleEditorModal();
@@ -2280,6 +2295,7 @@
         if (!video || !itemId) return;
 
         if (activeVideo === video && activeItemId === itemId) {
+            ensureLauncherButton();
             return;
         }
 
@@ -2370,6 +2386,8 @@
                 var itemId = resolveMediaItemId(video);
                 if (itemId && itemId !== activeItemId) {
                     attachToVideo(video, itemId);
+                } else if (itemId && activeVideo) {
+                    ensureLauncherButton();
                 }
             } else if (!video && activeVideo) {
                 detach();
