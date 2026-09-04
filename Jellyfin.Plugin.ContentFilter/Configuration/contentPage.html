@@ -3149,16 +3149,24 @@
                         return;
                     }
                     var sorted = studioSubtitleTracks.slice().sort(function(a, b) {
-                        var aEn = (a.language || '').toLowerCase().startsWith('en') ? 1 : 0;
-                        var bEn = (b.language || '').toLowerCase().startsWith('en') ? 1 : 0;
+                        var aLang = (a.Language || a.language || '').toLowerCase();
+                        var bLang = (b.Language || b.language || '').toLowerCase();
+                        var aEn = aLang.startsWith('en') ? 1 : 0;
+                        var bEn = bLang.startsWith('en') ? 1 : 0;
                         return bEn - aEn;
                     });
                     sorted.forEach(function(tr) {
                         var opt = document.createElement('option');
-                        opt.value = tr.isExternal ? (tr.language || 'eng') : String(tr.index);
-                        var codec = tr.codec ? (' (' + tr.codec + ')') : '';
-                        var ext = tr.isExternal ? ' [ext]' : '';
-                        opt.textContent = (tr.displayName || tr.language || 'Subtitles') + codec + ext;
+                        var lang = tr.Language || tr.language || 'eng';
+                        var idx = (tr.Index !== undefined) ? tr.Index : tr.index;
+                        var isExt = (tr.IsExternal !== undefined) ? tr.IsExternal : tr.isExternal;
+                        var dName = tr.DisplayName || tr.displayName || lang;
+                        var cdc = tr.Codec || tr.codec;
+                        var cdcText = cdc ? (' (' + cdc + ')') : '';
+                        var extText = isExt ? ' [ext]' : '';
+
+                        opt.value = isExt ? lang : String(idx);
+                        opt.textContent = dName + cdcText + extText;
                         sel.appendChild(opt);
                     });
                     var defaultOpt = Array.from(sel.options).find(function (o) {
@@ -3201,9 +3209,9 @@
                     return res.json();
                 }).then(function(data) {
                     studioSubtitleWords = data;
-                    var list = (data && data.words) || [];
+                    var list = (data && (data.Words || data.words)) || [];
                     badge.textContent = list.length;
-                    statusEl.textContent = '✓ Found ' + list.length + ' filterable word(s) (' + (data.totalProfanities || 0) + ' total occurrences)';
+                    statusEl.textContent = '✓ Found ' + list.length + ' filterable word(s) (' + ((data.TotalOccurrences || data.totalOccurrences || data.TotalProfanities || data.totalProfanities || 0)) + ' total occurrences)';
                     renderStudioSubtitleWords(document.getElementById('studioSearchWordsInput').value.trim());
                 }).catch(function(err) {
                     statusEl.textContent = 'Scan failed: ' + err.message;
@@ -3215,7 +3223,7 @@
                 var container = document.getElementById('studioWordsListContainer');
                 if (!container) return;
 
-                var groups = (studioSubtitleWords && studioSubtitleWords.words) || [];
+                var groups = (studioSubtitleWords && (studioSubtitleWords.Words || studioSubtitleWords.words)) || [];
                 if (groups.length === 0) {
                     container.innerHTML = '<div style="text-align:center; color:var(--cf-text-dim); padding:32px;">No filterable words found in this subtitle track.</div>';
                     return;
@@ -3223,9 +3231,10 @@
 
                 var filterLower = (searchTerm || '').toLowerCase();
                 var filtered = groups.filter(function(g) {
+                    var gw = (g.Word || g.word || '').toLowerCase();
+                    var gc = (g.Category || g.category || '').toLowerCase();
                     if (!filterLower) return true;
-                    return g.word.toLowerCase().indexOf(filterLower) !== -1 ||
-                           (g.category && g.category.toLowerCase().indexOf(filterLower) !== -1);
+                    return gw.indexOf(filterLower) !== -1 || gc.indexOf(filterLower) !== -1;
                 });
 
                 if (filtered.length === 0) {
@@ -3235,8 +3244,15 @@
 
                 container.innerHTML = '';
                 filtered.forEach(function(g, gIdx) {
+                    var gWord = g.Word || g.word || '';
+                    var gCat = g.Category || g.category || 'General';
+                    var gCount = (g.Count !== undefined) ? g.Count : g.count;
+                    var isFiltered = (g.IsFiltered !== undefined) ? g.IsFiltered : g.isFiltered;
+                    var isGlobal = (g.IsGlobalBlanket !== undefined) ? g.IsGlobalBlanket : g.isGlobalBlanket;
+                    var occList = g.Occurrences || g.occurrences || [];
+
                     var card = document.createElement('div');
-                    card.style.cssText = 'background:var(--cf-bg-card); border:1px solid ' + (g.isFiltered ? 'rgba(16, 185, 129, 0.4)' : 'var(--cf-border)') + '; border-radius:var(--cf-radius); padding:12px 14px; display:flex; flex-direction:column; gap:10px;';
+                    card.style.cssText = 'background:var(--cf-bg-card); border:1px solid ' + (isFiltered ? 'rgba(16, 185, 129, 0.4)' : 'var(--cf-border)') + '; border-radius:var(--cf-radius); padding:12px 14px; display:flex; flex-direction:column; gap:10px;';
 
                     var topRow = document.createElement('div');
                     topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;';
@@ -3244,10 +3260,10 @@
                     var left = document.createElement('div');
                     left.style.cssText = 'display:flex; align-items:center; gap:8px;';
                     left.innerHTML = 
-                        '<strong style="font-size:15px; color:#fff;">' + esc(g.word) + '</strong>' +
-                        '<span class="cf-pill ' + getCategoryClass(g.category) + '">' + esc(g.category) + '</span>' +
-                        '<span class="cf-pill cf-pill-blue" style="font-weight:700;">' + g.count + 'x</span>' +
-                        (g.isFiltered ? '<span class="cf-pill cf-pill-green">✓ Filtered</span>' : '');
+                        '<strong style="font-size:15px; color:#fff;">' + esc(gWord) + '</strong>' +
+                        '<span class="cf-pill ' + getCategoryClass(gCat) + '">' + esc(gCat) + '</span>' +
+                        '<span class="cf-pill cf-pill-blue" style="font-weight:700;">' + gCount + 'x</span>' +
+                        (isFiltered ? '<span class="cf-pill cf-pill-green">✓ Filtered</span>' : '');
 
                     var right = document.createElement('div');
                     right.style.cssText = 'display:flex; align-items:center; gap:8px;';
@@ -3257,18 +3273,18 @@
                     globalLabel.title = 'Filter this word across ALL library items';
                     var globalCb = document.createElement('input');
                     globalCb.type = 'checkbox';
-                    globalCb.checked = !!g.isGlobalBlanket;
+                    globalCb.checked = !!isGlobal;
                     globalLabel.appendChild(globalCb);
                     globalLabel.appendChild(document.createTextNode('🌐 Global'));
                     right.appendChild(globalLabel);
 
-                    if (g.isFiltered) {
+                    if (isFiltered) {
                         var unfilterBtn = document.createElement('button');
                         unfilterBtn.className = 'cf-btn cf-btn-sm';
                         unfilterBtn.style.cssText = 'background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444;';
                         unfilterBtn.textContent = '🗑️ Unfilter';
                         unfilterBtn.addEventListener('click', function() {
-                            removeStudioWordFilter(g.word, globalCb.checked);
+                            removeStudioWordFilter(gWord, globalCb.checked);
                         });
                         right.appendChild(unfilterBtn);
                     } else {
@@ -3276,14 +3292,14 @@
                         blanketBtn.className = 'cf-btn cf-btn-sm cf-btn-primary';
                         blanketBtn.textContent = '⚡ Blanket Mute';
                         blanketBtn.addEventListener('click', function() {
-                            applyStudioBlanketFilter(g.word, globalCb.checked);
+                            applyStudioBlanketFilter(gWord, globalCb.checked);
                         });
                         right.appendChild(blanketBtn);
                     }
 
                     var toggleBtn = document.createElement('button');
                     toggleBtn.className = 'cf-btn cf-btn-sm';
-                    toggleBtn.textContent = '▼ ' + g.count;
+                    toggleBtn.textContent = '▼ ' + gCount;
                     right.appendChild(toggleBtn);
 
                     topRow.appendChild(left);
@@ -3293,19 +3309,24 @@
                     // Occurrences container
                     var occDiv = document.createElement('div');
                     occDiv.style.cssText = 'display:none; flex-direction:column; gap:6px; border-top:1px solid var(--cf-border); padding-top:8px;';
-                    (g.occurrences || []).forEach(function(occ) {
+                    occList.forEach(function(occ) {
                         var occRow = document.createElement('div');
                         occRow.style.cssText = 'background:var(--cf-bg-input); border:1px solid var(--cf-border); border-radius:6px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;';
 
-                        var escapedWord = g.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        var highlighted = esc(occ.text).replace(new RegExp('(' + escapedWord + ')', 'gi'), '<strong style="color:#f87171; background:rgba(239,68,68,0.2); padding:1px 3px; border-radius:3px;">$1</strong>');
+                        var oStart = occ.Start || occ.start || '';
+                        var oText = occ.Text || occ.text || '';
+                        var cueStart = occ.CueStart || occ.cueStart || oStart;
+                        var cueEnd = occ.CueEnd || occ.cueEnd || '';
+
+                        var escapedWord = gWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        var highlighted = esc(oText).replace(new RegExp('(' + escapedWord + ')', 'gi'), '<strong style="color:#f87171; background:rgba(239,68,68,0.2); padding:1px 3px; border-radius:3px;">$1</strong>');
 
                         occRow.innerHTML = 
                             '<div style="font-size:12px; color:var(--cf-text); line-height:1.4;">' +
-                            '  <span class="cf-time-badge" style="margin-right:6px;">' + esc(occ.start) + '</span>' +
+                            '  <span class="cf-time-badge" style="margin-right:6px;">' + esc(oStart) + '</span>' +
                             '  <span>' + highlighted + '</span>' +
                             '</div>' +
-                            '<span style="font-size:11px; color:var(--cf-text-dim);">' + esc(occ.cueStart) + ' → ' + esc(occ.cueEnd) + '</span>';
+                            '<span style="font-size:11px; color:var(--cf-text-dim);">' + esc(cueStart) + ' → ' + esc(cueEnd) + '</span>';
 
                         occDiv.appendChild(occRow);
                     });
@@ -3313,7 +3334,7 @@
                     toggleBtn.addEventListener('click', function() {
                         var isShown = occDiv.style.display === 'flex';
                         occDiv.style.display = isShown ? 'none' : 'flex';
-                        toggleBtn.textContent = isShown ? ('▼ ' + g.count) : ('▲ ' + g.count);
+                        toggleBtn.textContent = isShown ? ('▼ ' + gCount) : ('▲ ' + gCount);
                     });
 
                     card.appendChild(occDiv);
@@ -3380,12 +3401,14 @@
                 var searchInput = document.getElementById('studioSearchWordsInput');
                 var searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-                var groups = (studioSubtitleWords && studioSubtitleWords.words) || [];
+                var groups = (studioSubtitleWords && (studioSubtitleWords.Words || studioSubtitleWords.words)) || [];
                 var targets = groups.filter(function(g) {
-                    if (g.isFiltered) return false;
+                    var isF = (g.IsFiltered !== undefined) ? g.IsFiltered : g.isFiltered;
+                    if (isF) return false;
                     if (!searchTerm) return true;
-                    return g.word.toLowerCase().indexOf(searchTerm) !== -1 ||
-                           (g.category && g.category.toLowerCase().indexOf(searchTerm) !== -1);
+                    var gw = (g.Word || g.word || '').toLowerCase();
+                    var gc = (g.Category || g.category || '').toLowerCase();
+                    return gw.indexOf(searchTerm) !== -1 || gc.indexOf(searchTerm) !== -1;
                 });
 
                 if (targets.length === 0) {
@@ -3393,7 +3416,7 @@
                     return;
                 }
 
-                var words = targets.map(function(g) { return g.word; });
+                var words = targets.map(function(g) { return g.Word || g.word; });
                 if (!confirm('Blanket filter all ' + words.length + ' visible words in this media item?')) {
                     return;
                 }

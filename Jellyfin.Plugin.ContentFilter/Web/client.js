@@ -1161,17 +1161,25 @@
 
         // Sort: English first
         var sorted = tracks.slice().sort(function (a, b) {
-            var aIsEng = (a.language || '').toLowerCase().startsWith('en') ? 1 : 0;
-            var bIsEng = (b.language || '').toLowerCase().startsWith('en') ? 1 : 0;
+            var aLang = (a.Language || a.language || '').toLowerCase();
+            var bLang = (b.Language || b.language || '').toLowerCase();
+            var aIsEng = aLang.startsWith('en') ? 1 : 0;
+            var bIsEng = bLang.startsWith('en') ? 1 : 0;
             return bIsEng - aIsEng;
         });
 
         sorted.forEach(function (tr) {
             var opt = document.createElement('option');
-            opt.value = tr.isExternal ? (tr.language || 'eng') : String(tr.index);
-            var codec = tr.codec ? (' (' + tr.codec + ')') : '';
-            var ext = tr.isExternal ? ' [ext]' : '';
-            opt.textContent = (tr.displayName || tr.language || 'Subtitles') + codec + ext;
+            var lang = tr.Language || tr.language || 'eng';
+            var idx = (tr.Index !== undefined) ? tr.Index : tr.index;
+            var isExt = (tr.IsExternal !== undefined) ? tr.IsExternal : tr.isExternal;
+            var dName = tr.DisplayName || tr.displayName || lang;
+            var cdc = tr.Codec || tr.codec;
+            var cdcText = cdc ? (' (' + cdc + ')') : '';
+            var extText = isExt ? ' [ext]' : '';
+
+            opt.value = isExt ? lang : String(idx);
+            opt.textContent = dName + cdcText + extText;
             sel.appendChild(opt);
         });
 
@@ -1228,11 +1236,11 @@
             return res.json();
         }).then(function (data) {
             subtitleWords = data;
-            var list = (data && data.words) || [];
+            var list = (data && (data.Words || data.words)) || [];
             if (wordsBadge) wordsBadge.textContent = list.length;
             if (statusMsg) {
                 statusMsg.style.color = '#10b981';
-                statusMsg.textContent = '✅ Found ' + list.length + ' filterable word(s) (' + (data.totalProfanities || 0) + ' total occurrences)';
+                statusMsg.textContent = '✅ Found ' + list.length + ' filterable word(s) (' + ((data.TotalOccurrences || data.totalOccurrences || data.TotalProfanities || data.totalProfanities || 0)) + ' total occurrences)';
             }
             renderSubtitleWordsList(modal.querySelector('#cfInputSearchWords').value.trim());
         }).catch(function (err) {
@@ -1251,7 +1259,7 @@
         var container = modal.querySelector('#cfWordsListContainer');
         if (!container) return;
 
-        var groups = (subtitleWords && subtitleWords.words) || [];
+        var groups = (subtitleWords && (subtitleWords.Words || subtitleWords.words)) || [];
         if (groups.length === 0) {
             container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:24px;">No filterable words found in this subtitle track.</div>';
             return;
@@ -1259,9 +1267,10 @@
 
         var filterLower = (searchTerm || '').toLowerCase();
         var filteredGroups = groups.filter(function (g) {
+            var gw = (g.Word || g.word || '').toLowerCase();
+            var gc = (g.Category || g.category || '').toLowerCase();
             if (!filterLower) return true;
-            return g.word.toLowerCase().indexOf(filterLower) !== -1 ||
-                   (g.category && g.category.toLowerCase().indexOf(filterLower) !== -1);
+            return gw.indexOf(filterLower) !== -1 || gc.indexOf(filterLower) !== -1;
         });
 
         if (filteredGroups.length === 0) {
@@ -1270,44 +1279,48 @@
         }
 
         container.innerHTML = filteredGroups.map(function (g, gIdx) {
-            var catColor = g.category.indexOf('Slur') !== -1 ? '#ef4444' :
-                           g.category.indexOf('Explicit') !== -1 ? '#ec4899' :
-                           g.category.indexOf('Blasphemy') !== -1 ? '#f59e0b' : '#38bdf8';
+            var gWord = g.Word || g.word || '';
+            var gCat = g.Category || g.category || 'General';
+            var gCount = (g.Count !== undefined) ? g.Count : g.count;
+            var isFiltered = (g.IsFiltered !== undefined) ? g.IsFiltered : g.isFiltered;
+            var isGlobal = (g.IsGlobalBlanket !== undefined) ? g.IsGlobalBlanket : g.isGlobalBlanket;
+            var occList = g.Occurrences || g.occurrences || [];
 
-            var isFiltered = g.isFiltered;
-            var isGlobal = g.isGlobalBlanket;
+            var catColor = gCat.indexOf('Slur') !== -1 ? '#ef4444' :
+                           gCat.indexOf('Explicit') !== -1 ? '#ec4899' :
+                           gCat.indexOf('Blasphemy') !== -1 ? '#f59e0b' : '#38bdf8';
 
             return [
-                '<div class="cf-word-card" data-word="' + escHtml(g.word) + '" style="background:rgba(30, 41, 59, 0.75); border:1px solid ' + (isFiltered ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.08)') + '; border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">',
+                '<div class="cf-word-card" data-word="' + escHtml(gWord) + '" style="background:rgba(30, 41, 59, 0.75); border:1px solid ' + (isFiltered ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.08)') + '; border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">',
                 '  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">',
                 '    <div style="display:flex; align-items:center; gap:8px;">',
-                '      <span style="font-size:14px; font-weight:700; color:#f8fafc;">' + escHtml(g.word) + '</span>',
-                '      <span style="font-size:11px; background:rgba(255,255,255,0.1); color:' + catColor + '; padding:2px 7px; border-radius:4px; font-weight:600;">' + escHtml(g.category) + '</span>',
-                '      <span style="font-size:11px; background:rgba(56, 189, 248, 0.15); color:#38bdf8; padding:2px 6px; border-radius:4px; font-weight:700;">' + g.count + 'x</span>',
+                '      <span style="font-size:14px; font-weight:700; color:#f8fafc;">' + escHtml(gWord) + '</span>',
+                '      <span style="font-size:11px; background:rgba(255,255,255,0.1); color:' + catColor + '; padding:2px 7px; border-radius:4px; font-weight:600;">' + escHtml(gCat) + '</span>',
+                '      <span style="font-size:11px; background:rgba(56, 189, 248, 0.15); color:#38bdf8; padding:2px 6px; border-radius:4px; font-weight:700;">' + gCount + 'x</span>',
                 isFiltered ? '      <span style="font-size:11px; background:rgba(16, 185, 129, 0.2); color:#10b981; padding:2px 6px; border-radius:4px; font-weight:600;">✅ Filtered</span>' : '',
                 '    </div>',
                 '    <div style="display:flex; align-items:center; gap:6px;">',
                 '      <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:4px; cursor:pointer; user-select:none;" title="Filter this word across ALL media items">',
-                '        <input type="checkbox" class="cf-word-global-cb" data-word="' + escHtml(g.word) + '" ' + (isGlobal ? 'checked' : '') + '> 🌐 Global',
+                '        <input type="checkbox" class="cf-word-global-cb" data-word="' + escHtml(gWord) + '" ' + (isGlobal ? 'checked' : '') + '> 🌐 Global',
                 '      </label>',
                 isFiltered
-                    ? ('      <button class="cf-btn-unfilter-word" data-word="' + escHtml(g.word) + '" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🗑️ Unfilter</button>')
-                    : ('      <button class="cf-btn-blanket-word" data-word="' + escHtml(g.word) + '" style="background:#0284c7; border:none; color:#fff; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">⚡ Blanket Mute</button>'),
+                    ? ('      <button class="cf-btn-unfilter-word" data-word="' + escHtml(gWord) + '" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🗑️ Unfilter</button>')
+                    : ('      <button class="cf-btn-blanket-word" data-word="' + escHtml(gWord) + '" style="background:#0284c7; border:none; color:#fff; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">⚡ Blanket Mute</button>'),
                 '      <button class="cf-btn-toggle-occ" data-word-idx="' + gIdx + '" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px;">▼</button>',
                 '    </div>',
                 '  </div>',
                 '  <!-- Occurrences list (hidden by default) -->',
                 '  <div id="cfOccList_' + gIdx + '" style="display:none; flex-direction:column; gap:6px; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; margin-top:2px;">',
-                g.occurrences.map(function (occ) {
-                    var escapedWord = g.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    var highlightedText = escHtml(occ.text).replace(new RegExp('(' + escapedWord + ')', 'gi'), '<strong style="color:#f87171; background:rgba(239,68,68,0.2); padding:1px 3px; border-radius:3px;">$1</strong>');
+                occList.map(function (occ) {
+                    var escapedWord = gWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    var highlightedText = escHtml(occ.Text || occ.text || '').replace(new RegExp('(' + escapedWord + ')', 'gi'), '<strong style="color:#f87171; background:rgba(239,68,68,0.2); padding:1px 3px; border-radius:3px;">$1</strong>');
                     return [
                         '    <div style="background:rgba(15, 23, 42, 0.6); border:1px solid rgba(255,255,255,0.05); border-radius:6px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">',
                         '      <div style="font-size:12px; color:#cbd5e1; line-height:1.4; flex:1;">',
-                        '        <span style="font-family:monospace; color:#38bdf8; font-size:11px; margin-right:6px;">' + escHtml(occ.start) + '</span>',
+                        '        <span style="font-family:monospace; color:#38bdf8; font-size:11px; margin-right:6px;">' + escHtml(occ.Start || occ.start || '') + '</span>',
                         '        <span>' + highlightedText + '</span>',
                         '      </div>',
-                        '      <button class="cf-occ-jump-btn" data-sec="' + occ.startSeconds + '" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:11px; white-space:nowrap;">▶ Jump (-1.5s)</button>',
+                        '      <button class="cf-occ-jump-btn" data-sec="' + (occ.StartSeconds !== undefined ? occ.StartSeconds : occ.startSeconds) + '" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:11px; white-space:nowrap;">▶ Jump (-1.5s)</button>',
                         '    </div>'
                     ].join('');
                 }).join(''),
@@ -1454,12 +1467,14 @@
         var searchWordsInput = modal.querySelector('#cfInputSearchWords');
         var searchTerm = searchWordsInput ? searchWordsInput.value.trim().toLowerCase() : '';
 
-        var groups = (subtitleWords && subtitleWords.words) || [];
+        var groups = (subtitleWords && (subtitleWords.Words || subtitleWords.words)) || [];
         var targets = groups.filter(function (g) {
-            if (g.isFiltered) return false;
+            var isF = (g.IsFiltered !== undefined) ? g.IsFiltered : g.isFiltered;
+            if (isF) return false;
             if (!searchTerm) return true;
-            return g.word.toLowerCase().indexOf(searchTerm) !== -1 ||
-                   (g.category && g.category.toLowerCase().indexOf(searchTerm) !== -1);
+            var gw = (g.Word || g.word || '').toLowerCase();
+            var gc = (g.Category || g.category || '').toLowerCase();
+            return gw.indexOf(searchTerm) !== -1 || gc.indexOf(searchTerm) !== -1;
         });
 
         if (targets.length === 0) {
@@ -1467,7 +1482,7 @@
             return;
         }
 
-        var wordList = targets.map(function (g) { return g.word; });
+        var wordList = targets.map(function (g) { return g.Word || g.word; });
         if (!confirm('Blanket filter all ' + wordList.length + ' visible words in this media item?')) {
             return;
         }
