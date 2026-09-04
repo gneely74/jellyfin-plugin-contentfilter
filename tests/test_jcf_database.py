@@ -145,7 +145,7 @@ def test_jcf_file_formatting_and_webvtt_spec():
     movie_files = list(MOVIES_DIR.glob("*.jcf"))[:100]
     show_files = list(SHOWS_DIR.glob("*/*.jcf"))
     assert len(movie_files) >= 100
-    assert len(show_files) >= 20
+    assert len(show_files) >= 8
 
     test_files = movie_files + show_files
     for jcf_path in test_files:

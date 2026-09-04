@@ -398,8 +398,9 @@ public class ContentFilterController : ControllerBase
     /// <summary>
     /// Scans the library for media items that have adjacent .jcf sidecar files on disk.
     /// </summary>
-    /// <returns>A summary of discovered sidecar filters.</returns>
+    /// <returns>A summary of discovered sidecar filters and database sync status.</returns>
     [HttpPost("filters/scan-sidecars")]
+    [HttpGet("sidecars/scan")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<object> ScanSidecars()
     {
@@ -411,6 +412,59 @@ public class ContentFilterController : ControllerBase
 
         var items = _libraryManager.GetItemList(query);
         var discovered = 0;
+        var inDbCount = 0;
+        var details = new List<object>();
+
+        foreach (var item in items)
+        {
+            var sidecar = _filterStore.GetSidecarPath(item.Id);
+            if (sidecar is not null)
+            {
+                discovered++;
+                var hasDb = _filterStore.HasCustomFilter(item.Id);
+                if (hasDb)
+                {
+                    inDbCount++;
+                }
+
+                var filter = _filterStore.GetFilter(item.Id);
+                details.Add(new
+                {
+                    id = item.Id,
+                    name = item.Name,
+                    path = sidecar,
+                    inDatabase = hasDb,
+                    cues = filter?.Cues.Count ?? 0
+                });
+            }
+        }
+
+        return Ok(new
+        {
+            total = discovered,
+            inDatabaseCount = inDbCount,
+            notInDatabaseCount = discovered - inDbCount,
+            items = details
+        });
+    }
+
+    /// <summary>
+    /// Scans the library for media items that have adjacent .jcf sidecar files and imports all of them into the SQLite database.
+    /// </summary>
+    /// <returns>A summary of imported sidecars.</returns>
+    [HttpPost("sidecars/import-all")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> ImportAllSidecars()
+    {
+        var query = new InternalItemsQuery
+        {
+            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video],
+            Recursive = true
+        };
+
+        var items = _libraryManager.GetItemList(query);
+        var discovered = 0;
+        var imported = 0;
         var details = new List<object>();
 
         foreach (var item in items)
@@ -420,17 +474,113 @@ public class ContentFilterController : ControllerBase
             {
                 discovered++;
                 var filter = _filterStore.GetFilter(item.Id);
-                details.Add(new
+                if (filter is not null)
+                {
+                    imported++;
+                    details.Add(new
+                    {
+                        id = item.Id,
+                        name = item.Name,
+                        path = sidecar,
+                        cues = filter.Cues.Count
+                    });
+                }
+            }
+        }
+
+        return Ok(new
+        {
+            totalFound = discovered,
+            importedCount = imported,
+            items = details
+        });
+    }
+
+    /// <summary>
+    /// Permanently deletes all discovered .jcf sidecar files from media library folders.
+    /// Requires explicit confirmation payload {"confirm": "DELETE"}.
+    /// </summary>
+    /// <param name="request">The confirmation request.</param>
+    /// <returns>A summary of deletion results.</returns>
+    [HttpPost("sidecars/delete-all")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<object> DeleteAllSidecars([FromBody] DeleteSidecarsRequest? request)
+    {
+        if (request is null || !string.Equals(request.Confirm?.Trim(), "DELETE", StringComparison.Ordinal))
+        {
+            return BadRequest(new { error = "Safety confirmation failed. You must provide {\"confirm\": \"DELETE\"} to proceed with sidecar deletion." });
+        }
+
+        var query = new InternalItemsQuery
+        {
+            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video],
+            Recursive = true
+        };
+
+        var items = _libraryManager.GetItemList(query);
+        var totalFound = 0;
+        var deletedCount = 0;
+        var failedCount = 0;
+        var failures = new List<object>();
+
+        foreach (var item in items)
+        {
+            var sidecarPath = _filterStore.GetSidecarPath(item.Id);
+            if (string.IsNullOrWhiteSpace(sidecarPath))
+            {
+                continue;
+            }
+
+            totalFound++;
+
+            try
+            {
+                if (System.IO.File.Exists(sidecarPath))
+                {
+                    System.IO.File.Delete(sidecarPath);
+                    deletedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                failedCount++;
+                failures.Add(new
                 {
                     id = item.Id,
                     name = item.Name,
-                    path = sidecar,
-                    cues = filter?.Cues.Count ?? 0
+                    path = sidecarPath,
+                    error = ex.Message
                 });
             }
         }
 
-        return Ok(new { total = discovered, items = details });
+        _filterStore.InvalidateSidecarCache();
+
+        return Ok(new
+        {
+            totalFound,
+            deletedCount,
+            failedCount,
+            failures
+        });
+    }
+
+    /// <summary>
+    /// Gets database storage statistics.
+    /// </summary>
+    /// <returns>Counts of stored filters and cues.</returns>
+    [HttpGet("storage/stats")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetStorageStats()
+    {
+        var (totalFilters, totalCues) = _filterStore.GetDatabaseStats();
+        return Ok(new
+        {
+            totalFilters,
+            totalCues,
+            saveSidecarsToDisk = Plugin.Instance?.Configuration?.SaveSidecarsToDisk ?? false
+        });
     }
 
     /// <summary>
@@ -447,28 +597,24 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
-    /// Downloads the JCF filter file for a media item.
+    /// Downloads the JCF filter file for a media item, exporting directly from the database.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A file response containing the JCF file.</returns>
     [HttpGet("filters/{itemId:guid}/download")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DownloadFilterAsync(Guid itemId, CancellationToken cancellationToken)
+    public IActionResult DownloadFilter(Guid itemId)
     {
         var filter = _filterStore.GetFilter(itemId);
         if (filter is null)
         {
             return NotFound();
         }
-        var path = _filterStore.GetEffectiveFilterPath(itemId);
-        if (path is null || !System.IO.File.Exists(path))
-        {
-            return NotFound();
-        }
 
-        var bytes = await System.IO.File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+        var jcfText = JcfWriter.Serialize(filter);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(jcfText);
+
         var fallbackTitle = _libraryManager.GetItemById(itemId)?.Name ?? itemId.ToString("N", CultureInfo.InvariantCulture);
         var rawTitle = string.IsNullOrWhiteSpace(filter.Title) ? fallbackTitle : filter.Title;
         var safeTitle = string.Join("_", rawTitle.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));

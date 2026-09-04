@@ -20,6 +20,13 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         {
             client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
         });
+
+        serviceCollection.AddSingleton<SqliteFilterRepository>(sp =>
+        {
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SqliteFilterRepository>>();
+            var dbPath = Path.Combine(Plugin.Instance!.DataFolderPath, "contentfilter.db");
+            return new SqliteFilterRepository(logger, dbPath);
+        });
         serviceCollection.AddSingleton<FilterStore>();
         serviceCollection.AddSingleton<SubtitleFilter>();
         serviceCollection.AddSingleton<SubtitleWordScanner>();

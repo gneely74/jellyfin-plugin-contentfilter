@@ -1747,6 +1747,38 @@
                         </form>
                     </div>
                 </div>
+
+                    <!-- Delete Sidecars Confirmation Modal -->
+                    <div id="deleteSidecarsModal" class="cf-modal-overlay" style="display:none;">
+                        <div class="cf-modal" style="max-width:540px; border:1px solid var(--cf-red);">
+                            <div class="cf-modal-hdr">
+                                <h3 class="cf-modal-title" style="color:var(--cf-red);">⚠️ Permanently Delete Sidecars</h3>
+                                <button id="closeDeleteSidecarsModalBtn" class="cf-del-btn" type="button">✕</button>
+                            </div>
+                            <div style="font-size:0.9rem; line-height:1.5; color:var(--cf-text-main); margin-bottom:16px;">
+                                <div style="background:rgba(239,68,68,0.12); border-left:4px solid var(--cf-red); padding:12px; border-radius:4px; margin-bottom:14px;">
+                                    <strong>PERMANENT DISK ACTION:</strong> This will delete all <code>.jcf</code> sidecar files found in your media library folders.
+                                    <div style="margin-top:6px; font-size:0.85rem; color:var(--cf-text-muted);">
+                                        Filters in your SQLite database (<code>contentfilter.db</code>) will remain intact and active for playback.
+                                    </div>
+                                </div>
+                                <div id="deleteSidecarsScanStatus" style="font-size:0.88rem; color:var(--cf-text-muted); margin-bottom:14px; min-height:22px;">
+                                    Scanning library for disk sidecars...
+                                </div>
+                                <label for="confirmDeleteSidecarsInput" style="display:block; font-weight:600; margin-bottom:6px;">
+                                    To confirm permanent deletion, type <strong style="color:var(--cf-red);">DELETE</strong> below:
+                                </label>
+                                <input type="text" id="confirmDeleteSidecarsInput" class="cf-field-input" placeholder="DELETE" style="width:100%; box-sizing:border-box; font-weight:bold; letter-spacing:0.05em;">
+                            </div>
+                            <div id="deleteSidecarsActionStatus" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+                            <div class="cf-modal-footer">
+                                <button id="cancelDeleteSidecarsModalBtn" class="cf-btn" type="button">Cancel</button>
+                                <button id="confirmDeleteSidecarsBtn" type="button" class="cf-btn" style="background:var(--cf-red); color:#fff; border-color:var(--cf-red);" disabled>
+                                    🗑️ Permanently Delete Sidecars
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab 2: Filter Rules -->
@@ -1859,6 +1891,48 @@
                             <label class="cf-field-label" for="DebugScanMaxSeconds">Debug Scan Max Seconds</label>
                             <input id="DebugScanMaxSeconds" type="number" min="0" step="10" class="cf-field-input" style="max-width:240px;">
                             <div class="cf-field-helper">Limit test scans to first N seconds of video (0 = scan entire video).</div>
+                        </div>
+                    </div>
+
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">💾 Database Storage & Sidecar Management</h3>
+                        <div class="cf-settings-card-desc">
+                            Manage the embedded SQLite database (<code>contentfilter.db</code>) and media folder <code>.jcf</code> sidecar files.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
+                            <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:12px;">
+                                <div style="font-size:0.75rem; color:var(--cf-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Database Stored Titles</div>
+                                <div id="dbTotalFilters" style="font-size:1.6rem; font-weight:700; color:var(--cf-primary); margin-top:4px;">-</div>
+                            </div>
+                            <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:12px;">
+                                <div style="font-size:0.75rem; color:var(--cf-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Total Indexed Cues</div>
+                                <div id="dbTotalCues" style="font-size:1.6rem; font-weight:700; color:var(--cf-green); margin-top:4px;">-</div>
+                            </div>
+                            <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:12px;">
+                                <div style="font-size:0.75rem; color:var(--cf-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Primary Storage Engine</div>
+                                <div style="font-size:1.05rem; font-weight:600; color:var(--cf-text-main); margin-top:8px;">SQLite (Embedded)</div>
+                            </div>
+                        </div>
+
+                        <label class="cf-checkbox-row" style="margin-top:6px; margin-bottom:8px;">
+                            <input id="SaveSidecarsToDisk" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                            <span>Also write .jcf sidecar files to media library folders on disk</span>
+                        </label>
+                        <div class="cf-field-helper" style="margin-bottom:16px;">
+                            When disabled (recommended), filters are stored and retrieved exclusively from the high-speed SQLite database without writing loose files to media folders.
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; border-top:1px solid var(--cf-border); padding-top:14px;">
+                            <button id="importAllSidecarsBtn" class="cf-btn cf-btn-primary" type="button">
+                                📥 Import All Sidecars to Database
+                            </button>
+                            <button id="openDeleteSidecarsModalBtn" class="cf-btn" style="border-color:var(--cf-red); color:var(--cf-red);" type="button">
+                                ⚠️ Delete All Sidecars on Disk
+                            </button>
+                            <button id="refreshStorageStatsBtn" class="cf-btn" type="button">
+                                🔄 Refresh Storage Stats
+                            </button>
                         </div>
                     </div>
 
@@ -2102,6 +2176,7 @@
                 if (getEl('PreferredAudioLanguage')) getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
                 if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
                 if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
+                if (getEl('SaveSidecarsToDisk')) getEl('SaveSidecarsToDisk').checked = !!config.SaveSidecarsToDisk;
 
                 var disabled = new Set(config.DisabledFilterItems || []);
 
@@ -2141,6 +2216,7 @@
                 if (getEl('PreferredAudioLanguage')) config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
                 if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
                 if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
+                if (getEl('SaveSidecarsToDisk')) config.SaveSidecarsToDisk = getEl('SaveSidecarsToDisk').checked;
 
                 var disabled = [];
                 FH.forEach(function(gDef) {
@@ -3634,6 +3710,163 @@
                     btn.innerHTML = '<span>🔄 Scan Disk Sidecars</span>';
                 });
             });
+
+            // --- Database & Sidecar Storage Management ---
+            function loadStorageStats() {
+                var filtersEl = document.getElementById('dbTotalFilters');
+                var cuesEl = document.getElementById('dbTotalCues');
+                if (!filtersEl || !cuesEl) return;
+
+                fetch(apiUrl('ContentFilter/storage/stats'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(data) {
+                    if (data) {
+                        filtersEl.textContent = (data.totalFilters || 0).toLocaleString();
+                        cuesEl.textContent = (data.totalCues || 0).toLocaleString();
+                    }
+                }).catch(function(err) {
+                    console.warn('Failed to load storage stats:', err);
+                });
+            }
+
+            loadStorageStats();
+
+            var refreshStatsBtn = document.getElementById('refreshStorageStatsBtn');
+            if (refreshStatsBtn) {
+                refreshStatsBtn.addEventListener('click', function() {
+                    loadStorageStats();
+                });
+            }
+
+            var importAllBtn = document.getElementById('importAllSidecarsBtn');
+            if (importAllBtn) {
+                importAllBtn.addEventListener('click', function() {
+                    var btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span><div class="cf-spinner"></div> Importing Sidecars…</span>';
+
+                    fetch(apiUrl('ContentFilter/sidecars/import-all'), {
+                        method: 'POST',
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                    }).then(function(res) {
+                        return res.json();
+                    }).then(function(data) {
+                        alert('Sidecar Import Complete!\nFound ' + (data.totalFound || 0) + ' sidecars on disk.\nSuccessfully imported/synchronized ' + (data.importedCount || 0) + ' items into the database.');
+                        loadStorageStats();
+                        episodesCache = {};
+                        if (currentMode === 'shows') loadShows();
+                        else loadMovies();
+                        if (activeItemId) loadFilterDetails(activeItemId);
+                    }).catch(function(err) {
+                        alert('Sidecar import failed: ' + err.message);
+                    }).finally(function() {
+                        btn.disabled = false;
+                        btn.innerHTML = '<span>📥 Import All Sidecars to Database</span>';
+                    });
+                });
+            }
+
+            // --- Delete All Sidecars Modal Logic ---
+            var deleteSidecarsModal = document.getElementById('deleteSidecarsModal');
+            var openDeleteSidecarsModalBtn = document.getElementById('openDeleteSidecarsModalBtn');
+            var closeDeleteSidecarsModalBtn = document.getElementById('closeDeleteSidecarsModalBtn');
+            var cancelDeleteSidecarsModalBtn = document.getElementById('cancelDeleteSidecarsModalBtn');
+            var confirmDeleteSidecarsInput = document.getElementById('confirmDeleteSidecarsInput');
+            var confirmDeleteSidecarsBtn = document.getElementById('confirmDeleteSidecarsBtn');
+            var deleteSidecarsScanStatus = document.getElementById('deleteSidecarsScanStatus');
+            var deleteSidecarsActionStatus = document.getElementById('deleteSidecarsActionStatus');
+
+            function closeDeleteSidecarsModal() {
+                if (deleteSidecarsModal) deleteSidecarsModal.style.display = 'none';
+            }
+
+            if (closeDeleteSidecarsModalBtn) closeDeleteSidecarsModalBtn.addEventListener('click', closeDeleteSidecarsModal);
+            if (cancelDeleteSidecarsModalBtn) cancelDeleteSidecarsModalBtn.addEventListener('click', closeDeleteSidecarsModal);
+
+            if (confirmDeleteSidecarsInput) {
+                confirmDeleteSidecarsInput.addEventListener('input', function(e) {
+                    var val = (e.target.value || '').trim();
+                    if (confirmDeleteSidecarsBtn) {
+                        confirmDeleteSidecarsBtn.disabled = (val !== 'DELETE');
+                    }
+                });
+            }
+
+            if (openDeleteSidecarsModalBtn) {
+                openDeleteSidecarsModalBtn.addEventListener('click', function() {
+                    if (deleteSidecarsModal) deleteSidecarsModal.style.display = 'flex';
+                    if (confirmDeleteSidecarsInput) confirmDeleteSidecarsInput.value = '';
+                    if (confirmDeleteSidecarsBtn) confirmDeleteSidecarsBtn.disabled = true;
+                    if (deleteSidecarsActionStatus) deleteSidecarsActionStatus.textContent = '';
+                    if (deleteSidecarsScanStatus) {
+                        deleteSidecarsScanStatus.innerHTML = '<div class="cf-spinner" style="display:inline-block; vertical-align:middle; margin-right:6px;"></div> Scanning media library for sidecar files…';
+                    }
+
+                    fetch(apiUrl('ContentFilter/filters/scan-sidecars'), {
+                        method: 'POST',
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                    }).then(function(res) {
+                        return res.json();
+                    }).then(function(data) {
+                        var total = data.total || 0;
+                        var inDb = data.inDatabaseCount || 0;
+                        var notInDb = data.notInDatabaseCount || 0;
+
+                        var msg = '<strong>' + total + '</strong> .jcf sidecar files discovered on disk.<br>';
+                        msg += '<span style="color:var(--cf-green);">✓ ' + inDb + ' already synced in SQLite database.</span>';
+                        if (notInDb > 0) {
+                            msg += '<br><span style="color:var(--cf-red); font-weight:bold;">⚠️ ' + notInDb + ' sidecars have NOT been imported yet! Please click "Import All Sidecars to Database" first to prevent losing them.</span>';
+                        }
+                        if (deleteSidecarsScanStatus) deleteSidecarsScanStatus.innerHTML = msg;
+                    }).catch(function(err) {
+                        if (deleteSidecarsScanStatus) deleteSidecarsScanStatus.textContent = 'Scan error: ' + err.message;
+                    });
+                });
+            }
+
+            if (confirmDeleteSidecarsBtn) {
+                confirmDeleteSidecarsBtn.addEventListener('click', function() {
+                    var btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<div class="cf-spinner" style="display:inline-block; vertical-align:middle; margin-right:6px;"></div> Deleting Sidecars…';
+                    if (deleteSidecarsActionStatus) {
+                        deleteSidecarsActionStatus.style.color = 'var(--cf-text-muted)';
+                        deleteSidecarsActionStatus.textContent = 'Permanently deleting .jcf sidecars from disk…';
+                    }
+
+                    fetch(apiUrl('ContentFilter/sidecars/delete-all'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Emby-Token': ApiClient.accessToken()
+                        },
+                        body: JSON.stringify({ confirm: 'DELETE' })
+                    }).then(function(res) {
+                        if (!res.ok) {
+                            return res.json().then(function(errJson) {
+                                throw new Error(errJson.error || 'Server rejected deletion request (' + res.status + ')');
+                            });
+                        }
+                        return res.json();
+                    }).then(function(result) {
+                        alert('Sidecar Deletion Complete!\nTotal Found: ' + (result.totalFound || 0) + '\nDeleted: ' + (result.deletedCount || 0) + '\nFailed: ' + (result.failedCount || 0));
+                        closeDeleteSidecarsModal();
+                        episodesCache = {};
+                        if (currentMode === 'shows') loadShows();
+                        else loadMovies();
+                        if (activeItemId) loadFilterDetails(activeItemId);
+                    }).catch(function(err) {
+                        if (deleteSidecarsActionStatus) {
+                            deleteSidecarsActionStatus.style.color = 'var(--cf-red)';
+                            deleteSidecarsActionStatus.textContent = 'Deletion error: ' + err.message;
+                        }
+                        btn.disabled = false;
+                        btn.innerHTML = '🗑️ Permanently Delete Sidecars';
+                    });
+                });
+            }
 
             // --- Tab Mode Buttons ---
             document.getElementById('tabShowsBtn').addEventListener('click', function() {

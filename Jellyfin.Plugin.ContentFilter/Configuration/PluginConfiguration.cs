@@ -47,6 +47,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether saved filters should also be written as .jcf sidecar files to the media folder.
+    /// Default is false (filters are stored primarily in the internal SQLite database).
+    /// </summary>
+    public bool SaveSidecarsToDisk { get; set; } = false;
+
+    /// <summary>
     /// Gets or sets the Ollama base URL.
     /// </summary>
     public string OllamaBaseUrl { get; set; } = "http://localhost:8000";

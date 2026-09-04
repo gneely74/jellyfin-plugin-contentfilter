@@ -15,6 +15,7 @@ public class FilterStore
     private readonly ILogger<FilterStore> _logger;
     private readonly SubtitleFilter _subtitleFilter;
     private readonly ILibraryManager _libraryManager;
+    private readonly SqliteFilterRepository _repository;
     private readonly ConcurrentDictionary<Guid, JcfFilter> _cache = new();
     private readonly ConcurrentDictionary<Guid, bool> _customFilterIds = new();
     private readonly ConcurrentDictionary<Guid, string?> _sidecarCache = new();
@@ -27,14 +28,78 @@ public class FilterStore
     /// <param name="logger">The logger.</param>
     /// <param name="subtitleFilter">The subtitle filtering service.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
-    public FilterStore(ILogger<FilterStore> logger, SubtitleFilter subtitleFilter, ILibraryManager libraryManager)
+    /// <param name="repository">The SQLite filter repository.</param>
+    public FilterStore(
+        ILogger<FilterStore> logger,
+        SubtitleFilter subtitleFilter,
+        ILibraryManager libraryManager,
+        SqliteFilterRepository repository)
     {
         _logger = logger;
         _subtitleFilter = subtitleFilter;
         _libraryManager = libraryManager;
+        _repository = repository;
+        MigrateLegacyJcfFiles();
     }
 
     private string FiltersPath => Path.Combine(Plugin.Instance!.DataFolderPath, "filters");
+
+    private void MigrateLegacyJcfFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(FiltersPath))
+            {
+                return;
+            }
+
+            var jcfFiles = Directory.GetFiles(FiltersPath, "*.jcf");
+            if (jcfFiles.Length == 0)
+            {
+                return;
+            }
+
+            var backupDir = Path.Combine(FiltersPath, "migrated_backup");
+            Directory.CreateDirectory(backupDir);
+            var migrated = 0;
+
+            foreach (var file in jcfFiles)
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (!Guid.TryParse(name, out var id))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (!_repository.HasFilter(id))
+                    {
+                        using var reader = new StreamReader(file, Encoding.UTF8, true);
+                        var filter = JcfParser.Parse(reader);
+                        _repository.SaveFilter(id, filter);
+                        migrated++;
+                    }
+
+                    var dest = Path.Combine(backupDir, Path.GetFileName(file));
+                    File.Move(file, dest, true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to migrate legacy JCF file {File}", file);
+                }
+            }
+
+            if (migrated > 0)
+            {
+                _logger.LogInformation("Migrated {Count} legacy JCF file(s) into SQLite database.", migrated);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during legacy JCF migration to SQLite.");
+        }
+    }
 
     private void EnsureCustomFiltersIndexed()
     {
@@ -52,21 +117,15 @@ public class FilterStore
 
             try
             {
-                if (Directory.Exists(FiltersPath))
+                var existingIds = _repository.GetAllFilterItemIds();
+                foreach (var id in existingIds)
                 {
-                    foreach (var file in Directory.EnumerateFiles(FiltersPath, "*.jcf"))
-                    {
-                        var name = Path.GetFileNameWithoutExtension(file);
-                        if (Guid.TryParse(name, out var id))
-                        {
-                            _customFilterIds[id] = true;
-                        }
-                    }
+                    _customFilterIds[id] = true;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to index custom filters directory.");
+                _logger.LogWarning(ex, "Failed to index custom filters from database.");
             }
 
             _customFiltersIndexed = true;
@@ -74,10 +133,10 @@ public class FilterStore
     }
 
     /// <summary>
-    /// Checks whether a custom filter file exists in the plugin filters folder for an item.
+    /// Checks whether a custom filter exists in the database for an item.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
-    /// <returns><see langword="true"/> if a custom filter exists; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if a filter exists; otherwise <see langword="false"/>.</returns>
     public bool HasCustomFilter(Guid itemId)
     {
         EnsureCustomFiltersIndexed();
@@ -85,7 +144,7 @@ public class FilterStore
     }
 
     /// <summary>
-    /// Loads a filter for an item, checking memory cache, custom filters folder, and disk sidecars.
+    /// Loads a filter for an item, checking memory cache, SQLite database, and disk sidecars.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <returns>The filter if found; otherwise <see langword="null"/>.</returns>
@@ -96,28 +155,37 @@ public class FilterStore
             return cached;
         }
 
-        var path = GetEffectiveFilterPath(itemId);
-        if (path is null || !File.Exists(path))
+        var dbFilter = _repository.GetFilter(itemId);
+        if (dbFilter is not null)
         {
-            return null;
+            _cache[itemId] = dbFilter;
+            _customFilterIds[itemId] = true;
+            return dbFilter;
         }
 
-        try
+        var sidecarPath = GetSidecarPath(itemId);
+        if (sidecarPath is not null && File.Exists(sidecarPath))
         {
-            using var reader = new StreamReader(path, Encoding.UTF8, true);
-            var parsed = JcfParser.Parse(reader);
-            _cache[itemId] = parsed;
-            return parsed;
+            try
+            {
+                using var reader = new StreamReader(sidecarPath, Encoding.UTF8, true);
+                var parsed = JcfParser.Parse(reader);
+                _repository.SaveFilter(itemId, parsed);
+                _cache[itemId] = parsed;
+                _customFilterIds[itemId] = true;
+                return parsed;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse sidecar JCF for item {ItemId} at {Path}", itemId, sidecarPath);
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to parse JCF filter for item {ItemId}.", itemId);
-            return null;
-        }
+
+        return null;
     }
 
     /// <summary>
-    /// Saves a filter for an item and regenerates filtered subtitles.
+    /// Saves a filter for an item to the SQLite database, optionally updates sidecar, and regenerates filtered subtitles.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <param name="filter">The filter to save.</param>
@@ -127,26 +195,41 @@ public class FilterStore
     {
         ArgumentNullException.ThrowIfNull(filter);
 
-        Directory.CreateDirectory(FiltersPath);
-        var path = GetJcfPath(itemId);
-        var content = JcfWriter.Serialize(filter);
-        await File.WriteAllTextAsync(path, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        _repository.SaveFilter(itemId, filter);
+        _cache[itemId] = filter;
+        _customFilterIds[itemId] = true;
 
-        var sidecarPath = GetSidecarPath(itemId);
-        if (!string.IsNullOrEmpty(sidecarPath))
+        if (Plugin.Instance?.Configuration?.SaveSidecarsToDisk == true)
         {
-            try
+            var sidecarPath = GetSidecarPath(itemId);
+            if (string.IsNullOrEmpty(sidecarPath))
             {
-                await File.WriteAllTextAsync(sidecarPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                if (_libraryManager.GetItemById(itemId) is BaseItem item && !string.IsNullOrWhiteSpace(item.Path))
+                {
+                    var dir = Path.GetDirectoryName(item.Path);
+                    var stem = Path.GetFileNameWithoutExtension(item.Path);
+                    if (!string.IsNullOrWhiteSpace(dir) && !string.IsNullOrWhiteSpace(stem))
+                    {
+                        sidecarPath = Path.Combine(dir, $"{stem}.jcf");
+                    }
+                }
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrEmpty(sidecarPath))
             {
-                _logger.LogWarning(ex, "Failed to sync updated filter to sidecar path {SidecarPath}", sidecarPath);
+                try
+                {
+                    var content = JcfWriter.Serialize(filter);
+                    await File.WriteAllTextAsync(sidecarPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    _sidecarCache[itemId] = sidecarPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to sync updated filter to sidecar path {SidecarPath}", sidecarPath);
+                }
             }
         }
 
-        _cache[itemId] = filter;
-        _customFilterIds[itemId] = true;
         await _subtitleFilter.RegenerateAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
     }
 
@@ -443,13 +526,57 @@ public class FilterStore
         _customFilterIds.TryRemove(itemId, out _);
         _sidecarCache.TryRemove(itemId, out _);
 
+        _repository.DeleteFilter(itemId);
+
         var path = GetJcfPath(itemId);
         if (File.Exists(path))
         {
-            File.Delete(path);
+            try
+            {
+                File.Delete(path);
+            }
+            catch
+            {
+            }
         }
 
         _subtitleFilter.DeleteFilteredSubtitle(itemId);
+    }
+
+    /// <summary>
+    /// Deletes the sidecar JCF file for an item if it exists on disk.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <returns><see langword="true"/> if a sidecar was deleted; otherwise <see langword="false"/>.</returns>
+    public bool DeleteSidecar(Guid itemId)
+    {
+        var path = GetSidecarPath(itemId);
+        _sidecarCache.TryRemove(itemId, out _);
+
+        if (path is not null && File.Exists(path))
+        {
+            File.Delete(path);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Invalidates all cached sidecar path lookups.
+    /// </summary>
+    public void InvalidateSidecarCache()
+    {
+        _sidecarCache.Clear();
+    }
+
+    /// <summary>
+    /// Returns database storage statistics.
+    /// </summary>
+    /// <returns>A tuple of total filters and total cues.</returns>
+    public (int TotalFilters, int TotalCues) GetDatabaseStats()
+    {
+        return _repository.GetDatabaseStats();
     }
 
     /// <summary>

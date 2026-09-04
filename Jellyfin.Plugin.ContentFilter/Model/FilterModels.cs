@@ -71,3 +71,14 @@ public sealed class JcfFilter
     /// </summary>
     public List<FilterCue> Cues { get; init; } = [];
 }
+
+/// <summary>
+/// Request payload for confirming bulk deletion of on-disk sidecar files.
+/// </summary>
+public sealed class DeleteSidecarsRequest
+{
+    /// <summary>
+    /// Gets or sets the safety confirmation token. Must be "DELETE" to execute.
+    /// </summary>
+    public string Confirm { get; set; } = string.Empty;
+}
