@@ -84,7 +84,7 @@ public static class ClientScriptInjector
             var json = $$"""
             {
                 "id": "A62B2473-77E1-45C1-8470-57FB95A85394",
-                "fileNamePattern": "(?:^|[\\\\/])index\\.html$",
+                "fileNamePattern": "index.html",
                 "callbackAssembly": "{{typeof(ClientScriptInjector).Assembly.FullName}}",
                 "callbackClass": "{{typeof(ClientScriptInjector).FullName}}",
                 "callbackMethod": "{{nameof(TransformIndexHtml)}}"

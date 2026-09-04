@@ -12,7 +12,7 @@
         "changelog": "Fix Webpack chunk corruption by strictly anchoring index.html injection pattern in FileTransformation.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.20/Jellyfin.Plugin.ContentFilter_1.0.20.0.zip",
-        "checksum": "98110db0995cadc885567f1ee13c8a7c",
+        "checksum": "d60886d7c89fc64a475cb4428068dd5a",
         "timestamp": "2026-09-04T00:00:00Z"
       },
       {
