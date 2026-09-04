@@ -7,31 +7,31 @@ IMDB tt0073486
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:30:54.650 --> 00:31:22.640
-category: SexualReferences.ContextualDialogue
+category: Violence.Moderate
 channel: both
 action: skip
 description: dialogue
 
 00:51:12.860 --> 00:51:32.860
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: picture
 
 01:03:23.240 --> 01:03:28.020
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: picture
 
 01:28:49.690 --> 01:29:09.170
-category: SexualReferences.ContextualDialogue
+category: Violence.Moderate
 channel: both
 action: skip
 description: dialogue
 
 01:55:07.180 --> 01:55:36.030
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: picture

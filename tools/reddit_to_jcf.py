@@ -136,144 +136,132 @@ def map_category_and_channel(
     combined = f"{category_label} {text_context}".lower()
 
     # 1. Profanity / Language
-    if any(k in combined for k in ["profanity", "language", "swear", "curse", "f-word", "slur"]):
-        if any(k in combined for k in ["slur", "racial"]):
+    if any(k in combined for k in ["profanity", "language", "swear", "curse", "f-word", "slur", "blasphem", "crude language"]):
+        if any(k in combined for k in ["slur", "racial", "racist", "bigot"]):
             return "Language.RacialAndBigotedSlurs", "audio", "mute"
-        if any(k in combined for k in ["god", "jesus", "blasphem"]):
+        if any(k in combined for k in ["god", "jesus", "christ", "lord", "blasphem"]):
             return "Language.Blasphemy", "audio", "mute"
+        if any(k in combined for k in ["childish", "butt", "fart", "dumb", "stupid", "poop"]):
+            return "Language.ChildishLanguage", "audio", "mute"
+        if "caption" in combined or "subtitle" in combined:
+            return "Language.CaptionsWithProfanity", "both", "mute"
         return "Language.GeneralProfanity", "audio", "mute"
 
     # 2. Gestures
-    if any(k in combined for k in ["middle finger", "flipping off", "vulgar gesture"]):
+    if any(k in combined for k in ["middle finger", "flipping off", "vulgar gesture", "obscene gesture"]):
         return "SexualReferences.Visuals", "video", "skip"
 
     # 3. Dialogue / Remarks
-    if any(k in combined for k in ["dialogue", "convo", "conversation", "sexual remark", "sexual comment"]):
+    if any(k in combined for k in ["sexual dialogue", "sexual conversation", "sexual remark", "sexual comment", "innuendo", "dirty talk", "prostitution talk"]):
         return "SexualReferences.ContextualDialogue", "video", "skip"
 
-    # 4. Sex & Onscreen Activity
-    if re.search(r"\bsex(?:ual)?\b", combined) or any(
-        k in combined
-        for k in [
-            "intercourse",
-            "masturbat",
-            "orgasm",
-            "blowjob",
-            "handjob",
-            "oral sex",
-            "intimate",
-            "sensual",
-            "make out",
-            "fooling in bed",
-            "kissing",
-        ]
-    ):
-        if "kissing" in combined and not re.search(r"\bsex\b", combined):
-            return "SexAndNudity.PhysicalIntimacy", "video", "skip"
-        return "SexAndNudity.OnscreenActivity", "video", "skip"
+    # 4. Sex & Nudity
+    # 4a. Sexual Assault / Rape
+    if any(k in combined for k in ["sexual assault", "rape", "molest", "non-consensual", "groping", "forces herself", "forces himself"]):
+        return "SexAndNudity.SexualAssault", "video", "skip"
 
-    # 5. Nudity Profiles (very common in Reddit posts)
-    if re.search(r"\bnud(?:e|ity)\b", combined) or any(
-        k in combined
-        for k in [
-            "naked",
-            "topless",
-            "bare butt",
-            "bare backside",
-            "buttocks",
-            "boobs",
-            "breasts",
-            "cleavage",
-            "bra",
-            "underwear",
-            "boxers",
-            "panties",
-            "no shirt",
-            "shirtless",
-            "shower",
-            "revealing clothing",
-            "immodest",
-        ]
-    ):
-        return "SexAndNudity.NudityProfiles", "video", "skip"
+    # 4b. Graphic Sex / Intercourse / Explicit
+    if any(k in combined for k in [
+        "intercourse", "sex scene", "explicit sex", "oral sex", "blowjob", "handjob",
+        "masturbat", "orgasm", "penetrat", "erotic", "sex with nudity"
+    ]) or (re.search(r"\bsex\b", combined) and any(k in combined for k in ["explicit", "scene", "act", "bed", "having"])):
+        return "SexAndNudity.Graphic", "video", "skip"
 
-    # 6. Violence & Horror & Disturbing
-    if any(
-        k in combined
-        for k in [
-            "violence",
-            "gore",
-            "bloody",
-            "blood",
-            "kill",
-            "murder",
-            "behead",
-            "stab",
-            "shot",
-            "shooting",
-            "gunfight",
-            "fight",
-            "scary",
-            "disturbing",
-            "fear",
-            "jumpscare",
-            "jump scare",
-            "suicide",
-            "torture",
-            "corpse",
-            "decapitat",
-        ]
-    ):
-        return "Violence.Tiers", "video", "skip"
+    # 4c. Implied Sex / Bedroom / Suggestive Activity
+    if any(k in combined for k in [
+        "implied sex", "suggestive", "fooling in bed", "sex without nudity", "sensual", "bedroom scene",
+        "suggestive dancing", "adult scene", "touchy feely", "inappropriate content"
+    ]):
+        return "SexAndNudity.ImpliedSex", "video", "skip"
 
-    # 7. Substance Use
-    if any(
-        k in combined
-        for k in [
-            "drugs",
-            "drug",
-            "alcohol",
-            "smoking",
-            "smoke",
-            "drink",
-            "drunk",
-            "beer",
-            "wine",
-            "cocaine",
-            "weed",
-            "marijuana",
-            "heroin",
-            "meth",
-            "mescaline",
-            "pills",
-            "substance",
-        ]
-    ):
-        return "Substances.Usage", "video", "skip"
+    # 4d. Physical Intimacy (Kissing / Making out)
+    if any(k in combined for k in ["kissing", "kiss", "make out", "making out", "caress", "passionate kiss"]):
+        return "SexAndNudity.PhysicalIntimacy", "video", "skip"
 
-    # 8. Medical & Biological
-    if any(
-        k in combined
-        for k in [
-            "medical",
-            "hospital",
-            "surgery",
-            "procedure",
-            "needle",
-            "puke",
-            "vomit",
-            "bodily function",
-            "fart",
-        ]
-    ):
+    # 4e. Full Nudity
+    if any(k in combined for k in [
+        "full nudity", "frontal nudity", "naked", "completely naked", "unclad", "bare breasts",
+        "topless female", "topless woman", "topless", "bare backside", "bare butt", "buttocks", "abrupt nudity"
+    ]):
+        return "SexAndNudity.FullNudity", "video", "skip"
+
+    # 4f. Partial Nudity / Revealing Clothing / Lingerie / Underwear / Swimwear
+    if any(k in combined for k in [
+        "nudity", "nude", "underwear", "lingerie", "bra", "panties", "boxers", "no shirt", "shirtless",
+        "revealing", "cleavage", "immodest", "bikini", "swimsuit", "swimwear", "shower",
+        "undressing", "undress", "strip", "scantily"
+    ]):
+        if any(k in combined for k in ["bikini", "swimsuit", "swimwear", "beach"]):
+            return "SexAndNudity.Mild", "video", "skip"
+        return "SexAndNudity.PartialNudity", "video", "skip"
+
+    # 5. Violence & Horror
+    # 5a. Gore / Dismemberment
+    if any(k in combined for k in [
+        "gore", "decapitat", "dismember", "severed", "head rolling", "headless", "mutilat",
+        "entrails", "organs", "bloody corpses", "bloody shoot", "cut out eye", "cuts out eye"
+    ]):
+        return "Violence.Gore", "video", "skip"
+
+    # 5b. Jump Scares
+    if any(k in combined for k in ["jumpscare", "jump scare", "startle", "surprise scare"]):
+        return "Violence.JumpScares", "video", "skip"
+
+    # 5c. Disturbing / Psychological Horror / Corpses / Suicide
+    if any(k in combined for k in [
+        "disturbing", "corpse", "dead body", "skeletal", "suicide", "torture", "scary",
+        "creepy", "fear", "unsettling", "psychological", "hanging"
+    ]):
+        return "Violence.Disturbing", "video", "skip"
+
+    # 5d. Graphic Violence / Severe / Fatal
+    if any(k in combined for k in [
+        "graphic violence", "fatal", "stabbed in eye", "torture death", "slashes his cheeks",
+        "brutal", "visceral", "kill", "murder", "behead", "close range"
+    ]):
+        return "Violence.Graphic", "video", "skip"
+
+    # 5e. Mild Violence
+    if any(k in combined for k in [
+        "slap", "slapping", "comic", "playful", "wrestling", "punch", "punches", "hit with melon",
+        "shoving", "bloodless", "fistfight"
+    ]) and not any(k in combined for k in ["blood", "bloody", "stab", "shot", "gun", "knife", "wound"]):
+        return "Violence.Mild", "video", "skip"
+
+    # 5f. Moderate Violence / General Combat / Shootouts
+    if any(k in combined for k in [
+        "violence", "bloody", "blood", "stab", "shooting", "shoot", "shot", "gunfight", "knife",
+        "sword", "fight", "wound", "attack", "bullet", "explosion", "choke", "car flips", "wreck"
+    ]):
+        return "Violence.Moderate", "video", "skip"
+
+    # 6. Substance Use
+    if any(k in combined for k in ["substance", "drug", "alcohol", "smoke", "smoking", "drink", "drunk"]):
+        if any(k in combined for k in [
+            "illegal drug", "narcotic", "marijuana", "weed", "cocaine", "heroin", "meth",
+            "pills", "high", "overdose", "snort", "injection", "catnip"
+        ]):
+            return "Substances.IllegalDrugs", "video", "skip"
+        if any(k in combined for k in ["tobacco", "smoke", "smoking", "cigarette", "cigar", "vape", "vaping"]):
+            return "Substances.Tobacco", "video", "skip"
+        if any(k in combined for k in ["alcohol", "drink", "drinking", "drunk", "beer", "wine", "liquor", "sake", "bar"]):
+            return "Substances.Alcohol", "video", "skip"
+        return "Substances.Alcohol", "video", "skip"
+
+    # 7. Medical & Biological
+    if any(k in combined for k in ["medical", "hospital", "surgery", "procedure", "needle", "tattoo needle", "doctor"]):
         return "Medical.Events", "both", "skip"
+    if any(k in combined for k in ["vomit", "barf", "puke", "throw up", "barfing", "bodily function"]):
+        return "Medical.BodilyFunctions", "both", "skip"
 
-    # 9. Structural Timestamps
-    if any(k in combined for k in ["intro", "outro", "credits", "recap", "outtakes"]):
-        return "Structural.Timestamps", "both", "skip"
+    # 8. Structural Timestamps
+    if any(k in combined for k in ["credits", "opening credits", "closing credits"]):
+        return "Structural.Credits", "both", "skip"
+    if any(k in combined for k in ["intro", "outro", "recap", "outtake", "blooper"]):
+        return "Structural.IntroRecap", "both", "skip"
 
     # Fallback default
-    return "Violence.Tiers", "video", "skip"
+    return "Violence.Moderate", "video", "skip"
 
 
 def parse_reddit_post_text(
@@ -283,7 +271,7 @@ def parse_reddit_post_text(
     cues: List[ParsedCue] = []
     lines = text.splitlines()
 
-    current_category_header = default_category or "Violence.Tiers"
+    current_category_header = default_category or "Violence.Moderate"
 
     for i, line in enumerate(lines):
         trimmed = clean_line_typos(line.strip())
@@ -414,7 +402,7 @@ def merge_cues(cues: List[ParsedCue]) -> List[ParsedCue]:
 
 def invert_safe_ranges(
     safe_ranges: List[Tuple[int, int]],
-    category: str = "Violence.Tiers",
+    category: str = "Violence.Graphic",
     channel: str = "video",
     action: str = "skip",
 ) -> List[ParsedCue]:
@@ -452,3 +440,143 @@ def invert_safe_ranges(
             )
 
     return cues
+
+
+LEGACY_CATEGORIES = {
+    "Violence.Tiers",
+    "SexAndNudity.NudityProfiles",
+    "SexAndNudity.OnscreenActivity",
+    "Substances.Usage",
+    "Structural.Timestamps",
+}
+
+
+def load_jcf_file(file_path: "Path | str") -> JcfDocument:
+    """Load an existing .jcf file into a JcfDocument."""
+    from pathlib import Path
+
+    path = Path(file_path)
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines()
+
+    title = path.stem
+    year = None
+    imdb_id = None
+    source = None
+    cues: List[ParsedCue] = []
+
+    i = 0
+    in_note = False
+    while i < len(lines):
+        line = lines[i].strip()
+        if line == "NOTE":
+            in_note = True
+            i += 1
+            continue
+        if in_note:
+            if not line:
+                in_note = False
+            elif line.startswith("TITLE "):
+                title = line[6:].strip()
+            elif line.startswith("YEAR "):
+                year = line[5:].strip()
+            elif line.startswith("IMDB "):
+                imdb_id = line[5:].strip()
+            elif line.startswith("SOURCE "):
+                source = line[7:].strip()
+            i += 1
+            continue
+
+        if "-->" in line:
+            parts = line.split("-->")
+            start_str = parts[0].strip()
+            end_str = parts[1].strip()
+            start_ms = parse_timestamp_to_ms(start_str)
+            end_ms = parse_timestamp_to_ms(end_str)
+
+            cat = "Violence.Moderate"
+            chan = "video"
+            act = "skip"
+            desc = None
+
+            i += 1
+            while i < len(lines) and lines[i].strip():
+                attr_line = lines[i].strip()
+                if attr_line.startswith("category:"):
+                    cat = attr_line.split(":", 1)[1].strip()
+                elif attr_line.startswith("channel:"):
+                    chan = attr_line.split(":", 1)[1].strip()
+                elif attr_line.startswith("action:"):
+                    act = attr_line.split(":", 1)[1].strip()
+                elif attr_line.startswith("description:"):
+                    desc = attr_line.split(":", 1)[1].strip()
+                i += 1
+
+            cues.append(
+                ParsedCue(
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    start_str=start_str,
+                    end_str=end_str,
+                    category=cat,
+                    channel=chan,
+                    action=act,
+                    description=desc,
+                )
+            )
+            continue
+        i += 1
+
+    return JcfDocument(
+        title=title,
+        year=year,
+        imdb_id=imdb_id,
+        source=source,
+        cues=cues,
+    )
+
+
+def upgrade_cue_category(cue: ParsedCue) -> Tuple[ParsedCue, bool]:
+    """Upgrade a cue from legacy category to VidAngel/IMDb standard if applicable."""
+    if cue.category in LEGACY_CATEGORIES or not cue.category:
+        new_cat, new_chan, new_act = map_category_and_channel(
+            cue.category, cue.description or ""
+        )
+        if new_cat != cue.category or new_chan != cue.channel:
+            return (
+                ParsedCue(
+                    start_ms=cue.start_ms,
+                    end_ms=cue.end_ms,
+                    start_str=cue.start_str,
+                    end_str=cue.end_str,
+                    category=new_cat,
+                    channel=new_chan if cue.channel in ("video", "audio", "both") else new_chan,
+                    action=cue.action or new_act,
+                    description=cue.description,
+                ),
+                True,
+            )
+    return cue, False
+
+
+def upgrade_jcf_file(file_path: "Path | str") -> bool:
+    """Read a JCF file, upgrade legacy categories in-place, and return True if modified."""
+    from pathlib import Path
+
+    path = Path(file_path)
+    if not path.exists():
+        return False
+    doc = load_jcf_file(path)
+    modified = False
+    new_cues = []
+    for c in doc.cues:
+        upgraded, did_change = upgrade_cue_category(c)
+        if did_change:
+            modified = True
+        new_cues.append(upgraded)
+
+    if modified:
+        doc.cues = new_cues
+        path.write_text(doc.to_jcf(), encoding="utf-8")
+        return True
+    return False

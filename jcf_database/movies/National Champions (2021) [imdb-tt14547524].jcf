@@ -7,17 +7,17 @@ IMDB tt14547524
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:06:35.870 --> 00:08:31.300
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 
 00:18:38.510 --> 00:20:27.730
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 
 00:41:08.980 --> 00:41:25.620
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 

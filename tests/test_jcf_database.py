@@ -10,20 +10,45 @@ from tools.jcf_db import CATALOG_DB, CATALOG_JSON, DATABASE_DIR, MOVIES_DIR, SHO
 
 
 VALID_CATEGORIES = {
+    # Language
     "Language.GeneralProfanity",
     "Language.Blasphemy",
     "Language.RacialAndBigotedSlurs",
     "Language.ChildishLanguage",
     "Language.CaptionsWithProfanity",
+    # Sexual References
     "SexualReferences.ExplicitWords",
     "SexualReferences.ContextualDialogue",
     "SexualReferences.Visuals",
+    # Sex & Nudity
+    "SexAndNudity.Graphic",
+    "SexAndNudity.ImpliedSex",
+    "SexAndNudity.SexualAssault",
+    "SexAndNudity.FullNudity",
+    "SexAndNudity.PartialNudity",
+    "SexAndNudity.PhysicalIntimacy",
+    "SexAndNudity.Mild",
     "SexAndNudity.OnscreenActivity",
     "SexAndNudity.NudityProfiles",
-    "SexAndNudity.PhysicalIntimacy",
+    # Violence & Horror
+    "Violence.Mild",
+    "Violence.Moderate",
+    "Violence.Graphic",
+    "Violence.Gore",
+    "Violence.JumpScares",
+    "Violence.Disturbing",
     "Violence.Tiers",
+    # Substances
+    "Substances.Tobacco",
+    "Substances.Alcohol",
+    "Substances.IllegalDrugs",
     "Substances.Usage",
+    # Medical
     "Medical.Events",
+    "Medical.BodilyFunctions",
+    # Structural
+    "Structural.Credits",
+    "Structural.IntroRecap",
     "Structural.Timestamps",
 }
 
@@ -53,10 +78,10 @@ def test_parse_reddit_post_text():
     """
     cues = rj.parse_reddit_post_text(sample)
     assert len(cues) == 2
-    assert cues[0].category == "SexAndNudity.NudityProfiles"
+    assert cues[0].category == "SexAndNudity.FullNudity"
     assert cues[0].start_str == "00:12:30.000"
     assert cues[0].end_str == "00:14:00.000"
-    assert cues[1].category == "Violence.Tiers"
+    assert cues[1].category == "Violence.Gore"
     assert cues[1].start_str == "01:05:00.000"
     assert cues[1].end_str == "01:07:30.000"
 
@@ -142,3 +167,48 @@ def test_jcf_file_formatting_and_webvtt_spec():
             s_ms = rj.parse_timestamp_to_ms(start_str)
             e_ms = rj.parse_timestamp_to_ms(end_str)
             assert e_ms > s_ms, f"{jcf_path}: Cue end {end_str} <= start {start_str}"
+
+
+def test_category_mapping_vidangel_imdb():
+    cat, chan, act = rj.map_category_and_channel("VIOLENCE", "decapitation and severe gore")
+    assert cat == "Violence.Gore"
+    assert chan == "video"
+    assert act == "skip"
+
+    cat, chan, act = rj.map_category_and_channel("FEAR", "sudden jump scare monster jumps")
+    assert cat == "Violence.JumpScares"
+
+    cat, chan, act = rj.map_category_and_channel("SEX", "rape scene")
+    assert cat == "SexAndNudity.SexualAssault"
+
+    cat, chan, act = rj.map_category_and_channel("DRUGS", "characters drinking wine at a bar")
+    assert cat == "Substances.Alcohol"
+
+    cat, chan, act = rj.map_category_and_channel("DRUGS", "smoking cigarettes")
+    assert cat == "Substances.Tobacco"
+
+    cat, chan, act = rj.map_category_and_channel("DRUGS", "snorting cocaine")
+    assert cat == "Substances.IllegalDrugs"
+
+    cat, chan, act = rj.map_category_and_channel("LANGUAGE", "jesus christ god damn")
+    assert cat == "Language.Blasphemy"
+    assert chan == "audio"
+    assert act == "mute"
+
+
+def test_upgrade_jcf_file(tmp_path):
+    legacy_file = tmp_path / "test_legacy.jcf"
+    legacy_file.write_text(
+        "WEBVTT JCF\n\nNOTE\nTITLE Test Legacy\nYEAR 2020\n\n"
+        "00:01:00.000 --> 00:02:00.000\ncategory: Violence.Tiers\nchannel: video\naction: skip\ndescription: A decapitation and severe gore\n\n"
+        "00:03:00.000 --> 00:04:00.000\ncategory: Substances.Usage\nchannel: video\naction: skip\ndescription: Drinking alcohol at a bar\n",
+        encoding="utf-8",
+    )
+
+    did_upgrade = rj.upgrade_jcf_file(legacy_file)
+    assert did_upgrade is True
+
+    upgraded_doc = rj.load_jcf_file(legacy_file)
+    assert upgraded_doc.cues[0].category == "Violence.Gore"
+    assert upgraded_doc.cues[1].category == "Substances.Alcohol"
+

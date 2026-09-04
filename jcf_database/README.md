@@ -5,7 +5,7 @@ This directory contains pre-built, standardized `.jcf` sidecar filter files harv
 ## Summary
 - **Movies:** 701 titles (`movies/`)
 - **TV Shows:** 6 series / 33 episodes (`shows/`)
-- **Cues:** 12,428 tagged filter cues
+- **Cues:** 12,671 tagged filter cues (VidAngel & IMDb Parents Guide compatible)
 - **Catalog Index:** `catalog.db` (SQLite) and `catalog.json` (JSON)
 
 ## Quick Start

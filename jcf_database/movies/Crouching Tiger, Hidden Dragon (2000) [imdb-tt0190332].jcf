@@ -7,7 +7,13 @@ IMDB tt0190332
 SOURCE cleanstream / videoskip open database (reddit)
 
 01:07:15.550 --> 01:08:00.370
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: both
 action: skip
-description: kissing / man reaches inside woman's clothes
+description: kissing
+
+01:07:29.090 --> 01:07:38.880
+category: Violence.Moderate
+channel: both
+action: skip
+description: man reaches inside woman's clothes

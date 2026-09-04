@@ -1867,28 +1867,54 @@
                       items:['Vulgar Gestures'] }
                 ]},
                 { g:'SexAndNudity', label:'Sex & Nudity', cats:[
-                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity', badge:'visual',
-                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
-                    { key:'SexAndNudity.NudityProfiles',  label:'Nudity Profiles',    badge:'visual',
-                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] },
+                    { key:'SexAndNudity.Graphic', label:'Graphic Sex', badge:'visual',
+                      items:['Explicit Sexual Intercourse','Sex with Nudity','Oral Sex','Masturbation','Erotic Acts'] },
+                    { key:'SexAndNudity.ImpliedSex', label:'Implied Sex', badge:'visual',
+                      items:['Sex without Nudity','Implied Sex','Sexually Suggestive Activity','Sensual Bedroom Scenes','Suggestive Dancing'] },
+                    { key:'SexAndNudity.SexualAssault', label:'Sexual Assault', badge:'visual',
+                      items:['Sexual Assault','Rape','Non-consensual Sexual Behavior','Molestation'] },
+                    { key:'SexAndNudity.FullNudity', label:'Full Nudity', badge:'visual',
+                      items:['Female Frontal Nudity','Male Frontal Nudity','Full Nudity','Unclad Exposure'] },
+                    { key:'SexAndNudity.PartialNudity', label:'Partial Nudity', badge:'visual',
+                      items:['Underwear or Lingerie','Topless Silhouette','Bare Buttocks','Revealing Attire or Cleavage','Immodest Exposure'] },
                     { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
-                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)'] }
+                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)','Sensual Caressing','Prolonged Making Out'] },
+                    { key:'SexAndNudity.Mild', label:'Mild Nudity & Kissing', badge:'visual',
+                      items:['Swimwear & Beach Attire','Mild Immodesty','Brief Non-sexual Kissing','Nude Statues & Paintings'] }
                 ]},
                 { g:'Violence', label:'Violence & Horror', cats:[
-                    { key:'Violence.Tiers', label:'Tiers', badge:'visual',
-                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
+                    { key:'Violence.Mild', label:'Mild Violence', badge:'visual',
+                      items:['Comic Action','Slaps','Bloodless Fistfights','Playful Wrestling or Shoving'] },
+                    { key:'Violence.Moderate', label:'Moderate Violence', badge:'visual',
+                      items:['Realistic Combat','Shootouts','Stabbings','Non-graphic Violence','Blood on Clothing','Car Crashes and Explosions'] },
+                    { key:'Violence.Graphic', label:'Graphic Violence', badge:'visual',
+                      items:['Visceral Wounds','Severe Physical Trauma','Graphic Violence','Close-range Shootings','Fatal Stabbings','Brutal Attacks'] },
+                    { key:'Violence.Gore', label:'Gore & Blood', badge:'visual',
+                      items:['Gore','Dismemberment','Decapitation','Severed Limbs or Heads','Mutilation','Exposed Organs or Entrails','Graphic Blood Splatter'] },
+                    { key:'Violence.JumpScares', label:'Jump Scares', badge:'visual',
+                      items:['Horror Jump Scares','Sudden Shock Sequences','Startling Creature Reveals','Startling Sounds with Visual Jump'] },
+                    { key:'Violence.Disturbing', label:'Disturbing & Psychological Horror', badge:'visual',
+                      items:['Disturbing Images','Psychological Horror','Corpses and Skeletal Remains','Suicide or Self-Harm Themes','Torture Sequences','Objectionable, Disturbing, or Scary'] }
                 ]},
                 { g:'Substances', label:'Substance Use', cats:[
-                    { key:'Substances.Usage', label:'Usage', badge:'visual',
-                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
+                    { key:'Substances.Tobacco', label:'Tobacco & Smoking', badge:'visual',
+                      items:['Smoking Cigarettes','Smoking Cigars or Pipes','Vaping or E-Cigarettes','Tobacco Product Use'] },
+                    { key:'Substances.Alcohol', label:'Alcohol & Drinking', badge:'visual',
+                      items:['Alcohol Consumption','Drunkenness and Intoxication','Beer, Wine, or Liquor Drinking','Bar Scenes with Heavy Drinking'] },
+                    { key:'Substances.IllegalDrugs', label:'Illegal Drugs & Narcotics', badge:'visual',
+                      items:['Illicit Drug Use','Narcotics Consumption','Smoking Marijuana / Weed','Snorting Cocaine / Heroin','Drug Injections and Paraphernalia','Drug Overdose or Intoxication'] }
                 ]},
                 { g:'Medical', label:'Medical & Biological Processes', cats:[
-                    { key:'Medical.Events', label:'Events', badge:'visual',
-                      items:['Medical Graphic','Medical Procedures','Life Events','Bodily Functions/Jokes'] }
+                    { key:'Medical.Events', label:'Medical Procedures & Trauma', badge:'visual',
+                      items:['Medical Graphic','Medical Procedures','Surgical Operations','Needles and Injections','Severe Hospital Trauma'] },
+                    { key:'Medical.BodilyFunctions', label:'Bodily Functions & Humor', badge:'visual',
+                      items:['Vomiting or Barfing','Gross Bodily Functions','Flatulence and Toilet Humor'] }
                 ]},
                 { g:'Structural', label:'Structural Timestamps', cats:[
-                    { key:'Structural.Timestamps', label:'Timestamps', badge:'visual',
-                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
+                    { key:'Structural.Credits', label:'Credits', badge:'visual',
+                      items:['Opening Credits','Closing Credits'] },
+                    { key:'Structural.IntroRecap', label:'Intro & Recap', badge:'visual',
+                      items:['Opening Intro Sequence','Episode Recap','Outtakes and Bloopers'] }
                 ]}
             ];
 
@@ -2147,331 +2173,7 @@
                 console.warn('Could not load plugin config:', err);
             });
 
-            // --- Studio Media & Segments Workspace Logic ---
-            var PLUGIN_ID = 'A62B2473-77E1-45C1-8470-57FB95A85394';
 
-            // --- Tab Navigation ---
-            function switchMainTab(tabKey) {
-                document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
-                    btn.classList.toggle('active', btn.getAttribute('data-cf-tab') === tabKey);
-                });
-                document.querySelectorAll('.cf-tab-panel').forEach(function(panel) {
-                    panel.classList.remove('active');
-                });
-                var target = document.getElementById('cfTab' + tabKey.charAt(0).toUpperCase() + tabKey.slice(1));
-                if (target) target.classList.add('active');
-            }
-
-            document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    switchMainTab(btn.getAttribute('data-cf-tab'));
-                });
-            });
-
-            // --- Filter Hierarchy Configuration Logic ---
-            var FH = [
-                { g:'Language', label:'Language & Profanity', cats:[
-                    { key:'Language.GeneralProfanity',    label:'General Profanity',      badge:'word',
-                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','cock','crap','cunt','damn','dick','douche','fuck','fucking','fucker','hell','piss','prick','pussy','screw','shit','twat','wank'] },
-                    { key:'Language.Blasphemy',           label:'Blasphemy',              badge:'word',
-                      items:['Jesus Christ','Oh God'] },
-                    { key:'Language.RacialAndBigotedSlurs', label:'Racial & Bigoted Slurs', badge:'word',
-                      items:['chink','cracker','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
-                    { key:'Language.ChildishLanguage',    label:'Childish Language',      badge:'word',
-                      items:['bum','butt','dumb','fart','stupid'] },
-                    { key:'Language.CaptionsWithProfanity', label:'Captions with Profanity', badge:'word',
-                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','damn','fuck','fucking','fucker','hell','shit'] }
-                ]},
-                { g:'SexualReferences', label:'Sexual References & Anatomy', cats:[
-                    { key:'SexualReferences.ExplicitWords', label:'Explicit Words', badge:'word',
-                      items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunillingus','dick','dildo','dink','douche','ejaculate','fag','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','picker','penis','porn','prick','piss','pussy','queer','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
-                    { key:'SexualReferences.ContextualDialogue', label:'Contextual Dialogue', badge:'visual',
-                      items:['A man makes a sexual remark to a man.','A man makes a sexual remark to a woman.','A woman makes a sexual remark to a man.','A woman makes a sexual remark to a woman.'] },
-                    { key:'SexualReferences.Visuals', label:'Visuals', badge:'visual',
-                      items:['Vulgar Gestures'] }
-                ]},
-                { g:'SexAndNudity', label:'Sex & Nudity', cats:[
-                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity', badge:'visual',
-                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
-                    { key:'SexAndNudity.NudityProfiles',  label:'Nudity Profiles',    badge:'visual',
-                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] },
-                    { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
-                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)'] }
-                ]},
-                { g:'Violence', label:'Violence & Horror', cats:[
-                    { key:'Violence.Tiers', label:'Tiers', badge:'visual',
-                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
-                ]},
-                { g:'Substances', label:'Substance Use', cats:[
-                    { key:'Substances.Usage', label:'Usage', badge:'visual',
-                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
-                ]},
-                { g:'Medical', label:'Medical & Biological Processes', cats:[
-                    { key:'Medical.Events', label:'Events', badge:'visual',
-                      items:['Medical Graphic','Medical Procedures','Life Events','Bodily Functions/Jokes'] }
-                ]},
-                { g:'Structural', label:'Structural Timestamps', cats:[
-                    { key:'Structural.Timestamps', label:'Timestamps', badge:'visual',
-                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
-                ]}
-            ];
-
-            function esc(s) {
-                return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-            }
-
-            function getEl(id) { return document.getElementById(id); }
-
-            function findItemCb(key) {
-                var all = document.querySelectorAll('[data-ik]');
-                for (var i = 0; i < all.length; i++) {
-                    if (all[i].getAttribute('data-ik') === key) return all[i];
-                }
-                return null;
-            }
-
-            function bleep(str) {
-                return str.split(' ').map(function(w) {
-                    var n = w.length;
-                    if (n <= 2) return w;
-                    var tail = n >= 6 ? 2 : 1;
-                    var stars = n - 1 - tail;
-                    if (stars < 1) stars = 1;
-                    return w[0] + '*'.repeat(stars) + w.slice(n - tail);
-                }).join(' ');
-            }
-
-            function renderHierarchy() {
-                var container = getEl('filterHierarchyContainer');
-                if (!container) return;
-                container.innerHTML = '';
-                FH.forEach(function(gDef, gIdx) {
-                    var catsHtml = '';
-                    gDef.cats.forEach(function(cat) {
-                        var subName = cat.key.split('.')[1];
-                        var isWord = cat.badge === 'word';
-                        var badgeCls = isWord ? 'cf-badge-word' : 'cf-badge-visual';
-                        var badgeTxt = isWord ? 'word' : 'visual';
-                        var itemsHtml = '';
-                        cat.items.forEach(function(item) {
-                            var ik = cat.key + ':' + item;
-                            var display = isWord ? bleep(item) : item;
-                            itemsHtml +=
-                                '<div class="cf-item">' +
-                                    '<label>' +
-                                        '<input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
-                                        '<span>' + esc(display) + '</span>' +
-                                    '</label>' +
-                                '</div>';
-                        });
-
-                        catsHtml +=
-                            '<div class="cf-c" data-fc="' + esc(cat.key) + '">' +
-                                '<div class="cf-c-header">' +
-                                    '<input type="checkbox" data-catcb="' + esc(cat.key) + '">' +
-                                    '<span class="cf-cname">' + esc(subName) + '</span>' +
-                                    '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
-                                    '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + cat.items.length + ' items</span>' +
-                                '</div>' +
-                                '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
-                            '</div>';
-                    });
-
-                    var gHtml =
-                        '<div class="cf-g" data-group="' + esc(gDef.g) + '">' +
-                            '<div class="cf-g-hdr">' +
-                                '<div class="cf-g-hdr-left">' +
-                                    '<span class="cf-num">' + (gIdx + 1) + '</span>' +
-                                    '<label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">' +
-                                        '<input type="checkbox" id="' + esc(gDef.g) + 'Enabled" style="width:16px;height:16px;">' +
-                                        '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
-                                    '</label>' +
-                                '</div>' +
-                                '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + gDef.cats.length + ' categories</span>' +
-                            '</div>' +
-                            '<div class="cf-g-body">' + catsHtml + '</div>' +
-                        '</div>';
-
-                    container.insertAdjacentHTML('beforeend', gHtml);
-                });
-
-                // Hook change listeners
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
-
-                    if (groupCb && groupEl) {
-                        groupCb.addEventListener('change', function() {
-                            var on = groupCb.checked;
-                            groupEl.querySelectorAll('.cf-items, .cf-c').forEach(function(el) {
-                                el.classList.toggle('cf-off', !on);
-                            });
-                        });
-                    }
-
-                    gDef.cats.forEach(function(cat) {
-                        var catCb = groupEl ? groupEl.querySelector('[data-catcb="' + cat.key + '"]') : null;
-                        if (catCb) {
-                            catCb.addEventListener('change', function() {
-                                var checked = catCb.checked;
-                                groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
-                                    icb.checked = checked;
-                                });
-                            });
-                        }
-
-                        if (groupEl) {
-                            groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
-                                icb.addEventListener('change', function() {
-                                    updateCatCb(groupEl, cat.key);
-                                });
-                            });
-                        }
-                    });
-                });
-            }
-
-            function updateCatCb(groupEl, catKey) {
-                var catCb = groupEl.querySelector('[data-catcb="' + catKey + '"]');
-                if (!catCb) return;
-                var items = groupEl.querySelectorAll('[data-cat="' + catKey + '"]');
-                var allOn = true, allOff = true;
-                items.forEach(function(cb) { if (cb.checked) allOff = false; else allOn = false; });
-                catCb.checked = allOn;
-                catCb.indeterminate = !allOn && !allOff;
-            }
-
-            function populateConfigForm(config) {
-                if (getEl('IsEnabled')) getEl('IsEnabled').checked = !!config.IsEnabled;
-                if (getEl('OllamaBaseUrl')) getEl('OllamaBaseUrl').value = config.OllamaBaseUrl || '';
-                if (getEl('OllamaVisionModel')) getEl('OllamaVisionModel').value = config.OllamaVisionModel || '';
-                if (getEl('OllamaApiKey')) getEl('OllamaApiKey').value = config.OllamaApiKey || '';
-                if (getEl('MaxConcurrentVisionRequests')) getEl('MaxConcurrentVisionRequests').value = config.MaxConcurrentVisionRequests || 1;
-                if (getEl('OllamaTextModel')) getEl('OllamaTextModel').value = config.OllamaTextModel || '';
-                if (getEl('ScanFramesPerSecond')) getEl('ScanFramesPerSecond').value = config.ScanFramesPerSecond ?? 0.5;
-                if (getEl('PreferredAudioLanguage')) getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
-                if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
-                if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
-
-                var disabled = new Set(config.DisabledFilterItems || []);
-
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    if (groupCb) groupCb.checked = !!config[gDef.g + 'Enabled'];
-                    var groupOn = groupCb ? groupCb.checked : true;
-                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
-
-                    gDef.cats.forEach(function(cat) {
-                        cat.items.forEach(function(item) {
-                            var ik = cat.key + ':' + item;
-                            var cb = findItemCb(ik);
-                            if (cb) cb.checked = !disabled.has(ik);
-                        });
-                        if (groupEl) {
-                            updateCatCb(groupEl, cat.key);
-                            if (!groupOn) {
-                                var fiList = groupEl.querySelector('[data-fil="' + cat.key + '"]');
-                                if (fiList) fiList.classList.add('cf-off');
-                                var fc = groupEl.querySelector('[data-fc="' + cat.key + '"]');
-                                if (fc) fc.classList.add('cf-off');
-                            }
-                        }
-                    });
-                });
-            }
-
-            function collectConfigForm(config) {
-                if (getEl('IsEnabled')) config.IsEnabled = getEl('IsEnabled').checked;
-                if (getEl('OllamaBaseUrl')) config.OllamaBaseUrl = getEl('OllamaBaseUrl').value || '';
-                if (getEl('OllamaVisionModel')) config.OllamaVisionModel = getEl('OllamaVisionModel').value || '';
-                if (getEl('OllamaApiKey')) config.OllamaApiKey = getEl('OllamaApiKey').value || '';
-                if (getEl('MaxConcurrentVisionRequests')) config.MaxConcurrentVisionRequests = parseInt(getEl('MaxConcurrentVisionRequests').value || '1', 10);
-                if (getEl('OllamaTextModel')) config.OllamaTextModel = getEl('OllamaTextModel').value || '';
-                if (getEl('ScanFramesPerSecond')) config.ScanFramesPerSecond = parseFloat(getEl('ScanFramesPerSecond').value || '0');
-                if (getEl('PreferredAudioLanguage')) config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
-                if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
-                if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
-
-                var disabled = [];
-                FH.forEach(function(gDef) {
-                    var groupCb = getEl(gDef.g + 'Enabled');
-                    if (groupCb) config[gDef.g + 'Enabled'] = groupCb.checked;
-                    gDef.cats.forEach(function(cat) {
-                        cat.items.forEach(function(item) {
-                            var ik = cat.key + ':' + item;
-                            var cb = findItemCb(ik);
-                            if (cb && !cb.checked) disabled.push(ik);
-                        });
-                    });
-                });
-                config.DisabledFilterItems = disabled;
-            }
-
-            function saveConfiguration(statusElId) {
-                var statusEl = document.getElementById(statusElId);
-                if (statusEl) statusEl.textContent = 'Saving...';
-                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
-                    collectConfigForm(config);
-                    ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then(function(result) {
-                        if (statusEl) {
-                            statusEl.textContent = '✓ Saved successfully!';
-                            setTimeout(function() { statusEl.textContent = ''; }, 4000);
-                        }
-                        Dashboard.processPluginConfigurationUpdateResult(result);
-                    }).catch(function(err) {
-                        if (statusEl) statusEl.textContent = '❌ Error: ' + err.message;
-                    });
-                });
-            }
-
-            if (getEl('saveRulesBtn')) {
-                getEl('saveRulesBtn').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
-            }
-            if (getEl('saveRulesBtnTop')) {
-                getEl('saveRulesBtnTop').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
-            }
-            if (getEl('saveSettingsBtn')) {
-                getEl('saveSettingsBtn').addEventListener('click', function() { saveConfiguration('settingsSaveStatus'); });
-            }
-
-            // Search filter for rules
-            if (getEl('rulesSearchInput')) {
-                getEl('rulesSearchInput').addEventListener('input', function(e) {
-                    var q = e.target.value.toLowerCase().trim();
-                    document.querySelectorAll('.cf-g').forEach(function(gEl) {
-                        var groupMatch = false;
-                        gEl.querySelectorAll('.cf-item').forEach(function(itemEl) {
-                            var text = itemEl.textContent.toLowerCase();
-                            var match = !q || text.includes(q);
-                            itemEl.style.display = match ? 'inline-block' : 'none';
-                            if (match) groupMatch = true;
-                        });
-                        gEl.style.display = (!q || groupMatch) ? 'block' : 'none';
-                    });
-                });
-            }
-
-            if (getEl('rulesExpandAllBtn')) {
-                getEl('rulesExpandAllBtn').addEventListener('click', function() {
-                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'block'; });
-                });
-            }
-            if (getEl('rulesCollapseAllBtn')) {
-                getEl('rulesCollapseAllBtn').addEventListener('click', function() {
-                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'none'; });
-                });
-            }
-
-            renderHierarchy();
-
-            // Load plugin configuration
-            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
-                populateConfigForm(config);
-            }).catch(function(err) {
-                console.warn('Could not load plugin config:', err);
-            });
-
-            // --- Studio Media & Segments Workspace Logic ---
             // Global State
             var currentMode = 'shows'; // 'shows' | 'movies'
             var activeItemId = '';

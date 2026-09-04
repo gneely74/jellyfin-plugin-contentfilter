@@ -7,73 +7,67 @@ IMDB tt9484998
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:01:03.290 --> 00:01:06.210
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: partial female leg
 
 00:01:10.800 --> 00:01:55.420
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: intercourse + mast
 
 00:10:21.030 --> 00:11:38.690
-category: SexualReferences.ContextualDialogue
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: oral intercourse mixed with dialogue
 
 00:14:00.250 --> 00:14:02.750
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: partial female leg
 
 00:30:58.990 --> 00:32:13.550
-category: SexualReferences.ContextualDialogue
+category: SexAndNudity.Graphic
 channel: both
 action: skip
-description: conversation with brief scenes
-
-00:31:47.820 --> 00:31:57.420
-category: SexAndNudity.OnscreenActivity
-channel: both
-action: skip
-description: implied homo intercourse
+description: conversation with brief scenes / implied homo intercourse
 
 00:32:05.360 --> 00:32:13.550
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: implied homo, faked
 
 00:39:22.920 --> 00:39:33.340
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: oral intercourse implied
 
 00:39:43.970 --> 00:39:46.890
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: tattoo
 
 00:40:26.430 --> 00:40:31.010
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: tattoo
 
 00:45:54.260 --> 00:46:29.710
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: no intercourse, but almost
 
 00:50:51.180 --> 00:50:54.930
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man hit by car
@@ -85,25 +79,25 @@ action: skip
 description: plus profanity
 
 00:57:52.090 --> 00:57:59.180
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man stabbed with fork
 
 00:59:31.380 --> 00:59:34.300
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: blurry
 
 01:04:41.120 --> 01:04:44.870
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: man in shower
 
 01:04:48.620 --> 01:04:51.120
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: man in shower

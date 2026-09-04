@@ -12,7 +12,7 @@ action: mute
 description: Child says the S word.
 
 00:02:31.000 --> 00:02:38.000
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: audio
 action: mute
 description: Child says the A word twice by saying someone will kick his butt, referring to what his brother says he'll do if he catches him smoking more than once
@@ -24,7 +24,7 @@ action: mute
 description: A child says you'll be in deep s***.
 
 00:03:01.000 --> 00:03:41.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: The children start smoking the cigarettes.
@@ -36,7 +36,7 @@ action: mute
 description: A Man is trying his hardest to commit suicide but the child gets in the way of his plan, so he takes the child hostage in his car and aims a gun at hi / A child says Jc. / A Child says let's get the h
 
 00:06:58.000 --> 00:07:02.000
-category: Violence.Tiers
+category: Violence.Mild
 channel: video
 action: skip
 description: Someone punches a child.
@@ -54,19 +54,19 @@ action: mute
 description: Child says the d word.
 
 00:11:58.000 --> 00:12:13.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man shoots himself through the mouth, we see him put the gun in his mouth and the shot is heard mostly instead of shown. A child screams in a panic
 
 00:12:13.000 --> 00:12:57.000
-category: Substances.Usage
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: Alcohol is seen, someone is at a bar drinking, the people there are wearing Suggestive clothing. They leave and walk out onto the street. / There's very inappropriately dressed people walking around,
 
 00:17:24.000 --> 00:17:30.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Man seen smoking on TV.
@@ -90,7 +90,7 @@ action: mute
 description: Child says the h word.
 
 00:31:12.000 --> 00:32:22.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: In the background of this scene a man's smoking.
@@ -108,25 +108,25 @@ action: mute
 description: Someone tells their brother "look Ricky, an Eskimo P**sing" as a joke to try and get them to respond.
 
 00:40:37.000 --> 00:40:42.000
-category: Substances.Usage
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A nosy reporter trying to ask questions, asks "did gerome touch you anyplace or something like that?"
 
 00:43:57.000 --> 00:44:01.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A Man puts out a cigarette.
 
 00:45:47.000 --> 00:45:55.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Man smoking as the telephone rings, he goes to pick it up.
 
 00:47:48.000 --> 00:48:50.000
-category: Violence.Tiers
+category: Violence.Graphic
 channel: video
 action: skip
 description: Someone holds a knife to a child's back, then turns him around and threatens him to his face with the knife, saying if he tells anyone what Gerome sai
@@ -138,25 +138,25 @@ action: mute
 description: A Child yells the A word.
 
 00:55:07.000 --> 00:55:47.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A Man is seen smoking.
 
 00:56:10.000 --> 00:56:34.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A Man is seen holding a cigarette.
 
 00:59:52.000 --> 01:03:00.000
-category: SexualReferences.ContextualDialogue
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Man smoking. Then a Women grabs a pack of cigarettes and smokes it, mostly just takes a couple puffs and holds it while having a conversation. At 1:01 / A child takes it from her hand and smokes it to
 
 01:06:28.000 --> 01:06:34.000
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: audio
 action: mute
 description: Child says the h word, someone tells him to watch is mouth, he says kick my a** you stupid jerk.
@@ -168,19 +168,19 @@ action: mute
 description: A couple Men are drinking some alcohol in their hotel room.
 
 01:20:58.000 --> 01:21:39.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Man smoking.
 
 01:21:08.000 --> 01:21:14.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man walks into the Men's bathroom and one guy is just finishing using the urinal. Nothing seen at all other than him zipping up his pants, even then
 
 01:26:54.000 --> 01:27:06.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Man smoking.
@@ -192,7 +192,7 @@ action: skip
 description: A child uses the middle finger.
 
 01:36:59.000 --> 01:37:24.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: Someone smoking.
@@ -210,43 +210,43 @@ action: mute
 description: A child explains oh s***.
 
 01:41:46.000 --> 01:42:18.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A Man is seen smoking.
 
 01:42:03.000 --> 01:42:08.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Someone shoots a raccoon and it slumps over.
 
 01:43:54.000 --> 01:44:00.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man gets squished/trapped under something heavy.
 
 01:44:24.000 --> 01:44:30.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man bashes a Women's head on the ground.
 
 01:44:35.000 --> 01:45:46.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A child aims a gun at someone.
 
 01:46:50.000 --> 01:46:58.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Someone opens a bag of human remains that have been decomposing and it's head has maggots crawling in it.
 
 01:50:08.000 --> 01:50:48.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man's wearing a shirt that's mesh so you can see through it.

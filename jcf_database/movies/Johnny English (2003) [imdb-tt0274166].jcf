@@ -7,13 +7,13 @@ IMDB tt0274166
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:38:07.560 --> 00:38:21.410
-category: Substances.Usage
+category: Substances.Alcohol
 channel: both
 action: skip
 description: drinking sake
 
 00:47:34.130 --> 00:47:44.840
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: man's bottom in underwear
@@ -25,7 +25,7 @@ action: skip
 description: suggestive dialog, language
 
 01:15:51.530 --> 01:16:35.530
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: man's bottom shown in full moon

@@ -8,6 +8,7 @@ from process_to_jcf import (
     clean_line_typos,
     format_time_seconds,
     map_category,
+    map_category_and_channel,
     merge_cues,
     parse_post_into_cues,
     parse_time_to_seconds,
@@ -38,15 +39,32 @@ def test_clean_line_typos():
 
 
 def test_map_category():
-    assert map_category("VIOLENCE") == "Violence"
-    assert map_category("GORE, MAY BE DISTURBING") == "Gore"
-    assert map_category("NUDITY") == "Sex.Nudity"
-    assert map_category("UNDERWEAR") == "Sex.Suggestive"
-    assert map_category("ALCOHOL CONTENT") == "Substance"
-    assert map_category("INAPPROPRIATE TALK") == "Profanity"
-    assert map_category("SEIZURE WARNING") == "Warning.Seizure"
-    assert map_category("JUMPSCARE") == "Suspense"
-    assert map_category("UNKNOWN") == "General"
+    assert map_category("VIOLENCE") == "Violence.Moderate"
+    assert map_category("GORE, MAY BE DISTURBING") == "Violence.Gore"
+    assert map_category("NUDITY") == "SexAndNudity.FullNudity"
+    assert map_category("UNDERWEAR") == "SexAndNudity.PartialNudity"
+    assert map_category("ALCOHOL CONTENT") == "Substances.Alcohol"
+    assert map_category("INAPPROPRIATE TALK") == "Language.GeneralProfanity"
+    assert map_category("SEIZURE WARNING") == "Medical.Events"
+    assert map_category("JUMPSCARE") == "Violence.JumpScares"
+    assert map_category("UNKNOWN") == "Violence.Moderate"
+
+
+def test_map_category_and_channel():
+    cat, channel, action = map_category_and_channel("INAPPROPRIATE TALK", "f-word used")
+    assert cat == "Language.GeneralProfanity"
+    assert channel == "audio"
+    assert action == "mute"
+
+    cat, channel, action = map_category_and_channel("GORE", "severed hand")
+    assert cat == "Violence.Gore"
+    assert channel == "video"
+    assert action == "skip"
+
+    cat, channel, action = map_category_and_channel("SEIZURE WARNING", "strobe lights flashing")
+    assert cat == "Medical.Events"
+    assert channel == "both"
+    assert action == "skip"
 
 
 def test_parse_post_into_cues():
@@ -62,30 +80,30 @@ NUDITY
     assert len(cues) == 3
     assert cues[0].start_str == "00:04:13.000"
     assert cues[0].end_str == "00:04:25.000"
-    assert cues[0].category == "Violence"
+    assert cues[0].category == "Violence.Moderate"
     assert "[VIOLENCE]" in cues[0].description
 
     assert cues[1].start_str == "00:06:27.000"
     assert cues[1].end_str == "00:06:34.000"
-    assert cues[1].category == "Sex.Suggestive"
+    assert cues[1].category == "SexAndNudity.PartialNudity"
 
     assert cues[2].start_str == "01:22:51.000"
     assert cues[2].end_str == "01:24:12.000"
-    assert cues[2].category == "Sex.Nudity"
+    assert cues[2].category == "SexAndNudity.FullNudity"
 
 
 def test_merge_cues():
     cue1 = Cue(
         start_seconds=10,
         end_seconds=20,
-        category="Violence",
+        category="Violence.Moderate",
         description="Fight 1",
         raw_category="VIOLENCE",
     )
     cue2 = Cue(
         start_seconds=19,
         end_seconds=30,
-        category="Violence",
+        category="Violence.Moderate",
         description="Fight 2",
         raw_category="VIOLENCE",
     )
@@ -102,7 +120,7 @@ def test_build_jcf_content():
         Cue(
             start_seconds=60,
             end_seconds=90,
-            category="Gore",
+            category="Violence.Gore",
             description="[GORE] Blood splatter",
             raw_category="GORE",
         )
@@ -110,7 +128,7 @@ def test_build_jcf_content():
     content = build_jcf_content("The Movie", 1999, cues)
     assert content.startswith("WEBVTT JCF\n\nNOTE\nTITLE The Movie\nYEAR 1999")
     assert "00:01:00.000 --> 00:01:30.000" in content
-    assert "category: Gore" in content
+    assert "category: Violence.Gore" in content
     assert "description: [GORE] Blood splatter" in content
     assert "action: skip" in content
 

@@ -19,13 +19,13 @@ action: skip
 description: idiomatic blasphemy - Dios
 
 00:37:51.090 --> 00:37:55.760
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: implied nudity
 
 00:44:58.120 --> 00:45:07.830
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 

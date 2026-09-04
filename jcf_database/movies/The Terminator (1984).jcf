@@ -6,16 +6,22 @@ YEAR 1984
 SOURCE https://buymeacoffee.com/thetimestampdudes/timestamps-skip-the-terminator-1984
 
 00:04:24.000 --> 00:06:25.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.FullNudity
 channel: video
 action: skip
 description: a man is seen naked, frontal nudity is shown but very quickly and the rest of the time it's covered by camera angles and everything else is shown
 
-00:06:45.000 --> 00:09:57.000
-category: SexAndNudity.NudityProfiles
+00:06:45.000 --> 00:07:49.000
+category: SexAndNudity.FullNudity
 channel: video
 action: skip
-description: another man is seen naked in the same manner as shown in the timestamp above, at the end of this timestamp he puts pants on / a man is seen running without a shirt on with pants, he then steals a jack
+description: another man is seen naked in the same manner as shown in the timestamp above, at the end of this timestamp he puts pants on
+
+00:06:45.000 --> 00:09:57.000
+category: SexAndNudity.PartialNudity
+channel: video
+action: skip
+description: a man is seen running without a shirt on with pants, he then steals a jacket that is semi open for the rest of the scene, may or may not be a concern
 
 00:21:05.000 --> 00:21:34.000
 category: SexualReferences.ContextualDialogue
@@ -48,19 +54,19 @@ action: skip
 description: A man is seen without his shirt on and in underwear (not boxers), may be a concern to some viewers) if you skipped this scene -> >! The man is killed
 
 01:16:14.000 --> 01:16:34.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.FullNudity
 channel: video
 action: skip
 description: a woman is seen in a towel that exposes a good amount of her upper chest, no full nudity tho but may still be a concern to some
 
 01:18:40.000 --> 01:21:39.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: a man is seen without his shirt again) if you skipped this scene -> >! Sara asks about if he has a girl where he comes from, He basically just confess
 
 01:21:39.000 --> 01:22:57.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: video
 action: skip
 description: a man and a woman kiss passionately over and over, they then take their clothes off and the sex scene starts, they're mostly seen from the waist up an

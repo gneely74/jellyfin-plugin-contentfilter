@@ -7,43 +7,43 @@ IMDB tt2194499
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:10:34.320 --> 00:10:37.240
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.Mild
 channel: video
 action: skip
 description: bikinis
 
 00:47:35.690 --> 00:49:43.640
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: the entire adult scene above, if kids are watching
 
 00:47:41.980 --> 00:48:19.510
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: female undressing
 
 00:48:51.090 --> 00:48:57.340
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: female undressing
 
 00:49:01.940 --> 00:49:15.440
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: man and woman after sex
 
 00:49:17.400 --> 00:49:23.230
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.ImpliedSex
 channel: both
 action: skip
 description: male, suggestive
 
 01:08:26.600 --> 01:09:29.560
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: female

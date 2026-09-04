@@ -17,31 +17,31 @@ action: skip
 description: A Woman is seen laying next to a Man with a kind of low cut outfit but it's dark out. She tries to make moves on him and rolls over on top of him. The
 
 00:05:42.000 --> 00:06:01.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: Different setting of the main character and his wife in bed touching each other sensually and her outfit is low cut.
 
 00:06:36.000 --> 00:07:08.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A high scale party is held and some woman's outfits hang off their shoulders and expose some of their chest area.
 
 00:07:46.000 --> 00:08:18.000
-category: SexAndNudity.PhysicalIntimacy
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: The main character is seen in bed with his with, same as the Timestamp above, and they're talking face to face with holding each other, then they kiss
 
 00:10:22.000 --> 00:11:05.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is served with dinner.
 
 00:11:38.000 --> 00:11:52.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Solomon pukes in flashback after he had been drinking with the Men previously at dinner.
@@ -53,31 +53,31 @@ action: mute
 description: N word used against a black person.
 
 00:14:23.000 --> 00:16:11.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Solomons foot chains are reefed and he falls to the ground. He's then beat with a large wooden paddle in the back dozens of times as he screams in pai
 
 00:16:46.000 --> 00:17:09.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Solomon takes off his shirt and puts on another one that he's given.
 
 00:17:31.000 --> 00:18:11.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Many nude Men are seen washing themselves.
 
 00:19:21.000 --> 00:19:47.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A slave is kicked. And then one is kicked and beaten in the face.
 
 00:21:13.000 --> 00:21:49.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: More than likely alcohol bottles visible on a table, it's kind of dark though. Not the focus of the scene at all, it's just kind of "there."
@@ -89,7 +89,7 @@ action: mute
 description: N word.
 
 00:21:54.000 --> 00:22:16.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: A slave is seen with a muzzle on and is seen spitting everywhere.
@@ -101,19 +101,19 @@ action: mute
 description: N word is used twice and the d word is said as well all in one sentence.
 
 00:23:52.000 --> 00:25:03.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A Man walks in and taps on the woman slave and leads her out of the room. Another Man tries to grab onto him to stop him from taking her but he's stab / His dead body is seen wrapped in a blanket and
 
 00:25:12.000 --> 00:25:18.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Negro is used, which may be offensive.
 
 00:25:46.000 --> 00:25:56.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Men are seen shirtless with scar marks on their backs.
@@ -125,13 +125,13 @@ action: mute
 description: N word used against black people.
 
 00:28:44.000 --> 00:33:23.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Nude Men and Woman bathe, then get shown off to a buyer, still nude. / At this point there's only a shirtless Man shown. / N word is used against a black person.
 
 00:31:06.000 --> 00:31:14.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man calls the slaves "cotton picking n-s."
@@ -143,7 +143,7 @@ action: mute
 description: A crying child is kicked and ripped from its mother. The child is heard screaming until 32:10. During this time many curse words are spouted at the wo
 
 00:32:16.000 --> 00:33:23.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: .
@@ -167,31 +167,31 @@ action: mute
 description: A song is sung with the lyrics "Run, N- run" for an extended period of time as a montage of slaves working is shown.
 
 00:36:12.000 --> 00:36:25.000
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: audio
 action: mute
 description: A Man buttons the front of his pants after going to the bathroom,mno nudity seen, quite tame and mild.
 
 00:36:35.000 --> 00:36:50.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 00:36:56.000 --> 00:37:01.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used.
 
 00:41:07.000 --> 00:41:35.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Solomon grabs the woman somewhat forcefully.
 
 00:43:06.000 --> 00:43:15.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man is kicked in the butt.
@@ -221,157 +221,169 @@ action: mute
 description: Solomon is tied up, dragged and hung by his neck with a noose. He's stuck there afterwards with his toes just barely touching the ground as he struggl / N word used against a black person.
 
 00:53:50.000 --> 00:53:56.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against a black person.
 
 00:54:01.000 --> 00:54:06.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against a black person.
 
 00:55:10.000 --> 00:55:26.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people in a sacrilegious context manipulating Scripture saying they must obey their owners.
 
 00:55:50.000 --> 00:56:12.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Slaves are seen being whipped while picking cotton and being yelled the N word at them.
 
 00:56:25.000 --> 00:56:38.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against a black person.
 
 00:56:53.000 --> 00:57:34.000
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: video
 action: skip
-description: A slave owner puts his hands on a female slaves shoulders, making her uncomfortable. He talks in a creepy way towards her. / "D-m queen" is spoken about her. Then n words are spoken.
+description: A slave owner puts his hands on a female slaves shoulders, making her uncomfortable. He talks in a creepy way towards her.
+
+00:57:07.000 --> 00:57:23.000
+category: Violence.Moderate
+channel: video
+action: skip
+description: "D-m queen" is spoken about her. Then n words are spoken.
 
 00:57:40.000 --> 00:57:54.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: A Man drinks alcohol.
 
 01:00:00.000 --> 01:01:49.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Slaves dance at a party held by the owners, some women are shown in underwear like dresses. Not extremely graphic.
 
 01:00:25.000 --> 01:00:55.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A woman throws a glass alcohol bottle at the face of one of the women dancing. / Multiple N words used against black people and a b word.
 
 01:01:34.000 --> 01:01:39.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: The woman is dragged away on the ground.
 
 01:02:16.000 --> 01:02:20.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A whip is briefly whipped towards a slave in the background.
 
 01:04:20.000 --> 01:05:23.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
-description: Men are shown being tied up and nooses are placed around their heads. / Solomon is kicked in the butt. / The Men with nooses around their necks are strung up, they gag and writhe around.
+description: Men are shown being tied up and nooses are placed around their heads. / Solomon is kicked in the butt.
+
+01:05:14.000 --> 01:05:23.000
+category: Violence.Disturbing
+channel: video
+action: skip
+description: The Men with nooses around their necks are strung up, they gag and writhe around.
 
 01:07:12.000 --> 01:07:16.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against a black person.
 
 01:09:00.000 --> 01:09:07.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:09:19.000 --> 01:09:28.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A passing comment about a "lusty night" that people have been forcing on others.
 
 01:10:22.000 --> 01:10:27.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: "You're a d- liar" is spoken.
 
 01:10:34.000 --> 01:11:23.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A fight breaks out as the Man says "I'll cut your black throat." He chases after him and cuts his shirt sleeve as he swings his knife at him over and
 
 01:11:57.000 --> 01:12:05.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: He tries to fight Solomon again.
 
 01:12:10.000 --> 01:12:15.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A person is called the b word.
 
 01:12:24.000 --> 01:12:30.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word is used against a black person.
 
 01:12:38.000 --> 01:12:43.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word is used against a black person.
 
 01:13:23.000 --> 01:15:32.000
-category: Violence.Tiers
+category: SexAndNudity.SexualAssault
 channel: video
 action: skip
 description: The Man from before that fought Solomon brings out a slave woman at night and rapes her. They show her wincing in pain, he slaps her very hard in the
 
 01:16:14.000 --> 01:18:45.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is seen on tables. Slaves are seen dancing, women are shown in their undergarment dresses but it's not graphic. / N word used against black people.
 
 01:17:37.000 --> 01:17:41.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: D-mn is used.
 
 01:17:54.000 --> 01:18:22.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A slave is scratched in the face and she cries in pain. She's then pulled out of the room forcefully.
 
 01:18:45.000 --> 01:20:56.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Woman is seen in her dress undergarment, not graphic.
@@ -383,73 +395,73 @@ action: mute
 description: Solomon says "Why would you cosign me to damnation with such an ungodly request?" But it isn't used in a curse-like way.
 
 01:21:23.000 --> 01:21:28.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: D-mn is used.
 
 01:21:56.000 --> 01:22:05.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: D-mn is exclaimed a handful of times as a Man rides by on a horse, whipping it in anger.
 
 01:24:12.000 --> 01:24:18.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word is used.
 
 01:25:24.000 --> 01:26:03.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A party is held and some women's dress gowns are lowcut and have the sleeves hanging off of their shoulders.
 
 01:27:19.000 --> 01:27:25.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:27:34.000 --> 01:27:40.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:29:24.000 --> 01:29:28.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: D-mn is spoken.
 
 01:29:32.000 --> 01:31:25.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Solomons whipped and injured back is shown as it's tended to, may look scary to some as it's fresh wounds. He has no shirt on because of this. / D-mn is spoken.
 
 01:34:32.000 --> 01:34:37.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:34:50.000 --> 01:34:54.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:38:36.000 --> 01:38:51.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A slave is kicked. / N word used against black people.
 
 01:39:06.000 --> 01:39:17.000
-category: Violence.Tiers
+category: Violence.Gore
 channel: video
 action: skip
 description: A dead body inside a burlap sack is buried. No gore present.
@@ -461,31 +473,31 @@ action: mute
 description: Hell is used in a song, but in reference to the place. Not used as a curse and it's a biblical song.
 
 01:42:09.000 --> 01:42:47.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is offered to a Man but eh refuses, the other Man takes a swig instead.
 
 01:43:20.000 --> 01:43:25.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:43:30.000 --> 01:43:35.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: N word used against black people.
 
 01:43:56.000 --> 01:44:22.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Several N words used against black people and other racially insensitive talk, such as comparing them to baboons.
 
 01:45:40.000 --> 01:45:44.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: D-mn is said.
@@ -497,25 +509,25 @@ action: mute
 description: A Man grabs a woman and shakes her forcefully, asking where Pats is. He calls her a racial slur.
 
 01:46:54.000 --> 01:47:17.000
-category: Violence.Tiers
+category: Violence.Mild
 channel: video
 action: skip
 description: Pats is grabbed by the Man in the neck area and shoved. As Solomon tries to chime in, he's slapped in the face.
 
 01:48:15.000 --> 01:54:05.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: The Man tells his servant to strip her bare and lash her to a post, and he does. Her bare chest can be seen for a handful of seconds and then her bare / N word used against black people. / . / The whi
 
 02:02:32.000 --> 02:03:03.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Multiple N words used against black people, and Men fighting over their slave.
 
 02:07:08.000 --> 02:07:14.000
-category: Violence.Tiers
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Cheek kiss.

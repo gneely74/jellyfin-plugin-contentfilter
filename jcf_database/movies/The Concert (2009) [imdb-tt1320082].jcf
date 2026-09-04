@@ -7,19 +7,19 @@ IMDB tt1320082
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:26:46.300 --> 00:26:54.330
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: on a distant TV
 
 00:47:30.770 --> 00:47:47.030
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: dancer
 
 01:37:59.510 --> 01:38:02.010
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: two men kissing

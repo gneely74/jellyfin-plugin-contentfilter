@@ -12,7 +12,7 @@ action: skip
 description: a man and a woman have sex clothed, two men start fighting and women are there in old time underwear (so basically dresses but they're a bit more reve
 
 00:03:09.000 --> 00:04:24.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: more women in old time underwear thats a bit more revealing, they're tending to the stabbed girl, if you skipped -> one of the men she "she gonna die?
@@ -23,11 +23,17 @@ channel: video
 action: skip
 description: inappropriate sexual comments about a mans parts being small, in the scene above
 
-00:04:22.000 --> 00:06:15.000
-category: SexAndNudity.OnscreenActivity
+00:04:22.000 --> 00:04:26.000
+category: Violence.Moderate
 channel: video
 action: skip
-description: mentions of wh*re / the man without a shirt is seen as some girls show up here and there in the back with the old time underwear on but they're fuzzy and out of focus mos
+description: mentions of wh*re
+
+00:04:24.000 --> 00:06:15.000
+category: SexAndNudity.PartialNudity
+channel: video
+action: skip
+description: the man without a shirt is seen as some girls show up here and there in the back with the old time underwear on but they're fuzzy and out of focus mos
 
 00:04:41.000 --> 00:04:46.000
 category: SexualReferences.ContextualDialogue
@@ -48,13 +54,13 @@ action: skip
 description: comments of Wh*ore
 
 00:06:46.000 --> 00:06:55.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: women in old time underwear, brief
 
 00:06:58.000 --> 00:08:13.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: directly after the scenes above, some women are shown in old time underwear, all that's going on is the women are trying to pool their money for Delil
@@ -72,7 +78,7 @@ action: skip
 description: mention of t**ts being cut off
 
 00:18:04.000 --> 00:18:17.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Will is seen without a shirt on briefly while shaving, mostly just his upper shoulders and chest seen
@@ -162,13 +168,13 @@ action: skip
 description: Aice is seen in old time underwear thats a bit more revealing but still a dress basically,one of the girls says someones asking for her and then Alice / inappropriate sexual comments in the scene abov
 
 01:17:42.000 --> 01:18:03.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: old time underwear revealing dress stuff again, they're just getting the guys dressed and the they escape out the window so skip freely
 
 01:19:21.000 --> 01:19:56.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: more old time underwear, little bill is trying to get the women to tell him where they escaped to but they say they were just there for the night and
@@ -192,7 +198,7 @@ action: skip
 description: women in old time underwear (one of the women this time has a lot of her chest spilling out of her outfit) a some f words are said and they just talk
 
 01:41:04.000 --> 01:41:19.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Ned is seen without a shirt, the guys are whipping him, that's all it is) it's seen again at 1:41:33-1:43:10, they're Whipping him still and the try t
@@ -204,7 +210,7 @@ action: skip
 description: wh*re and -f is said) heard again at 1:42:30-1:42:34
 
 01:41:33.000 --> 01:43:10.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: they're Whipping him still and the try to get the whereabouts from ned on the other two guys but he won't given it to them so they go to get the girls

@@ -7,49 +7,49 @@ IMDB tt7131622
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:30:02.950 --> 00:30:27.160
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 
 00:43:23.930 --> 00:43:28.520
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 
 01:25:03.160 --> 01:25:04.850
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 
 02:25:48.090 --> 02:26:10.420
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 
 02:26:20.420 --> 02:26:21.670
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 
 02:26:33.450 --> 02:26:35.950
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 
 02:26:51.620 --> 02:26:52.830
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: bloody
 
 02:27:21.600 --> 02:27:45.840
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: bloody
 
 02:29:02.360 --> 02:29:23.880
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: bashing head

@@ -12,19 +12,19 @@ action: skip
 description: a man kisses another woman while she's unconscious, skip freely
 
 00:04:02.000 --> 00:04:29.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.SexualAssault
 channel: video
 action: skip
 description: a man starts sexually groping a woman's clothed breasts, skip freely
 
 00:11:08.000 --> 00:11:38.000
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: video
 action: skip
 description: a close-up of a womans lips is shown in a sexually charged way, she then starts repeatedly sucking on a mans arm and sucks a bullet out of it, all don
 
 00:14:39.000 --> 00:15:05.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: a man grabs a woman by the neck and violently tosses her around and chokes her
@@ -42,13 +42,13 @@ action: skip
 description: "foc" is said like the f- word and a woman asks what it could mean, a man explains it like the f- word, skip freely
 
 00:19:52.000 --> 00:19:56.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: a woman walks past the camera in a way that's zoomed in on her chest, skip freely
 
 00:23:22.000 --> 00:23:31.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: video
 action: skip
 description: another bullet is sucked out of his arm, this time it looks to be mimicking oral sex due to angle
@@ -66,7 +66,7 @@ action: skip
 description: inappropriate comments about what he wanted to do with a woman, not extremely graphic but not extremely tame either, skip freely
 
 00:42:30.000 --> 00:42:46.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: a man grabs a woman and shakes her violently, skip freely
@@ -90,13 +90,13 @@ action: skip
 description: inappropriate comments about using a woman's underwear to make soup
 
 00:49:22.000 --> 00:50:16.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: a group of men throw around another guy in a violent manner
 
 00:50:40.000 --> 00:50:58.000
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: video
 action: skip
 description: a man again, gropes a woman's clothed breasts, skip freely
@@ -108,7 +108,7 @@ action: skip
 description: a kiss between a man and a man is seen (although you can't see the other man due to the hair and angle), it's due to one man is crossdressing in an at / this whole scene is a romance scene between two
 
 00:54:11.000 --> 00:54:26.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: two men are seen on a couch together snuggling, the other man struggles out of his hold in a semi inappropriate way
@@ -126,25 +126,25 @@ action: skip
 description: a woman sucks a bullet out of a man's arm again briefly, they're then seen embracing eachother and kissing each other passionately and more sexually,
 
 01:14:54.000 --> 01:15:00.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man is shot in the arm, comedic.
 
 01:15:40.000 --> 01:15:51.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man is shot and falls down some stairs, comedic.
 
 01:22:00.000 --> 01:22:08.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Someone is shot, comedic.
 
 01:22:47.000 --> 01:24:22.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A Man and a Women start getting touchy feely and then start making out. They stop and he asks her what she's doing and she says she's adjusting his ce

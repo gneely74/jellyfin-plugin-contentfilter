@@ -90,13 +90,9 @@ If Buy Me a Coffee detects a new device or browser session, it will send a 6-dig
 ==================================================
 ```
 
-### Session Persistence & Security
+### Session Persistence
 
 Once authenticated, session cookies (including secure session identifiers) are saved locally to `bmc_session.json` (or custom path via `--session-file`).
-
-> [!IMPORTANT]
-> **No passwords or session tokens are committed to GitHub.**
-> `bmc_session.json`, `*.session.json`, `thetimestampdudes_posts/`, and `jcf_thetimestampdudes/` are excluded by `.gitignore`. Never track or push session files or plain-text passwords.
 
 ### Subsequent Runs
 
@@ -148,17 +144,27 @@ Run the processor to convert the downloaded data into discrete `.jcf` files:
 3. **Category Mapping**:
    The creator's headings are mapped to standard Jellyfin Content Filter categories while embedding the original note in the `description:` field:
 
-   | Creator Header Keywords | Mapped JCF Category | Default Action |
-   | :--- | :--- | :--- |
-   | NUDITY, NUDE, BARE, TOPLESS | `Sex.Nudity` | `skip` |
-   | UNDERWEAR, BRA, SUGGESTIVE, KISS, SEX, REVEALING | `Sex.Suggestive` | `skip` |
-   | VIOLENCE, FIGHT, SHOT, KILL, CHOKE, ASSAULT | `Violence` | `skip` |
-   | GORE, BLOOD, MANGLED, DECAPITATED | `Gore` | `skip` |
-   | PROFANITY, LANGUAGE, CURSE, VULGAR, RUDE TALK | `Profanity` | `skip` |
-   | ALCOHOL, DRUG, BEER, WINE, SMOKING, CIGARETTE | `Substance` | `skip` |
-   | SEIZURE, STROBE, FLASHING LIGHTS | `Warning.Seizure` | `skip` |
-   | JUMPSCARE, SCARY, DISTURBING, GROSS | `Suspense` | `skip` |
-   | Other / General content | `General` | `skip` |
+   | Creator Header Keywords | Mapped JCF Category | Channel | Default Action |
+   | :--- | :--- | :--- | :--- |
+   | NUDITY, NUDE, BARE, TOPLESS | `SexAndNudity.FullNudity` | `video` | `skip` |
+   | UNDERWEAR, BRA, LINGERIE, REVEALING, CROP TOP | `SexAndNudity.PartialNudity` | `video` | `skip` |
+   | SEX, INTERCOURSE, EXPLICIT, EROTIC, MASTURBATION | `SexAndNudity.Graphic` | `video` | `skip` |
+   | KISS, KISSING, MAKE OUT, CARESS | `SexAndNudity.PhysicalIntimacy` | `video` | `skip` |
+   | BIKINI, SWIMSUIT, SWIMWEAR, BEACH | `SexAndNudity.Mild` | `video` | `skip` |
+   | GORE, BLOOD, MANGLED, DECAPITATED, ENTRAILS | `Violence.Gore` | `video` | `skip` |
+   | GRAPHIC VIOLENCE, FATAL, BRUTAL, VISCERAL | `Violence.Graphic` | `video` | `skip` |
+   | VIOLENCE, FIGHT, SHOT, SHOOT, STAB, ASSAULT | `Violence.Moderate` | `video` | `skip` |
+   | SLAP, PUNCH, COMIC FIGHT, SHOVING | `Violence.Mild` | `video` | `skip` |
+   | JUMPSCARE, JUMP SCARE, STARTLE | `Violence.JumpScares` | `video` | `skip` |
+   | DISTURBING, SCARY, CORPSE, SUICIDE, TORTURE | `Violence.Disturbing` | `video` | `skip` |
+   | PROFANITY, LANGUAGE, CURSE, VULGAR, F-WORD | `Language.GeneralProfanity` | `audio` | `mute` |
+   | ALCOHOL, BEER, WINE, DRINKING, DRUNK | `Substances.Alcohol` | `video` | `skip` |
+   | SMOKING, CIGARETTE, CIGAR, VAPING, TOBACCO | `Substances.Tobacco` | `video` | `skip` |
+   | DRUGS, NARCOTIC, MARIJUANA, COCAINE, PILLS | `Substances.IllegalDrugs` | `video` | `skip` |
+   | SEIZURE, STROBE, FLASHING LIGHTS, MEDICAL | `Medical.Events` | `both` | `skip` |
+   | VOMIT, BARF, BODILY FUNCTION | `Medical.BodilyFunctions` | `both` | `skip` |
+   | CREDITS, OPENING/CLOSING CREDITS | `Structural.Credits` | `both` | `skip` |
+   | INTRO, RECAP, OUTTAKES | `Structural.IntroRecap` | `both` | `skip` |
 
 4. **Multi-Film Splitting**:
    Posts covering multiple movies (e.g. *The Lord of the Rings (all 3 Trilogy movies)*) are automatically identified and partitioned into separate files:
@@ -167,7 +173,7 @@ Run the processor to convert the downloaded data into discrete `.jcf` files:
    - `The Lord of the Rings - The Return of the King (2003).jcf`
 
 5. **Cue Merging**:
-   Adjacent or overlapping cues with the same category are automatically merged to prevent redundant seek triggers during playback.
+   Adjacent or overlapping cues with the same category, channel, and action are automatically merged to prevent redundant seek triggers during playback.
 
 ### Processor Command-Line Options
 
@@ -192,19 +198,19 @@ YEAR 1979
 SOURCE TheTimestampDudes (buymeacoffee.com/thetimestampdudes)
 
 00:05:08.000 --> 00:06:46.000
-category: Sex.Suggestive
+category: SexAndNudity.PartialNudity
 description: [UNDERWEAR] Men and Women in sleep chambers in their underwear.
 channel: video
 action: skip
 
 00:33:20.000 --> 00:34:33.000
-category: Gore
+category: Violence.Gore
 description: [GORE] An alien pops out at a man's head as he examines a skeleton.
 channel: video
 action: skip
 
 00:52:22.000 --> 00:56:58.000
-category: Gore
+category: Violence.Gore
 description: [GORE, MAY BE DISTURBING] A Man starts choking then writhes around, a baby Alien pops out of his chest, very bloody and may be disturbing.
 channel: video
 action: skip

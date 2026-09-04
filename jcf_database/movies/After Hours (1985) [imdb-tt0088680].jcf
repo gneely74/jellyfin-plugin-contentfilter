@@ -7,61 +7,61 @@ IMDB tt0088680
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:11:41.810 --> 00:11:46.810
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: woman in underwear
 
 00:20:08.850 --> 00:20:19.850
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.FullNudity
 channel: both
 action: skip
 description: topless woman
 
 00:21:48.750 --> 00:21:52.750
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: couple having sex seen through window
 
 00:37:12.860 --> 00:37:23.360
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: image painted on wall
 
 00:48:15.560 --> 00:48:42.040
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: woman in underwear
 
 00:55:53.310 --> 00:56:01.190
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: men kissing
 
 00:56:13.340 --> 00:56:19.320
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: men kissing
 
 00:56:25.820 --> 00:56:35.180
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: both
 action: skip
 description: men kissing
 
 00:56:45.650 --> 00:56:48.950
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: men kissing
 
 01:14:34.000 --> 01:14:43.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man shot seen through window

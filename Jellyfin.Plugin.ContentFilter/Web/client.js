@@ -718,15 +718,49 @@
                 '    <div>',
                 '      <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Category Tag:</label>',
                 '      <select id="cfSelectCategory" style="width:100%; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 10px; border-radius:8px; font-size:13px;">',
-                '        <option value="Violence.Tiers">Violence.Tiers (Violent scenes)</option>',
-                '        <option value="Violence">Violence (General)</option>',
-                '        <option value="Sex.Nudity">Sex.Nudity (Explicit scenes)</option>',
-                '        <option value="Sex.Suggestive">Sex.Suggestive</option>',
-                '        <option value="Profanity">Profanity (Language)</option>',
-                '        <option value="Gore">Gore / Blood</option>',
-                '        <option value="Gore.Graphic">Gore.Graphic</option>',
-                '        <option value="General">General Filter</option>',
-                '        <option value="__custom__">Custom Category...</option>',
+                '        <optgroup label="Violence & Horror">',
+                '          <option value="Violence.Mild">Violence.Mild (Slaps, Comic Action)</option>',
+                '          <option value="Violence.Moderate">Violence.Moderate (Combat, Shootouts)</option>',
+                '          <option value="Violence.Graphic">Violence.Graphic (Fatal, Visceral)</option>',
+                '          <option value="Violence.Gore">Violence.Gore (Blood, Dismemberment)</option>',
+                '          <option value="Violence.JumpScares">Violence.JumpScares (Startle)</option>',
+                '          <option value="Violence.Disturbing">Violence.Disturbing (Corpses, Trauma)</option>',
+                '        </optgroup>',
+                '        <optgroup label="Sex & Nudity">',
+                '          <option value="SexAndNudity.Graphic">SexAndNudity.Graphic (Intercourse)</option>',
+                '          <option value="SexAndNudity.ImpliedSex">SexAndNudity.ImpliedSex (Suggestive)</option>',
+                '          <option value="SexAndNudity.SexualAssault">SexAndNudity.SexualAssault</option>',
+                '          <option value="SexAndNudity.FullNudity">SexAndNudity.FullNudity (Frontal)</option>',
+                '          <option value="SexAndNudity.PartialNudity">SexAndNudity.PartialNudity (Lingerie)</option>',
+                '          <option value="SexAndNudity.PhysicalIntimacy">SexAndNudity.PhysicalIntimacy (Kissing)</option>',
+                '          <option value="SexAndNudity.Mild">SexAndNudity.Mild (Swimwear)</option>',
+                '        </optgroup>',
+                '        <optgroup label="Language & Sexual References">',
+                '          <option value="Language.GeneralProfanity">Language.GeneralProfanity</option>',
+                '          <option value="Language.Blasphemy">Language.Blasphemy</option>',
+                '          <option value="Language.RacialAndBigotedSlurs">Language.RacialAndBigotedSlurs</option>',
+                '          <option value="Language.ChildishLanguage">Language.ChildishLanguage</option>',
+                '          <option value="SexualReferences.ContextualDialogue">SexualReferences.ContextualDialogue</option>',
+                '          <option value="SexualReferences.Visuals">SexualReferences.Visuals</option>',
+                '        </optgroup>',
+                '        <optgroup label="Substances">',
+                '          <option value="Substances.Alcohol">Substances.Alcohol (Drinking)</option>',
+                '          <option value="Substances.Tobacco">Substances.Tobacco (Smoking)</option>',
+                '          <option value="Substances.IllegalDrugs">Substances.IllegalDrugs (Narcotics)</option>',
+                '        </optgroup>',
+                '        <optgroup label="Medical & Structural">',
+                '          <option value="Medical.Events">Medical.Events (Procedures)</option>',
+                '          <option value="Medical.BodilyFunctions">Medical.BodilyFunctions (Vomit)</option>',
+                '          <option value="Structural.Credits">Structural.Credits</option>',
+                '          <option value="Structural.IntroRecap">Structural.IntroRecap</option>',
+                '        </optgroup>',
+                '        <optgroup label="Legacy & Custom">',
+                '          <option value="Violence.Tiers">Violence.Tiers (Legacy)</option>',
+                '          <option value="SexAndNudity.NudityProfiles">SexAndNudity.NudityProfiles (Legacy)</option>',
+                '          <option value="SexAndNudity.OnscreenActivity">SexAndNudity.OnscreenActivity (Legacy)</option>',
+                '          <option value="Substances.Usage">Substances.Usage (Legacy)</option>',
+                '          <option value="__custom__">Custom Category...</option>',
+                '        </optgroup>',
                 '      </select>',
                 '      <input id="cfInputCustomCategory" type="text" placeholder="Enter custom category" style="display:none; width:100%; margin-top:6px; box-sizing:border-box; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 10px; border-radius:6px; font-size:12px; user-select:text;">',
                 '    </div>',
@@ -1136,7 +1170,7 @@
             startInput.value = '';
             endInput.value = '';
             descInput.value = '';
-            catSelect.value = 'Violence.Tiers';
+            catSelect.value = 'Violence.Moderate';
             customCatInput.style.display = 'none';
             customCatInput.value = '';
             addStatus.textContent = '';
@@ -1807,6 +1841,10 @@
             var dur = (c.end - c.start).toFixed(1);
             var catColor = c.category.indexOf('Violence') !== -1 ? '#f87171' :
                            c.category.indexOf('Sex') !== -1 ? '#c084fc' :
+                           c.category.indexOf('Language') !== -1 ? '#fbbf24' :
+                           c.category.indexOf('Substance') !== -1 ? '#34d399' :
+                           c.category.indexOf('Medical') !== -1 ? '#f472b6' :
+                           c.category.indexOf('Structural') !== -1 ? '#94a3b8' :
                            c.category.indexOf('Gore') !== -1 ? '#fb923c' : '#38bdf8';
 
             return [

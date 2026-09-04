@@ -100,7 +100,7 @@ def build_jcf(
     ranges_str: str,
     title: str,
     year: str,
-    category: str = "Violence.Tiers",
+    category: str = "Violence.Graphic",
     action: str = "skip",
     channel: str = "video",
 ) -> str:

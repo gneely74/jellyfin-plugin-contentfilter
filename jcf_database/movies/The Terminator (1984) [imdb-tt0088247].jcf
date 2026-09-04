@@ -25,25 +25,25 @@ action: skip
 description: What the h*ll?
 
 00:04:28.080 --> 00:04:33.480
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.FullNudity
 channel: both
 action: skip
 description: Profile of naked man with rear nudity
 
 00:04:59.560 --> 00:05:11.090
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: male rear nudity
 
 00:05:24.770 --> 00:05:27.860
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: frontal male nudity
 
 00:05:56.460 --> 00:05:58.300
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: male rear nudity
@@ -55,31 +55,37 @@ action: skip
 description: F*ck you, *sshole!
 
 00:06:01.910 --> 00:06:02.830
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: male rear nudity
 
 00:06:05.860 --> 00:06:06.530
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: quick side male nudity
 
 00:06:10.340 --> 00:06:10.840
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: brief side male nudity
 
-00:06:10.680 --> 00:06:14.010
-category: Violence.Tiers
+00:06:10.680 --> 00:06:12.340
+category: Violence.Moderate
 channel: both
 action: skip
-description: Bloody fist shown / Dead body shown
+description: Bloody fist shown
+
+00:06:12.220 --> 00:06:14.010
+category: Violence.Disturbing
+channel: both
+action: skip
+description: Dead body shown
 
 00:06:19.060 --> 00:06:24.020
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: bloody hand seen
@@ -91,13 +97,13 @@ action: skip
 description: bullsh*t
 
 00:06:51.260 --> 00:06:53.850
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: male rear nudity
 
 00:07:39.410 --> 00:07:42.490
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: male rear nudity
@@ -109,7 +115,7 @@ action: skip
 description: son of a b*tch
 
 00:21:00.990 --> 00:21:26.190
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: sexual dialog over the phone
@@ -121,7 +127,7 @@ action: skip
 description: Oh, G*d
 
 00:21:46.640 --> 00:21:50.510
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: audio
 action: skip
 description: Sexual dialog over the phone
@@ -169,7 +175,7 @@ action: skip
 description: sh*t
 
 00:31:42.320 --> 00:31:43.950
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: woman shot
@@ -181,13 +187,13 @@ action: skip
 description: motherf*ckers
 
 00:52:21.230 --> 00:52:24.350
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man cuts into arm
 
 00:52:44.020 --> 00:52:56.570
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: open arm wound seen with robotics inside
@@ -211,13 +217,13 @@ action: skip
 description: scr*wed
 
 00:54:56.290 --> 00:54:58.670
-category: Violence.Tiers
+category: Violence.Gore
 channel: both
 action: skip
 description: human-like robot cuts out eye
 
 00:55:11.320 --> 00:55:15.690
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: human-like robot pulls out eye
@@ -253,7 +259,7 @@ action: skip
 description: G*dd*mn!
 
 01:22:09.700 --> 01:22:53.940
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: both
 action: skip
 description: Sex scene between a man and woman with nudity.

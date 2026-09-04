@@ -405,7 +405,7 @@ def build_from_game_of_thrones(conn: sqlite3.Connection) -> int:
                 safe_ranges.append((s_ms, e_ms))
 
         skip_cues = rj.invert_safe_ranges(
-            safe_ranges, category="Violence.Tiers", channel="video", action="skip"
+            safe_ranges, category="Violence.Graphic", channel="video", action="skip"
         )
         if not skip_cues:
             continue
@@ -595,12 +595,36 @@ def cmd_export(target_dir: str) -> None:
     print(f"Exported {exported} JCF files to {target}")
 
 
+def cmd_upgrade(target_path: str) -> None:
+    """Upgrade existing JCF files in a directory or single file in-place to VidAngel/IMDb standards."""
+    target = Path(target_path)
+    if not target.exists():
+        print(f"Error: Path {target} does not exist.", file=sys.stderr)
+        return
+
+    if target.is_file():
+        files = [target]
+    else:
+        files = list(target.rglob("*.jcf"))
+
+    print(f"Scanning {len(files)} JCF file(s) for legacy categories in {target}...")
+    upgraded_count = 0
+    for jcf_path in files:
+        if rj.upgrade_jcf_file(jcf_path):
+            upgraded_count += 1
+
+    print(f"Upgrade complete: {upgraded_count} of {len(files)} file(s) updated.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="JCF Content Filter Database Manager")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     subparsers.add_parser("build", help="Build and index JCF database from raw sources")
     subparsers.add_parser("stats", help="Show database summary statistics")
+
+    upgrade_parser = subparsers.add_parser("upgrade", help="Upgrade existing JCF files in-place to VidAngel/IMDb standards")
+    upgrade_parser.add_argument("path", type=str, help="Path to JCF file or directory containing .jcf files")
 
     search_parser = subparsers.add_parser("search", help="Search titles in database")
     search_parser.add_argument("query", type=str, help="Search term (title, imdb id, or category)")
@@ -612,6 +636,8 @@ def main() -> None:
 
     if args.command == "build":
         cmd_build()
+    elif args.command == "upgrade":
+        cmd_upgrade(args.path)
     elif args.command == "search":
         cmd_search(args.query)
     elif args.command == "stats":

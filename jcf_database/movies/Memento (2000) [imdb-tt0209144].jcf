@@ -7,31 +7,31 @@ IMDB tt0209144
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:34:36.490 --> 00:39:26.200
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.ImpliedSex
 channel: both
 action: skip
 description: sensual, near nudity
 
 00:41:28.370 --> 00:41:31.630
-category: SexualReferences.ContextualDialogue
+category: Violence.Moderate
 channel: both
 action: skip
 description: dialogue
 
 00:47:25.290 --> 00:47:32.480
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: male behind
 
 00:55:03.170 --> 00:55:06.950
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: female underwear
 
 01:15:31.610 --> 01:15:44.740
-category: SexualReferences.ContextualDialogue
+category: Violence.Moderate
 channel: both
 action: skip
 description: dialogue

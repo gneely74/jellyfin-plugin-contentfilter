@@ -11,86 +11,104 @@ channel: audio
 action: mute
 description: Use of the R word 3 times during a discussion, someone's asking whether or not a Man is, in a somewhat derogatory tone.
 
-00:32:19.000 --> 00:37:37.000
-category: SexAndNudity.OnscreenActivity
+00:32:19.000 --> 00:34:22.000
+category: SexAndNudity.Graphic
 channel: video
 action: skip
-description: Raymond hears moaning and starts mimicking the noises and follows where the sound is coming from. Charlie and Susanna are seen moving back and forth u / . / Charlie is now seen in boxers and without a
+description: Raymond hears moaning and starts mimicking the noises and follows where the sound is coming from. Charlie and Susanna are seen moving back and forth u
+
+00:32:19.000 --> 00:37:37.000
+category: SexAndNudity.PartialNudity
+channel: video
+action: skip
+description: .
+
+00:34:22.000 --> 00:37:37.000
+category: SexAndNudity.Graphic
+channel: video
+action: skip
+description: Charlie is now seen in boxers and without a shirt on. He goes and yells at Raymond about what he was doing in his bedroom and to go to sleep. Then fro / he's still in his boxers and Susanna is now in
 
 00:46:18.000 --> 00:46:33.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Raymond starts screaming and beating his head because he doesn't want to get on a plane. He stops after Charlie tells him they won't go on the plane.
 
 00:53:19.000 --> 00:54:30.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man has the front of his shirt unbuttoned shown on and off but that's it.
 
 00:55:24.000 --> 00:57:34.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Talk of underwear and boxer shorts but it's not in any kind of vulgar context, Raymond is just repeating and obsessing about having to wear the wrong
 
 01:12:55.000 --> 01:13:05.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: In a mirror a Man walks away and comes back and you can just barely tell he's in boxers but they don't look bad at all.
 
-01:14:49.000 --> 01:15:40.000
-category: Violence.Tiers
+01:14:49.000 --> 01:15:08.000
+category: Violence.Disturbing
 channel: video
 action: skip
-description: Raymond starts screaming and freaking out by beating himself in the head because of the hot water running and shouts "scary bad" and "Hot Water Burn b / is when his frightening panics are kept to a mi
+description: Raymond starts screaming and freaking out by beating himself in the head because of the hot water running and shouts "scary bad" and "Hot Water Burn b
+
+01:15:08.000 --> 01:15:40.000
+category: Violence.Moderate
+channel: video
+action: skip
+description: is when his frightening panics are kept to a minimum and no more shouting is going on.
 
 01:15:40.000 --> 01:15:52.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Someone shown in Boxers. Doesn't look too bad. Seen again at 1:16:29 - 1:17:12.
 
 01:16:29.000 --> 01:17:12.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: .
 
 01:27:28.000 --> 01:27:40.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.FullNudity
 channel: video
 action: skip
 description: A nude male statue is panned over with full nudity, then just the chest and up. It's pretty quick but still definitely visible.
 
 01:39:33.000 --> 01:41:57.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Two Men are dancing but it's only because one is trying to teach the other how, not meant to be in a bad context at all so don't worry. Meant to be he
 
 01:42:01.000 --> 01:42:12.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Charlie goes to give Raymond a hug and he shouts and holds his ear, scaring him.
 
 01:42:36.000 --> 01:48:55.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: A Women quite obviously has no bra on under her half shirt that shows her stomach and her boob shapes and nipple shape can be seen. At one point Charl / DIRECTLY IN BETWEEN at 1:43:36 - 1:43:45 A stat
 
 01:53:37.000 --> 01:55:27.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A smoke alarm goes off and Raymond panics and starts beating his head against the wall. Charlie stops him.
 
 01:58:50.000 --> 01:58:58.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: Reference to how a kiss felt wet, referencing when Susanna and Raymond kissed.

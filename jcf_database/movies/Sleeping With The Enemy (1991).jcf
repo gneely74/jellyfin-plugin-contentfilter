@@ -12,7 +12,7 @@ action: skip
 description: The man and woman share a kiss and the man kisses her on the hands, brief.
 
 00:03:35.000 --> 00:05:33.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: The woman is seen in a sheer dress that exposes a lot of her back, she puts on make-up, the man then suggests she wear a black dress that's backless,
@@ -24,19 +24,19 @@ action: skip
 description: The comes up behind the woman and grabs her sexually and starts kissing her passionately and they walk off screen, nothing is shown past this.
 
 00:05:56.000 --> 00:08:45.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: The man is shown exercising without a shirt on and the camera angle move and down his body inappropriately as she watches him, that's all the scene is / The woman is wearing just a long shirt as an ou
 
 00:10:04.000 --> 00:17:07.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: video
 action: skip
 description: The woman is seen in the long shirt with a low neckline again, the man gets angry with her about the doctor showing up at their house when he was gone
 
 00:10:44.000 --> 00:11:17.000
-category: Violence.Tiers
+category: Violence.Mild
 channel: video
 action: skip
 description: The man punches the woman violently, then apologizes after insulting her.
@@ -48,7 +48,7 @@ action: skip
 description: The man kisses her.
 
 00:15:07.000 --> 00:17:07.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Graphic
 channel: video
 action: skip
 description: They kiss and he pulls off her dress, she's then seen nude as he dresses her in his outfit he brought her, they then kiss some more and then a sex sce
@@ -60,64 +60,70 @@ action: skip
 description: Kiss on the hand, tame.
 
 00:25:08.000 --> 00:25:13.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: He violently throws the statue through the window.
 
 00:26:43.000 --> 00:28:31.000
-category: Violence.Tiers
+category: SexAndNudity.Mild
 channel: video
 action: skip
 description: Camera angles from underneath or a woman swimming in a revealing outfit are seen, then a room full of women at pool in revealing swimwear, she's then
 
 00:35:55.000 --> 00:36:27.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Low neckline shirt, she sets up her kitchen.
 
 00:36:48.000 --> 00:38:31.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: She's seen in the shower from the shoulders and up, then in a revealing bath towels, she sees a man outside singing while watering the lawn and she en
 
 00:39:03.000 --> 00:39:17.000
-category: Violence.Tiers
+category: Violence.Gore
 channel: video
 action: skip
 description: He steps on something that pokes through his foot and causes it to bleed.
 
 00:39:18.000 --> 00:43:32.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: She's seen in a shirt with a bunch of holes all over it so it's a bit see through, it's also low in front, the man she saw earlier catches her stealin
 
 00:46:09.000 --> 00:46:52.000
-category: Violence.Tiers
+category: Violence.Gore
 channel: video
 action: skip
 description: He reaches into the bag and cuts his finger on something, some blood is show when he dangles his bleeding finger over the toilet, he then sees her rin
 
 00:46:53.000 --> 00:49:38.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Laura is seen in a low in front dress (not terrible) as she goes over to Ben's house with a pie, Ben says he could put a good word in for her at the c
 
 00:54:35.000 --> 00:56:44.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A parade is seen with some women in revealing outfits, Laura watches it and ben and her then small talk about him wanting to become an actor and faile
 
 00:57:27.000 --> 01:05:10.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
-description: Long sequence of inappropriate dressing, Ben comes over to Laura's and tells her to come with him somewhere and they go to an empty theater, there she / Ben and Laura kiss passionately, they then star
+description: Long sequence of inappropriate dressing, Ben comes over to Laura's and tells her to come with him somewhere and they go to an empty theater, there she
+
+01:03:13.000 --> 01:04:19.000
+category: SexAndNudity.Graphic
+channel: video
+action: skip
+description: Ben and Laura kiss passionately, they then start doing sexual things (almost sex scene) but she tells him to please stop.
 
 01:06:35.000 --> 01:06:39.000
 category: SexAndNudity.PhysicalIntimacy
@@ -126,7 +132,7 @@ action: skip
 description: Ben kisses Laura's head.
 
 01:12:21.000 --> 01:24:22.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Laura is seen in the bathtub, not much is seen but shoulders and knees, she then gets out and is seen in a low necklined bath robe, she looks around t
@@ -138,13 +144,13 @@ action: skip
 description: They kiss, brief.
 
 01:16:24.000 --> 01:17:09.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Her husband grabs a man violently from the backseat of his car and demands to know where Laura is, the man says he's got the wrong guy and he doesn't
 
 01:17:15.000 --> 01:18:22.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A woman in a bra like outfit is seen, she's a student of Ben's. Ben talks about how the performance will go with them.
@@ -156,31 +162,19 @@ action: skip
 description: A carnival is seen with some women in low necklines, nothing too terrible but may still be a concern, Ben and Laura are spotted by her angered husband / Ben and Laura are seen kissing by her husband,
 
 01:23:57.000 --> 01:24:07.000
-category: Violence.Tiers
+category: Violence.JumpScares
 channel: video
 action: skip
 description: Laura hears an abrupt noise and it scares her enough she screams, it's just ben behind her,he apologizes for scaring her.
 
 01:24:22.000 --> 01:35:02.000
-category: SexAndNudity.NudityProfiles
-channel: video
-action: skip
-description: Ben and Laura are seen having a picnic of sorts with wine, Laura has a low necklined dress on that kind of tight in the wrong places, you'd have to ch
-
-01:24:58.000 --> 01:25:07.000
 category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
-description: Ben and Laura kiss.
-
-01:28:04.000 --> 01:28:26.000
-category: SexAndNudity.PhysicalIntimacy
-channel: video
-action: skip
-description: Her husband kisses her head and acts a bit sexually with her, Ben knocks on the door and calls her name, her husband says he'll kill him and quiets he
+description: Ben and Laura are seen having a picnic of sorts with wine, Laura has a low necklined dress on that kind of tight in the wrong places, you'd have to ch / Ben and Laura kiss. / Her husband kisses her he
 
 01:28:04.000 --> 01:35:02.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Her husband holds a gun to her head and threatens to kill Ben, Laura opens the door when ben calls her name, she hides the fact her husband is in the

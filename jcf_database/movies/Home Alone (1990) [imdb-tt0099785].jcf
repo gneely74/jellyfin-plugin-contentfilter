@@ -19,13 +19,13 @@ action: skip
 description: cr*p
 
 00:04:55.260 --> 00:05:50.000
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: Female, Poster
 
 00:05:07.380 --> 00:05:17.510
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.Mild
 channel: audio
 action: skip
 description: A boy makes a comment about nude beaches
@@ -43,13 +43,13 @@ action: skip
 description: "Families suck"
 
 00:19:46.000 --> 00:20:08.060
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: boy in brothers room, inappropriate poster
 
 00:22:29.030 --> 00:23:44.060
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: A boy is seen looking at a Playboy magazine
@@ -61,7 +61,7 @@ action: skip
 description: h*ll
 
 00:36:26.000 --> 00:37:21.000
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: A boy in brothers room inappropriate poster
@@ -73,7 +73,7 @@ action: skip
 description: d*mn
 
 00:47:18.800 --> 00:47:19.210
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: audio
 action: skip
 description: butt
@@ -85,7 +85,7 @@ action: skip
 description: h*ll
 
 00:51:01.800 --> 00:51:02.090
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: audio
 action: skip
 description: butt

@@ -6,25 +6,25 @@ YEAR 1996
 SOURCE https://buymeacoffee.com/thetimestampdudes/timestamps-skip-jerry-maguire
 
 00:01:10.000 --> 00:01:18.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.Mild
 channel: video
 action: skip
 description: A woman is seen is a shirt and underwear, then jumping off a diving board in a swimsuit.
 
 00:01:33.000 --> 00:01:43.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Two Men have on a crop top style shirts.
 
 00:01:57.000 --> 00:02:03.000
-category: Violence.Tiers
+category: Violence.Mild
 channel: video
 action: skip
 description: Football is seen on TV. Mild wrestling violence is shown.
 
 00:03:24.000 --> 00:03:39.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: As reporters gather around a criminal, they ask whether the girl was "16 or 17."
@@ -42,25 +42,25 @@ action: skip
 description: The child flips him off as he turns around.
 
 00:07:29.000 --> 00:07:45.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Jerry is seen in a T-shirt and underwear doing a handstand. Then typing on his computer.
 
 00:08:20.000 --> 00:08:24.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Comment about how you become great is to "hang your b*lls out there."
 
 00:08:32.000 --> 00:09:12.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Jerry is seen shirtless and in a towel wrap.
 
 00:10:48.000 --> 00:12:28.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is drank on the plane as a story is told, not the focus. Most of the scene you can't see the drink.
@@ -72,37 +72,49 @@ action: skip
 description: Sexual scene with nudity between Jerry and a woman. Graphic. Then they sit around nude for an extended time and chat about unimportant matters. Some s
 
 00:17:36.000 --> 00:19:37.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
-description: Alcohol is drank at a party and cigars are smoked. / A Woman in a revealing shirt is seen, half her chest is visible briefly. Then another woman pops onscreen talking about how Jerry is in bed. / Comm
+description: Alcohol is drank at a party and cigars are smoked.
+
+00:18:37.000 --> 00:18:48.000
+category: SexAndNudity.PartialNudity
+channel: video
+action: skip
+description: A Woman in a revealing shirt is seen, half her chest is visible briefly. Then another woman pops onscreen talking about how Jerry is in bed.
+
+00:18:57.000 --> 00:19:05.000
+category: Substances.Alcohol
+channel: video
+action: skip
+description: Comment about Jerry being bad at intimacy.
 
 00:19:44.000 --> 00:19:49.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A picture/painting off to the side hung on the wall of possibly a nude Man or he has on only underwear.
 
 00:20:47.000 --> 00:22:08.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Some people at the restaurant are seen drinking.
 
 00:22:17.000 --> 00:22:23.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: He trips over and falls on his face, mild.
 
 00:24:27.000 --> 00:24:38.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Inappropriate talk about Jerry being with a stripper and a coworker talking about how that was the last time he saw him. Other sexual talk follows reg
 
 00:25:27.000 --> 00:29:06.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A Man is seen shirtless walking around his house. / A Man says he will kill for, maim, r*pe and pillage for someone in a sarcastic manner. / Nude poster seen in a man's bedroom, graphic.
@@ -114,19 +126,19 @@ action: skip
 description: The couple kisses.
 
 00:34:54.000 --> 00:35:25.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A Woman smokes.
 
 00:35:56.000 --> 00:36:03.000
-category: Substances.Usage
+category: Violence.Moderate
 channel: video
 action: skip
 description: Jerry makes an inappropriate comment saying he thinks he was trying to sleep with her at the time he told her something inspirational.
 
 00:36:50.000 --> 00:38:11.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol bottles seen on a counter. A drink is then mixed in a house bar area.
@@ -138,61 +150,61 @@ action: skip
 description: Kissing.
 
 00:41:24.000 --> 00:41:33.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A Man is asked by children whether or not he's a hootie.
 
 00:44:50.000 --> 00:45:04.000
-category: Substances.Usage
+category: Substances.Tobacco
 channel: video
 action: skip
 description: A cigar is smoked.
 
 00:50:26.000 --> 00:50:44.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: Jerry caresses her face, she then turns around about to walk away but unexpectedly starts punching him in the face and gut comedically.
 
 00:51:21.000 --> 00:53:37.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is seen and drank in three different settings, all back to back. / Comment about "If I have to ride your a- like zorro, you're gonna show me the money."
 
 00:56:14.000 --> 00:57:04.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.Mild
 channel: video
 action: skip
 description: A sticker on the fridge door has a woman posing with a tank top and under on. May intended to be swimwear. / Dorothy's Mother tells her that Jerry would go home with a gardening tool right now if it s
 
 00:56:30.000 --> 00:57:04.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is poured for Jerry.
 
 00:57:53.000 --> 00:58:13.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A Man and his son are seen in a bubble bath together, upper chest and shoulder nudity is visible.
 
 00:58:35.000 --> 00:58:49.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Dorothy takes off her shirt and puts on another one. Not much is seen.
 
 01:00:42.000 --> 01:03:22.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Beer and food is brought to Jerry.
 
 01:01:15.000 --> 01:01:30.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Dorothy's shirt has the bottom stomach area portion with a slit in it, her stomach can be seen at times.
@@ -204,43 +216,55 @@ action: skip
 description: Jerry kisses Dorothy unexpectedly.
 
 01:04:46.000 --> 01:05:07.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football is played and people are shoved around, typical with the sport.
 
 01:05:21.000 --> 01:05:46.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol is drank.
 
 01:05:50.000 --> 01:05:58.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Jerry is seen in a T-shirt and underwear while on the phone.
 
-01:06:37.000 --> 01:10:15.000
-category: SexAndNudity.NudityProfiles
+01:06:37.000 --> 01:07:14.000
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
-description: Jerry in his underwear again. / Nude Men are seen showering. / Men are seen dressing after taking their showers and mostly topless nudity and upper hips is visible, but many Men are implied naked and
+description: Jerry in his underwear again. / Nude Men are seen showering.
+
+01:07:14.000 --> 01:10:00.000
+category: SexAndNudity.FullNudity
+channel: video
+action: skip
+description: Men are seen dressing after taking their showers and mostly topless nudity and upper hips is visible, but many Men are implied naked and possibly a bu
+
+01:10:00.000 --> 01:10:15.000
+category: SexAndNudity.PartialNudity
+channel: video
+action: skip
+description: A Man walks out nude from the full front and back now.
 
 01:12:10.000 --> 01:12:40.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: A few alcohol bottles are seen on the coffee table.
 
 01:12:37.000 --> 01:14:21.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.Mild
 channel: video
 action: skip
 description: Same sticker on the fridge as before. A woman in a tank top and underwear posing, possibly swimwear.
 
 01:15:51.000 --> 01:18:13.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Song lyrics have inappropriate phrases like "she'll let you in her mouth if the words you say are right." / .
@@ -252,25 +276,31 @@ action: skip
 description: Kissing/making out between them. He then caresses her face and starts undressing her partially and kissing her. She tells him to come inside.
 
 01:21:43.000 --> 01:23:19.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: She gets the babysitter to leave and he goes outside and talks to Jerry. He gives him a jazz tape and some inappropriate talk occurs as well. He tells
 
 01:23:19.000 --> 01:27:47.000
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Sexual content and nudity between Jerry and Dorothy. He wakes up inn bed afterwards by and unexpectedly loud alarm clock and gets dressed. / Dorothy and her mother have on morning town type outfits an
 
+01:27:18.000 --> 01:27:23.000
+category: SexAndNudity.PhysicalIntimacy
+channel: video
+action: skip
+description: Cheek kiss.
+
 01:28:25.000 --> 01:28:31.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Marcee says "And say what? Please remove your d- from my a-?!" When Jerry says he'll go talk to the people.
 
 01:28:41.000 --> 01:31:31.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Photo of a Man posing without his shirt on in the background at times.
@@ -282,25 +312,25 @@ action: skip
 description: Kissing.
 
 01:31:22.000 --> 01:31:31.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Head kisses.
 
 01:32:28.000 --> 01:34:03.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: A Man's jacket is halfway unzipped in the front and he has no shirt on underneath. / Inappropriate reference to shoplifting a pootie off a single mother.
 
 01:35:49.000 --> 01:35:54.000
-category: Violence.Tiers
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Kiss.
 
 01:36:20.000 --> 01:36:26.000
-category: Violence.Tiers
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Kiss.
@@ -312,61 +342,61 @@ action: skip
 description: Kissing.
 
 01:38:26.000 --> 01:41:02.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Champagne and beer is seen and drank at a wedding in different settings, including during and after.
 
 01:41:02.000 --> 01:41:10.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football violence, players crash into one another that's typical with the sport.
 
 01:41:38.000 --> 01:41:46.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: A child shouts and points "That's my mo-fo." An adult is appalled by this and she tells him that he should be the first man in the family not to say t
 
 01:42:00.000 --> 01:42:04.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football violence. Crashing into one another and jumping onto other players, brief.
 
 01:42:04.000 --> 01:42:29.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Full profile nudity in a men's football locker. A woman is talking to one of the Men who's completely nude.
 
 01:45:42.000 --> 01:45:58.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football violence in between a montage.
 
 01:45:58.000 --> 01:46:08.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Jerry is seen laying in bed, shirtless.
 
 01:46:08.000 --> 01:46:18.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football violence.
 
 01:46:26.000 --> 01:46:35.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.FullNudity
 channel: video
 action: skip
 description: Dorothy is seen laying in bed, possibly implied to be topless. Bare shoulders seen.
 
 01:46:41.000 --> 01:47:50.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Beer is drank at lunch.
@@ -378,43 +408,43 @@ action: skip
 description: Kissing.
 
 01:51:29.000 --> 01:51:34.000
-category: Violence.Tiers
+category: SexAndNudity.ImpliedSex
 channel: video
 action: skip
 description: Jerry says he's great at friendship, bad at intimacy.
 
 01:53:34.000 --> 01:53:42.000
-category: Violence.Tiers
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Head kisses.
 
 01:56:56.000 --> 01:58:56.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: Football violence, players crash into one another and fight as they play and people watch the game on the TV.
 
 02:03:21.000 --> 02:03:26.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Cheerleaders are seen in revealing outfits at the football game. Their stomachs are visible and they have shirt skirts and bra like tops on.
 
 02:03:56.000 --> 02:04:12.000
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: Shirtless man seen.
 
 02:06:43.000 --> 02:10:16.000
-category: Substances.Usage
+category: Substances.Alcohol
 channel: video
 action: skip
 description: Alcohol bottles are seen on the coffee table just barely. Not the focus and shouldn't be a problem for most people who would like to skip that kind of / When they hug, her shirt rides up and some of h
 
 02:11:42.000 --> 02:11:46.000
-category: Violence.Tiers
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: Quick cheek kiss.

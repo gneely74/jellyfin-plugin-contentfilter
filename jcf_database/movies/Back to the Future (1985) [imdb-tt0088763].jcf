@@ -7,25 +7,31 @@ IMDB tt0088763
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:41:39.080 --> 00:41:56.890
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: peeping tom
 
 00:47:28.000 --> 00:47:29.480
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: grabbing thigh
 
 01:13:30.520 --> 01:13:36.200
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: touch bra
 
 01:17:54.680 --> 01:18:29.560
-category: Substances.Usage
+category: Substances.Alcohol
 channel: both
 action: skip
-description: drinking / drinking and smoking
+description: drinking
+
+01:18:18.150 --> 01:18:29.560
+category: Substances.Tobacco
+channel: both
+action: skip
+description: drinking and smoking

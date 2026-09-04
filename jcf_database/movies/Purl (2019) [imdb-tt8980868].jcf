@@ -7,7 +7,7 @@ IMDB tt8980868
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:04:47.980 --> 00:04:52.540
-category: SexAndNudity.OnscreenActivity
+category: SexualReferences.ContextualDialogue
 channel: audio
 action: skip
 description: innuendo about removing clothing
@@ -19,13 +19,13 @@ action: skip
 description: kiss our a-word
 
 00:05:46.800 --> 00:05:54.200
-category: Substances.Usage
+category: Substances.Alcohol
 channel: both
 action: skip
 description: several characters are seen drinking and holding wine bottles
 
 00:06:13.240 --> 00:06:15.970
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: audio
 action: skip
 description: sexist remark - leave the knitting at Nana's house

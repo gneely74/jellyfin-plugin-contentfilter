@@ -7,37 +7,37 @@ IMDB tt0093779
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:04:12.720 --> 00:04:15.870
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: silhouette of beginning of a kiss
 
 00:05:17.140 --> 00:05:19.640
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: both
 action: skip
 description: some pecks
 
 00:11:54.020 --> 00:11:58.110
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: audio
 action: skip
 description: eel runs into her
 
 00:12:07.290 --> 00:12:16.760
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: audio
 action: skip
 description: eel tries to eat her
 
 00:12:15.470 --> 00:12:16.390
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: eel opens mouth to eat her
 
 00:13:03.750 --> 00:13:04.510
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: eel charges her, is hit by punch
@@ -49,7 +49,7 @@ action: skip
 description: idiomatic blasphemy
 
 00:24:54.690 --> 00:24:55.250
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: head strike for the knockout
@@ -61,19 +61,19 @@ action: skip
 description: deity reference, may or may not be considered blasphemous
 
 00:27:34.640 --> 00:27:35.560
-category: Violence.Tiers
+category: Violence.Moderate
 channel: audio
 action: skip
 description: slams against rock
 
 00:28:09.530 --> 00:28:10.270
-category: Violence.Tiers
+category: Violence.Moderate
 channel: audio
 action: skip
 description: choke hold collapse
 
 00:28:29.450 --> 00:28:30.810
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: audio
 action: skip
 description: sexual reference - dream of large women
@@ -91,145 +91,145 @@ action: skip
 description: personal insult mild - you fool
 
 00:40:08.130 --> 00:40:13.670
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: long kiss
 
 00:44:27.150 --> 00:44:28.420
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: falls into quicksand
 
 00:45:46.510 --> 00:45:55.400
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: audio
 action: skip
 description: scary rat noise
 
 00:45:52.440 --> 00:45:55.070
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: scary rat wiggles its nose
 
 00:46:37.840 --> 00:46:44.250
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: rat bites his hand
 
 00:46:52.820 --> 00:46:56.360
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: scary rat face
 
 00:47:22.880 --> 00:47:35.070
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: rat bites leg, shoulder
 
 00:47:39.050 --> 00:47:41.190
-category: Violence.Tiers
+category: Violence.Moderate
 channel: audio
 action: skip
 description: explosion - rat gets singed
 
 00:47:45.530 --> 00:47:47.980
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: bloodied shoulder
 
 00:47:54.480 --> 00:48:03.000
-category: Violence.Tiers
+category: Violence.Graphic
 channel: both
 action: skip
 description: non human killing - stabs rat repeatedly
 
 00:48:06.820 --> 00:48:09.090
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: bloodied shoulder
 
 00:48:23.440 --> 00:48:27.460
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:48:33.610 --> 00:48:35.210
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: shoulder wound
 
 00:48:37.090 --> 00:48:38.380
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: shoulder wound
 
 00:48:40.000 --> 00:48:43.250
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:49:07.760 --> 00:49:14.480
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:49:18.030 --> 00:49:23.590
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:49:25.980 --> 00:49:28.280
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:49:35.250 --> 00:49:40.320
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:49:48.670 --> 00:49:50.030
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:50:05.780 --> 00:50:12.530
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:50:24.150 --> 00:50:26.730
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
 
 00:50:47.090 --> 00:51:09.750
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: shoulder wound
 
 00:51:29.780 --> 00:51:40.550
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: shoulder wound
@@ -241,67 +241,67 @@ action: skip
 description: personal attack mild - shut up
 
 00:57:29.300 --> 00:57:33.480
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: shirtless man on stretcher
 
 00:57:53.690 --> 00:57:57.110
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: shirtless man on stretcher
 
 00:58:21.840 --> 00:58:24.550
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: shirtless man on stretcher
 
 00:58:33.980 --> 00:58:36.320
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: shirtless man on stretcher
 
 01:00:53.440 --> 01:00:55.630
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: slight head wound
 
 01:00:57.880 --> 01:00:59.170
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: slight head wound
 
 01:02:00.690 --> 01:02:01.530
-category: Violence.Tiers
+category: Violence.Mild
 channel: audio
 action: skip
 description: punches away other brute squad member
 
 01:05:55.610 --> 01:05:59.710
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: shirtless man on stretcher
 
 01:06:14.610 --> 01:06:17.190
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: shirtless man on stretcher
 
 01:06:14.630 --> 01:06:27.400
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: audio
 action: skip
 description: torture death
 
 01:06:23.960 --> 01:06:26.440
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: torture death
@@ -313,7 +313,7 @@ action: skip
 description: says "father" referring to his father but sounds like prayer
 
 01:08:42.900 --> 01:08:49.000
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: shoulder wound
@@ -325,91 +325,91 @@ action: skip
 description: idiomatic blasphemy
 
 01:21:47.110 --> 01:21:51.190
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: multiple sword swipe deaths
 
 01:22:54.400 --> 01:23:04.060
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: video
 action: skip
 description: light cleavage
 
 01:24:02.280 --> 01:24:06.020
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: knife wound with blood
 
 01:25:11.300 --> 01:25:14.430
-category: SexAndNudity.OnscreenActivity
+category: Violence.Moderate
 channel: audio
 action: skip
 description: bodily part reference mild - there's a shortage of perfect breasts in this world
 
 01:25:19.470 --> 01:25:30.860
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: both
 action: skip
 description: she kisses him with pecks on the neck
 
 01:25:36.050 --> 01:25:37.900
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: pulls knife out
 
 01:25:41.150 --> 01:25:43.840
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: bloodied knife wound
 
 01:25:56.590 --> 01:25:59.680
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood not flowing though
 
 01:26:06.530 --> 01:26:07.690
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood from other wound present
 
 01:26:09.000 --> 01:26:23.520
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: multiple blood wounds
 
 01:26:25.440 --> 01:26:31.970
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood from multiple wounds
 
 01:26:33.970 --> 01:26:35.980
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood from multiple wounds
 
 01:26:47.360 --> 01:26:54.110
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: blood from multiple wounds, stabs
 
 01:26:55.430 --> 01:27:17.030
-category: Violence.Tiers
+category: Violence.Graphic
 channel: video
 action: skip
 description: slashes his cheeks, and stabs him
 
 01:27:10.100 --> 01:27:11.100
-category: Violence.Tiers
+category: Violence.Graphic
 channel: both
 action: skip
 description: fatal sword stab
@@ -421,19 +421,19 @@ action: skip
 description: you son of a b-word
 
 01:27:17.030 --> 01:27:17.500
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt
 
 01:27:17.500 --> 01:27:28.600
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: paces back with wounds, falls down dead, some blood wounds
 
 01:28:33.180 --> 01:28:38.850
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: mentions cutting things off
@@ -451,67 +451,67 @@ action: skip
 description: personal insult mild - pig
 
 01:30:15.960 --> 01:30:19.440
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: blood on sword, clothes
 
 01:30:24.970 --> 01:30:26.250
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt
 
 01:30:27.930 --> 01:30:29.210
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt
 
 01:30:35.520 --> 01:30:38.360
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt, hand
 
 01:30:43.600 --> 01:30:46.850
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt
 
 01:30:48.220 --> 01:30:50.510
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: dried blood on hand
 
 01:31:30.350 --> 01:31:34.940
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: blood on hand
 
 01:31:34.940 --> 01:31:41.640
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: blood on shirt
 
 01:32:36.360 --> 01:32:45.550
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: passionate kiss
 
 01:33:53.850 --> 01:33:57.350
-category: SexAndNudity.OnscreenActivity
+category: SexAndNudity.PhysicalIntimacy
 channel: video
 action: skip
 description: prolonged kiss
 
 01:34:07.770 --> 01:34:09.070
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: sword stabs

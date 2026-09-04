@@ -141,7 +141,13 @@ Parses all raw harvested payloads, updates `.jcf` files, and re-indexes `catalog
 python tools/jcf_db.py build
 ```
 
-#### 4. Export to Media Folders
+#### 4. Upgrade Existing Libraries
+Scan any folder or single `.jcf` file and upgrade legacy categories in-place to the new VidAngel/IMDb standard:
+```bash
+python tools/jcf_db.py upgrade /path/to/my/jcf_library
+```
+
+#### 5. Export to Media Folders
 Copy `.jcf` sidecar files into your target media directory:
 ```bash
 python tools/jcf_db.py export --target /path/to/jellyfin/movies
@@ -175,27 +181,46 @@ Python library providing core timecode and category parsing functions:
 - `parse_reddit_post_text(text)`: Parses freeform post text, detects section headers, extracts ranges, and returns a list of `ParsedCue` objects.
 - `invert_safe_ranges(safe_ranges)`: Converts safe playback interval lists into skip cues for the objectionable gaps.
 - `map_category_and_channel(label, context)`: Maps freeform tags to official Jellyfin plugin categories.
+- `load_jcf_file(file_path)`: Loads any `.jcf` file into a `JcfDocument`.
+- `upgrade_jcf_file(file_path)`: Upgrades legacy category tags in an existing file in-place.
 
 ---
 
-## Category Mapping Standards
+## Category Mapping Standards (VidAngel & IMDb Parents Guide Compatible)
 
-All cues map directly to the official `FilterDictionary.cs` categories recognized by the Jellyfin plugin:
+All cues map directly to the official `FilterDictionary.cs` categories recognized by the Jellyfin plugin, aligning 1-to-1 with VidAngel subcategories and IMDb Parents Guide severity tiers (*Mild*, *Moderate*, *Severe*):
 
-| Category | Default Channel | Default Action | Keywords / Content Triggers |
-| :--- | :--- | :--- | :--- |
-| `SexAndNudity.NudityProfiles` | `video` | `skip` | Nudity, topless, bare backside, buttocks, breasts, cleavage, bra, underwear, shirtless, shower |
-| `SexAndNudity.OnscreenActivity` | `video` | `skip` | Sex scene, intercourse, oral sex, intimate acts, masturbation, fooling in bed |
-| `SexAndNudity.PhysicalIntimacy` | `video` | `skip` | Passionate kissing, romantic intimate contact without sex |
-| `SexualReferences.ContextualDialogue` | `video` | `skip` | Sexual dialogue, suggestive conversation, explicit remarks |
-| `SexualReferences.Visuals` | `video` | `skip` | Vulgar gestures, flipping off, middle finger |
-| `Violence.Tiers` | `video` | `skip` | Violence, gore, blood, killings, knife fights, gunfights, horror, jumpscares, torture |
-| `Substances.Usage` | `video` | `skip` | Drugs, cocaine, weed, alcohol, drunkenness, smoking, pills, injections |
-| `Medical.Events` | `both` | `skip` | Surgery, medical procedures, needles, vomiting, bodily functions |
-| `Language.GeneralProfanity` | `audio` | `mute` | Swearing, cursing, profanity, f-word |
-| `Language.Blasphemy` | `audio` | `mute` | Blasphemous oaths, religious profanity |
-| `Language.RacialAndBigotedSlurs` | `audio` | `mute` | Racial, ethnic, or bigoted slurs |
-| `Structural.Timestamps` | `both` | `skip` | Opening credits, closing credits, episode recap, outtakes |
+| Category | VidAngel Equivalent | IMDb Severity Tier | Channel | Action | Description & Triggers |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`Violence.Mild`** | Mild Violence | *Mild* | `video` | `skip` | Comic action, playful wrestling, slaps, bloodless fistfights |
+| **`Violence.Moderate`** | Moderate Violence | *Moderate* | `video` | `skip` | Realistic combat, shootouts, blood on clothing, vehicle wrecks |
+| **`Violence.Graphic`** | Graphic Violence | *Severe* | `video` | `skip` | Visceral wounds, severe trauma, fatal stabbings, close-range gunshots |
+| **`Violence.Gore`** | Gore & Blood | *Severe* | `video` | `skip` | Dismemberment, decapitation, mutilation, severed limbs, exposed organs |
+| **`Violence.JumpScares`** | Jump Scares | *Frightening* | `video` | `skip` | Sudden scare sequences, startling creature reveals, jump cuts |
+| **`Violence.Disturbing`** | Disturbing Images | *Severe* | `video` | `skip` | Corpses, suicide themes, torture, psychological horror, eerie atmosphere |
+| **`SexAndNudity.Mild`** | Mild Immodesty | *Mild* | `video` | `skip` | Swimwear, beach attire, brief non-sexual kissing, classic art |
+| **`SexAndNudity.PhysicalIntimacy`** | Kissing / Intimacy | *Mild / Mod* | `video` | `skip` | Passionate kissing, prolonged making out, sensual caressing |
+| **`SexAndNudity.PartialNudity`** | Partial Nudity | *Moderate* | `video` | `skip` | Underwear, lingerie, bra, panties, shirtless, revealing immodesty |
+| **`SexAndNudity.FullNudity`** | Full Nudity | *Severe* | `video` | `skip` | Frontal nudity, bare breasts, bare buttocks, unclad exposure |
+| **`SexAndNudity.ImpliedSex`** | Implied Sex | *Moderate* | `video` | `skip` | Bedroom scenes, sex without nudity, suggestive dancing, fooling in bed |
+| **`SexAndNudity.Graphic`** | Graphic Sex | *Severe* | `video` | `skip` | Explicit intercourse, oral sex, masturbation, penetrative acts |
+| **`SexAndNudity.SexualAssault`** | Sexual Assault | *Severe* | `video` | `skip` | Rape, sexual violence, non-consensual acts, molestation |
+| **`SexualReferences.ExplicitWords`** | Explicit Words | *Severe* | `audio` | `mute` | Subtitle word-match for explicit sexual slang and terms |
+| **`SexualReferences.ContextualDialogue`** | Innuendo / Dialogue | *Moderate* | `video` | `skip` | Sexual dialogue, suggestive remarks, propositions, innuendo |
+| **`SexualReferences.Visuals`** | Vulgar Gestures | *Moderate* | `video` | `skip` | Middle finger, offensive/obscene hand gestures |
+| **`Language.GeneralProfanity`** | General Profanity | *Moderate* | `audio` | `mute` | Common swear words (fuck, shit, ass, bitch, etc.) |
+| **`Language.Blasphemy`** | Blasphemy | *Moderate* | `audio` | `mute` | Religious oaths and deity expletives (Jesus Christ, God damn) |
+| **`Language.RacialAndBigotedSlurs`** | Hate Speech / Slurs | *Severe* | `audio` | `mute` | Racial, ethnic, or bigoted slurs |
+| **`Language.ChildishLanguage`** | Crude Humor | *Mild* | `audio` | `mute` | Childish crude words (butt, fart, dumb, stupid) |
+| **`Language.CaptionsWithProfanity`** | Captions Profanity | *Moderate* | `both` | `mute` | Subtitle text containing profanity |
+| **`Substances.Tobacco`** | Tobacco | *Mild* | `video` | `skip` | Cigarettes, cigars, pipes, vaping, e-cigarettes |
+| **`Substances.Alcohol`** | Alcohol | *Mild / Mod* | `video` | `skip` | Drinking, drunkenness, beer, wine, liquor, bar scenes |
+| **`Substances.IllegalDrugs`** | Illegal Drugs | *Severe* | `video` | `skip` | Illicit narcotics, cocaine, marijuana, heroin, injections, overdose |
+| **`Medical.Events`** | Medical Procedures | *Moderate* | `both` | `skip` | Surgery, invasive procedures, needles, hospital trauma |
+| **`Medical.BodilyFunctions`** | Bodily Functions | *Mild / Mod* | `both` | `skip` | Vomiting, barfing, gross toilet humor, flatulence |
+| **`Structural.Credits`** | Credits | N/A | `both` | `skip` | Opening credits and closing credits |
+| **`Structural.IntroRecap`** | Intro / Recap | N/A | `both` | `skip` | Episode recap sequence, intro titles, outtakes and bloopers |
+| *(Legacy Aliases)* | *(Compatibility)* | | | | `Violence.Tiers`, `SexAndNudity.NudityProfiles`, `Substances.Usage`, etc. |
 
 ---
 

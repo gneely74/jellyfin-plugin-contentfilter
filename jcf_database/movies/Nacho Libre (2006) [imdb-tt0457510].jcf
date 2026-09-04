@@ -7,139 +7,151 @@ IMDB tt0457510
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:09:56.630 --> 00:10:13.850
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: fighting / slapping
 
 00:14:24.120 --> 00:14:32.770
-category: Language.GeneralProfanity
+category: Language.ChildishLanguage
 channel: both
 action: skip
 description: buttload, crap
 
 00:18:31.580 --> 00:19:06.330
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: slapping/hitting/kicking/choking
 
 00:20:37.000 --> 00:20:38.340
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: man hit with melon in chest
 
 00:20:55.700 --> 00:20:58.840
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: man shoots arrow and hits another man in back
 
 00:21:00.310 --> 00:21:01.970
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: man's butt crack shown
 
 00:21:15.380 --> 00:21:17.930
-category: Violence.Tiers
+category: Violence.Moderate
 channel: video
 action: skip
 description: man bucked by bull horns
 
 00:21:31.800 --> 00:21:40.000
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: man attacked by bees
 
 00:21:45.840 --> 00:21:53.550
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: slow-mo of men's junk as they run
 
 00:23:56.500 --> 00:23:58.500
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man clotheslines another man
 
 00:24:05.390 --> 00:24:19.190
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man tears another man's hair out
 
 00:24:38.430 --> 00:24:40.930
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: man punches another
 
 00:24:55.250 --> 00:24:56.250
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: man slaps another
 
 00:24:57.470 --> 00:25:03.080
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man slams another's head to ground
 
 00:25:20.900 --> 00:25:22.920
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man kicks another in back of head
 
 00:29:52.670 --> 00:29:54.270
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man force dunks another man's head in water
 
 00:30:45.280 --> 00:33:12.680
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
-description: wrestlers dressed and act like beasts / wrestlers fighting
+description: wrestlers dressed and act like beasts
+
+00:30:53.090 --> 00:33:09.070
+category: Violence.Moderate
+channel: both
+action: skip
+description: wrestlers fighting
 
 00:33:22.960 --> 00:33:33.190
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
-description: wrestlers dressed and act like beasts / wrestlers fighting
+description: wrestlers dressed and act like beasts
+
+00:33:23.000 --> 00:33:32.490
+category: Violence.Moderate
+channel: both
+action: skip
+description: wrestlers fighting
 
 00:34:19.920 --> 00:34:34.570
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: animal parts hanging for sale in market
 
 00:39:43.670 --> 00:39:45.670
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: man punches another in face
 
 00:40:01.690 --> 00:40:08.690
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man attacks and chokes another
 
 00:43:58.780 --> 00:45:22.460
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: men wrestling, hitting
 
 00:56:42.090 --> 00:56:44.590
-category: Violence.Tiers
+category: Violence.Graphic
 channel: both
 action: skip
 description: man stabbed in eye
@@ -151,61 +163,61 @@ action: skip
 description: d*uche
 
 01:02:01.070 --> 01:02:03.630
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man with clothes on fire
 
 01:02:10.630 --> 01:02:22.760
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man runs with clothes on fire
 
 01:05:09.230 --> 01:06:35.690
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: various wrestling moves and fighting
 
 01:11:36.310 --> 01:11:37.810
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man's foot run over by vehicle
 
 01:14:58.170 --> 01:15:15.470
-category: SexAndNudity.NudityProfiles
+category: SexAndNudity.PartialNudity
 channel: both
 action: skip
 description: man has oil rubbed all over his body
 
 01:19:15.270 --> 01:21:44.260
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: men wrestling
 
 01:21:54.000 --> 01:22:00.060
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man with boot on neck
 
 01:22:05.000 --> 01:22:09.980
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man with boot on neck
 
 01:22:17.210 --> 01:22:48.060
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: men wrestling
 
 01:23:21.590 --> 01:23:43.140
-category: Violence.Tiers
+category: Violence.Mild
 channel: both
 action: skip
 description: men wrestling

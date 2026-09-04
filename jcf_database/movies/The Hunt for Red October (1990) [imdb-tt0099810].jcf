@@ -7,25 +7,25 @@ IMDB tt0099810
 SOURCE cleanstream / videoskip open database (reddit)
 
 00:18:40.420 --> 00:19:00.650
-category: Violence.Tiers
+category: Violence.Graphic
 channel: both
 action: skip
 description: killing a man in close quarters
 
 00:22:59.170 --> 00:23:08.180
-category: Violence.Tiers
+category: Violence.Disturbing
 channel: both
 action: skip
 description: dead body in bag
 
 02:00:12.190 --> 02:00:20.090
-category: Violence.Tiers
+category: Violence.Moderate
 channel: both
 action: skip
 description: man bleeding from gunshot
 
 02:06:29.100 --> 02:06:30.920
-category: Violence.Tiers
+category: Violence.Graphic
 channel: both
 action: skip
 description: man shoots man, close range

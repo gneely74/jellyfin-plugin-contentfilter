@@ -65,6 +65,68 @@ public static class FilterDictionary
         ],
 
         // --- 3. SEX & NUDITY (Ollama visual) ---
+        ["SexAndNudity.Graphic"] =
+        [
+            "Explicit Sexual Intercourse",
+            "Sex with Nudity",
+            "Oral Sex",
+            "Masturbation",
+            "Erotic Acts",
+        ],
+
+        ["SexAndNudity.ImpliedSex"] =
+        [
+            "Sex without Nudity",
+            "Implied Sex",
+            "Sexually Suggestive Activity",
+            "Sensual Bedroom Scenes",
+            "Suggestive Dancing",
+        ],
+
+        ["SexAndNudity.SexualAssault"] =
+        [
+            "Sexual Assault",
+            "Rape",
+            "Non-consensual Sexual Behavior",
+            "Molestation",
+        ],
+
+        ["SexAndNudity.FullNudity"] =
+        [
+            "Female Frontal Nudity",
+            "Male Frontal Nudity",
+            "Full Nudity",
+            "Unclad Exposure",
+        ],
+
+        ["SexAndNudity.PartialNudity"] =
+        [
+            "Underwear or Lingerie",
+            "Topless Silhouette",
+            "Bare Buttocks",
+            "Revealing Attire or Cleavage",
+            "Immodest Exposure",
+        ],
+
+        ["SexAndNudity.PhysicalIntimacy"] =
+        [
+            "Heterosexual Kissing (Normal)",
+            "Heterosexual Kissing (Passionate)",
+            "Homosexual Kissing (Normal)",
+            "Homosexual Kissing (Passionate)",
+            "Sensual Caressing",
+            "Prolonged Making Out",
+        ],
+
+        ["SexAndNudity.Mild"] =
+        [
+            "Swimwear & Beach Attire",
+            "Mild Immodesty",
+            "Brief Non-sexual Kissing",
+            "Nude Statues & Paintings",
+        ],
+
+        // Legacy aliases:
         ["SexAndNudity.OnscreenActivity"] =
         [
             "Sex with Nudity",
@@ -85,15 +147,65 @@ public static class FilterDictionary
             "Nude Statues & Paintings",
         ],
 
-        ["SexAndNudity.PhysicalIntimacy"] =
+        // --- 4. VIOLENCE & HORROR (Ollama visual) ---
+        ["Violence.Mild"] =
         [
-            "Heterosexual Kissing (Normal)",
-            "Heterosexual Kissing (Passionate)",
-            "Homosexual Kissing (Normal)",
-            "Homosexual Kissing (Passionate)",
+            "Comic Action",
+            "Slaps",
+            "Bloodless Fistfights",
+            "Playful Wrestling or Shoving",
         ],
 
-        // --- 4. VIOLENCE & HORROR (Ollama visual) ---
+        ["Violence.Moderate"] =
+        [
+            "Realistic Combat",
+            "Shootouts",
+            "Stabbings",
+            "Non-graphic Violence",
+            "Blood on Clothing",
+            "Car Crashes and Explosions",
+        ],
+
+        ["Violence.Graphic"] =
+        [
+            "Visceral Wounds",
+            "Severe Physical Trauma",
+            "Graphic Violence",
+            "Close-range Shootings",
+            "Fatal Stabbings",
+            "Brutal Attacks",
+        ],
+
+        ["Violence.Gore"] =
+        [
+            "Gore",
+            "Dismemberment",
+            "Decapitation",
+            "Severed Limbs or Heads",
+            "Mutilation",
+            "Exposed Organs or Entrails",
+            "Graphic Blood Splatter",
+        ],
+
+        ["Violence.JumpScares"] =
+        [
+            "Horror Jump Scares",
+            "Sudden Shock Sequences",
+            "Startling Creature Reveals",
+            "Startling Sounds with Visual Jump",
+        ],
+
+        ["Violence.Disturbing"] =
+        [
+            "Disturbing Images",
+            "Psychological Horror",
+            "Corpses and Skeletal Remains",
+            "Suicide or Self-Harm Themes",
+            "Torture Sequences",
+            "Objectionable, Disturbing, or Scary",
+        ],
+
+        // Legacy alias:
         ["Violence.Tiers"] =
         [
             "Gore",
@@ -105,6 +217,33 @@ public static class FilterDictionary
         ],
 
         // --- 5. SUBSTANCE USE (Ollama visual) ---
+        ["Substances.Tobacco"] =
+        [
+            "Smoking Cigarettes",
+            "Smoking Cigars or Pipes",
+            "Vaping or E-Cigarettes",
+            "Tobacco Product Use",
+        ],
+
+        ["Substances.Alcohol"] =
+        [
+            "Alcohol Consumption",
+            "Drunkenness and Intoxication",
+            "Beer, Wine, or Liquor Drinking",
+            "Bar Scenes with Heavy Drinking",
+        ],
+
+        ["Substances.IllegalDrugs"] =
+        [
+            "Illicit Drug Use",
+            "Narcotics Consumption",
+            "Smoking Marijuana / Weed",
+            "Snorting Cocaine / Heroin",
+            "Drug Injections and Paraphernalia",
+            "Drug Overdose or Intoxication",
+        ],
+
+        // Legacy alias:
         ["Substances.Usage"] =
         [
             "Illegal Usage",
@@ -117,11 +256,33 @@ public static class FilterDictionary
         [
             "Medical Graphic",
             "Medical Procedures",
-            "Life Events",
-            "Bodily Functions/Jokes",
+            "Surgical Operations",
+            "Needles and Injections",
+            "Severe Hospital Trauma",
+        ],
+
+        ["Medical.BodilyFunctions"] =
+        [
+            "Vomiting or Barfing",
+            "Gross Bodily Functions",
+            "Flatulence and Toilet Humor",
         ],
 
         // --- 7. STRUCTURAL TIMESTAMPS (Ollama visual) ---
+        ["Structural.Credits"] =
+        [
+            "Opening Credits",
+            "Closing Credits",
+        ],
+
+        ["Structural.IntroRecap"] =
+        [
+            "Opening Intro Sequence",
+            "Episode Recap",
+            "Outtakes and Bloopers",
+        ],
+
+        // Legacy alias:
         ["Structural.Timestamps"] =
         [
             "Opening Credits",
@@ -152,12 +313,35 @@ public static class FilterDictionary
         ["SexualReferences.ExplicitWords"]         = "audio",
         ["SexualReferences.ContextualDialogue"]    = "video",
         ["SexualReferences.Visuals"]               = "video",
+
+        ["SexAndNudity.Graphic"]                   = "video",
+        ["SexAndNudity.ImpliedSex"]                = "video",
+        ["SexAndNudity.SexualAssault"]             = "video",
+        ["SexAndNudity.FullNudity"]                = "video",
+        ["SexAndNudity.PartialNudity"]             = "video",
+        ["SexAndNudity.PhysicalIntimacy"]          = "video",
+        ["SexAndNudity.Mild"]                      = "video",
         ["SexAndNudity.OnscreenActivity"]          = "video",
         ["SexAndNudity.NudityProfiles"]            = "video",
-        ["SexAndNudity.PhysicalIntimacy"]          = "video",
+
+        ["Violence.Mild"]                          = "video",
+        ["Violence.Moderate"]                      = "video",
+        ["Violence.Graphic"]                       = "video",
+        ["Violence.Gore"]                          = "video",
+        ["Violence.JumpScares"]                    = "video",
+        ["Violence.Disturbing"]                    = "video",
         ["Violence.Tiers"]                         = "video",
+
+        ["Substances.Tobacco"]                     = "video",
+        ["Substances.Alcohol"]                     = "video",
+        ["Substances.IllegalDrugs"]                = "video",
         ["Substances.Usage"]                       = "video",
+
         ["Medical.Events"]                         = "both",
+        ["Medical.BodilyFunctions"]                = "both",
+
+        ["Structural.Credits"]                     = "both",
+        ["Structural.IntroRecap"]                  = "both",
         ["Structural.Timestamps"]                  = "both",
     };
 
