@@ -180,7 +180,7 @@ public class PlaybackMonitor : IHostedService
         var seekCue = activeCues
             .Where(c => string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase))
             .Where(c => !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(c => c.End)
+            .OrderByDescending(c => c.End)
             .FirstOrDefault();
 
         if (seekCue is not null)
@@ -188,10 +188,17 @@ public class PlaybackMonitor : IHostedService
             var seekTarget = seekCue.End.Ticks;
             var now = DateTime.UtcNow;
             var isNewTarget = state.LastSeekTarget != seekTarget;
+
+            // If we already sent a seek to this target and the player reported position near or past target, skip
+            if (!isNewTarget && positionTicks >= seekTarget - TimeSpan.FromMilliseconds(500).Ticks)
+            {
+                return;
+            }
+
             var shouldRetry = !isNewTarget &&
-                              (now - state.LastSeekTime) >= TimeSpan.FromSeconds(1.5) &&
-                              state.SeekRetryCount < 10 &&
-                              positionTicks < seekTarget;
+                              (now - state.LastSeekTime) >= TimeSpan.FromSeconds(7.0) &&
+                              state.SeekRetryCount < 3 &&
+                              positionTicks < seekTarget - TimeSpan.FromMilliseconds(500).Ticks;
 
             if (isNewTarget || shouldRetry)
             {
@@ -231,7 +238,7 @@ public class PlaybackMonitor : IHostedService
                     state = state with
                     {
                         LastSeekTarget = seekTarget,
-                        LastSeekTime = now - TimeSpan.FromSeconds(1.0),
+                        LastSeekTime = now - TimeSpan.FromSeconds(5.0),
                         SeekRetryCount = 0
                     };
                 }
@@ -245,7 +252,8 @@ public class PlaybackMonitor : IHostedService
         // When not inside any active seek cue, reset LastSeekTarget when playback moves safely past target or rewinds.
         if (state.LastSeekTarget != 0)
         {
-            if (positionTicks >= state.LastSeekTarget || positionTicks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
+            if (positionTicks >= state.LastSeekTarget - TimeSpan.FromMilliseconds(500).Ticks ||
+                positionTicks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
             {
                 state = state with { LastSeekTarget = 0, LastSeekTime = DateTime.MinValue, SeekRetryCount = 0 };
                 _sessionState[sessionId] = state;
@@ -282,20 +290,45 @@ public class PlaybackMonitor : IHostedService
         if (session.SessionControllers.Count > 0)
         {
             targets.Add(session.Id);
+            return targets;
         }
 
-        // If the playing session has no active controllers, check other sessions with same device ID or user ID
-        foreach (var candidate in _sessionManager.Sessions)
+        // If the playing session has no active controllers, check other sessions with same device ID
+        if (!string.IsNullOrEmpty(session.DeviceId))
         {
-            if (candidate.SessionControllers.Count > 0 &&
-                ((!string.IsNullOrEmpty(session.DeviceId) && string.Equals(candidate.DeviceId, session.DeviceId, StringComparison.Ordinal)) ||
-                 (candidate.UserId != Guid.Empty && candidate.UserId == session.UserId)))
+            foreach (var candidate in _sessionManager.Sessions)
             {
-                targets.Add(candidate.Id);
+                if (candidate.SessionControllers.Count > 0 &&
+                    string.Equals(candidate.DeviceId, session.DeviceId, StringComparison.Ordinal))
+                {
+                    targets.Add(candidate.Id);
+                }
+            }
+
+            if (targets.Count > 0)
+            {
+                return targets;
             }
         }
 
-        if (targets.Count == 0 && !string.IsNullOrWhiteSpace(session.Id))
+        // Fallback: check other sessions for the same user
+        if (session.UserId != Guid.Empty)
+        {
+            foreach (var candidate in _sessionManager.Sessions)
+            {
+                if (candidate.SessionControllers.Count > 0 && candidate.UserId == session.UserId)
+                {
+                    targets.Add(candidate.Id);
+                }
+            }
+
+            if (targets.Count > 0)
+            {
+                return targets;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.Id))
         {
             targets.Add(session.Id);
         }
