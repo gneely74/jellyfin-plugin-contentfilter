@@ -20,8 +20,7 @@ public static class ClientScriptInjector
         /// <summary>
         /// Gets or sets the file contents.
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("contents")]
-        public string Contents { get; set; } = string.Empty;
+        public string? Contents { get; set; }
     }
 
     /// <summary>
@@ -107,54 +106,34 @@ public static class ClientScriptInjector
 
     /// <summary>
     /// Callback method invoked by FileTransformation when index.html is served.
-    /// Accepts object to safely handle cross-assembly serialization models.
     /// </summary>
     /// <param name="input">The transformation input containing index.html contents.</param>
     /// <returns>The transformed HTML content with client.js injected.</returns>
-    public static string TransformIndexHtml(object? input)
+    public static string TransformIndexHtml(TransformationInput? input)
     {
-        if (input is null)
+        if (string.IsNullOrEmpty(input?.Contents))
         {
-            return string.Empty;
-        }
-
-        string? contents = null;
-        if (input is string str)
-        {
-            contents = str;
-        }
-        else
-        {
-            var prop = input.GetType().GetProperty("Contents", BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (prop is not null)
-            {
-                contents = prop.GetValue(input) as string;
-            }
-        }
-
-        if (string.IsNullOrEmpty(contents))
-        {
-            return string.Empty;
+            return input?.Contents ?? string.Empty;
         }
 
         const string scriptTag = "<script src=\"../ContentFilter/client.js\" defer></script>";
-        if (contents.Contains(scriptTag, StringComparison.Ordinal))
+        if (input.Contents.Contains(scriptTag, StringComparison.Ordinal))
         {
-            return contents;
+            return input.Contents;
         }
 
-        var headClose = contents.IndexOf("</head>", StringComparison.OrdinalIgnoreCase);
+        var headClose = input.Contents.IndexOf("</head>", StringComparison.OrdinalIgnoreCase);
         if (headClose >= 0)
         {
-            return contents.Insert(headClose, $"{scriptTag}\n");
+            return input.Contents.Insert(headClose, $"{scriptTag}\n");
         }
 
-        var bodyClose = contents.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        var bodyClose = input.Contents.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
         if (bodyClose >= 0)
         {
-            return contents.Insert(bodyClose, $"{scriptTag}\n");
+            return input.Contents.Insert(bodyClose, $"{scriptTag}\n");
         }
 
-        return contents + "\n" + scriptTag;
+        return input.Contents + "\n" + scriptTag;
     }
 }

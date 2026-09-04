@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Seamless client script injection into Jellyfin Web index.html via FileTransformation, instant in-memory library loading, and robust multi-session player seeking.",
+  "changelog": "FileTransformation typed callback support for dynamic index.html script injection, instant library cache, and multi-session player seeking.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,5 +9,5 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-09-04T00:00:00Z",
-  "version": "1.0.7.0"
+  "version": "1.0.8.0"
 }
