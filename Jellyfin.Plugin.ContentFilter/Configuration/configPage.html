@@ -2,123 +2,1541 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Jellyfin Content Filter</title>
+    <title>Jellyfin Content Filter Studio</title>
 </head>
 <body>
     <div id="ContentFilterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <style>
-            .tabButtons { display:flex; gap:8px; margin-bottom:16px; }
-            .tabPanel { display:none; }
-            .tabPanel.active { display:block; }
-            /* Shared checkbox sizing */
-            .cf-g input[type=checkbox] { width:14px; height:14px; margin:0; cursor:pointer; flex-shrink:0; }
-            /* Level 1: Group */
-            .cf-g { margin-bottom:16px; border:1px solid #3a3a55; border-radius:6px; overflow:hidden; }
-            .cf-g-hdr { background:#1a1a2e; padding:10px 14px; border-bottom:1px solid #2a2a44; }
-            .cf-g-hdr > label { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
-            .cf-num { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px;
-                      border-radius:50%; background:#5555aa; color:#fff; font-size:0.75em; font-weight:bold; flex-shrink:0; }
-            .cf-g-title { font-weight:bold; font-size:0.88em; letter-spacing:0.08em; color:#ddd; }
-            .cf-g-body { padding:8px 14px 14px; background:#111118; }
-            /* Level 2: Category */
-            .cf-c { margin-top:12px; padding-left:14px; border-left:3px solid #4a4a88; }
-            .cf-c-header { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:3px 0; }
-            .cf-cname { font-family:monospace; background:#1e1e32; padding:2px 8px; border-radius:3px;
-                        font-size:0.88em; color:#aaaae0; border:1px solid #2e2e4e; }
-            .cf-badge { font-size:0.68em; padding:1px 5px; border-radius:2px; letter-spacing:0.04em; }
-            .cf-badge-word   { background:#152015; color:#6abf6a; border:1px solid #2a4a2a; }
-            .cf-badge-visual { background:#201520; color:#bf6abf; border:1px solid #4a2a4a; }
-            /* Level 3: Items */
-            .cf-items { padding-left:22px; border-left:2px dashed #252535; margin-top:4px; }
-            .cf-item > label { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
-                               padding:2px 0; font-size:0.83em; color:#77778a; }
-            /* Disabled / greyed-out */
-            .cf-off { opacity:0.35; pointer-events:none; }
+
+            :root {
+                --cf-bg: #101119;
+                --cf-surface: #171826;
+                --cf-surface-elevated: #1f2032;
+                --cf-surface-hover: #27283e;
+                --cf-border: rgba(255, 255, 255, 0.08);
+                --cf-border-subtle: rgba(255, 255, 255, 0.04);
+                --cf-border-focus: #00a4dc;
+                --cf-primary: #00a4dc;
+                --cf-primary-glow: rgba(0, 164, 220, 0.2);
+                --cf-green: #52b54b;
+                --cf-green-bg: rgba(82, 181, 75, 0.15);
+                --cf-amber: #f59e0b;
+                --cf-amber-bg: rgba(245, 158, 11, 0.15);
+                --cf-red: #ef4444;
+                --cf-red-bg: rgba(239, 68, 68, 0.15);
+                --cf-purple: #a855f7;
+                --cf-purple-bg: rgba(168, 85, 247, 0.15);
+                --cf-blue: #0284c7;
+                --cf-blue-bg: rgba(2, 132, 199, 0.15);
+                --cf-text-main: #f8fafc;
+                --cf-text-muted: #94a3b8;
+                --cf-text-dim: #64748b;
+            }
+
+            .cf-page-container {
+                max-width: 1680px;
+                margin: 0 auto;
+                padding: 12px 20px 28px;
+                color: var(--cf-text-main);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                box-sizing: border-box;
+            }
+
+            /* Main Studio Header */
+            .cf-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 16px;
+                padding-bottom: 14px;
+                margin-bottom: 16px;
+                border-bottom: 1px solid var(--cf-border);
+            }
+
+            .cf-header-title {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .cf-header-title h2 {
+                margin: 0;
+                font-size: 1.45rem;
+                font-weight: 700;
+                color: #fff;
+                letter-spacing: -0.01em;
+            }
+
+            .cf-header-tag {
+                font-size: 0.7rem;
+                font-weight: 700;
+                padding: 3px 9px;
+                border-radius: 9999px;
+                background: var(--cf-green-bg);
+                color: var(--cf-green);
+                border: 1px solid rgba(82, 181, 75, 0.35);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .cf-header-sub {
+                font-size: 0.85rem;
+                color: var(--cf-text-muted);
+                margin-top: 2px;
+            }
+
+            .cf-header-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            /* Studio Workspace Grid */
+            .cf-workspace {
+                display: grid;
+                grid-template-columns: 390px 1fr;
+                gap: 20px;
+                height: calc(100vh - 165px);
+                min-height: 600px;
+            }
+
+            @media (max-width: 1024px) {
+                .cf-workspace {
+                    grid-template-columns: 1fr;
+                    height: auto;
+                }
+            }
+
+            /* Left Browser Panel */
+            .cf-browser {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                overflow: hidden;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-browser-tabs {
+                display: flex;
+                background: var(--cf-surface-elevated);
+                border-bottom: 1px solid var(--cf-border);
+                padding: 4px;
+                gap: 4px;
+            }
+
+            .cf-tab-btn {
+                flex: 1;
+                padding: 9px 12px;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                color: var(--cf-text-muted);
+                font-size: 0.86rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.15s ease;
+            }
+
+            .cf-tab-btn:hover {
+                background: rgba(255, 255, 255, 0.05);
+                color: #fff;
+            }
+
+            .cf-tab-btn.active {
+                background: var(--cf-primary);
+                color: #fff;
+                box-shadow: 0 2px 8px var(--cf-primary-glow);
+            }
+
+            .cf-search-box {
+                padding: 10px 12px;
+                background: var(--cf-surface);
+                border-bottom: 1px solid var(--cf-border-subtle);
+                position: relative;
+            }
+
+            .cf-search-input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 32px 8px 12px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.84rem;
+                outline: none;
+                transition: border-color 0.15s ease;
+            }
+
+            .cf-search-input:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-search-clear {
+                position: absolute;
+                right: 20px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                color: var(--cf-text-dim);
+                cursor: pointer;
+                font-size: 0.85rem;
+                display: none;
+            }
+
+            .cf-search-clear:hover {
+                color: #fff;
+            }
+
+            .cf-media-tree {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px 10px;
+            }
+
+            .cf-media-tree::-webkit-scrollbar {
+                width: 6px;
+            }
+            .cf-media-tree::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .cf-media-tree::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+
+            /* TV Series Card */
+            .cf-tree-series {
+                margin-bottom: 6px;
+                border-radius: 7px;
+                border: 1px solid var(--cf-border-subtle);
+                background: rgba(255, 255, 255, 0.02);
+                overflow: hidden;
+                transition: border-color 0.15s ease;
+            }
+
+            .cf-tree-series:hover {
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .cf-tree-series-hdr {
+                padding: 9px 12px;
+                cursor: pointer;
+                user-select: none;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                font-size: 0.88rem;
+                background: transparent;
+                transition: background 0.15s ease;
+            }
+
+            .cf-tree-series-hdr:hover {
+                background: var(--cf-surface-hover);
+            }
+
+            .cf-series-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .cf-expand-arrow {
+                font-size: 0.72rem;
+                color: var(--cf-text-dim);
+                transition: transform 0.2s ease;
+                display: inline-block;
+                flex-shrink: 0;
+            }
+
+            .cf-expand-arrow.open {
+                transform: rotate(90deg);
+                color: var(--cf-primary);
+            }
+
+            .cf-series-title {
+                font-weight: 600;
+                color: #fff;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .cf-series-year {
+                font-size: 0.78rem;
+                color: var(--cf-text-dim);
+                flex-shrink: 0;
+            }
+
+            .cf-seasons-container {
+                display: none;
+                padding: 4px 6px 8px 14px;
+                background: rgba(0, 0, 0, 0.15);
+                border-top: 1px solid var(--cf-border-subtle);
+            }
+
+            /* Season Group */
+            .cf-season-grp {
+                margin: 4px 0 8px 0;
+            }
+
+            .cf-season-hdr {
+                padding: 6px 10px;
+                border-radius: 5px;
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: var(--cf-text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                user-select: none;
+                background: rgba(255, 255, 255, 0.03);
+                margin-bottom: 3px;
+                transition: background 0.15s ease, color 0.15s ease;
+            }
+
+            .cf-season-hdr:hover {
+                background: rgba(255, 255, 255, 0.07);
+                color: #fff;
+            }
+
+            .cf-season-episodes {
+                display: block;
+            }
+
+            /* Episode Item */
+            .cf-episode-item, .cf-movie-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 7px 10px;
+                margin: 2px 0;
+                border-radius: 5px;
+                font-size: 0.82rem;
+                color: var(--cf-text-muted);
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid transparent;
+                transition: all 0.12s ease;
+            }
+
+            .cf-episode-item:hover, .cf-movie-item:hover {
+                background: var(--cf-surface-hover);
+                color: #fff;
+            }
+
+            .cf-episode-item.selected, .cf-movie-item.selected {
+                background: rgba(0, 164, 220, 0.15);
+                color: #fff;
+                border-color: var(--cf-primary);
+                font-weight: 600;
+                box-shadow: 0 1px 6px rgba(0, 164, 220, 0.2);
+            }
+
+            .cf-ep-meta {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .cf-ep-num {
+                font-family: monospace;
+                font-size: 0.75rem;
+                font-weight: 700;
+                background: var(--cf-surface-elevated);
+                color: var(--cf-text-main);
+                padding: 2px 5px;
+                border-radius: 3px;
+                flex-shrink: 0;
+                border: 1px solid var(--cf-border-subtle);
+            }
+
+            .cf-ep-title {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Generic Pills & Badges */
+            .cf-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 2px 7px;
+                border-radius: 4px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .cf-pill-green  { background: var(--cf-green-bg); color: var(--cf-green); border: 1px solid rgba(82, 181, 75, 0.3); }
+            .cf-pill-blue   { background: var(--cf-blue-bg); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+            .cf-pill-amber  { background: var(--cf-amber-bg); color: var(--cf-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+            .cf-pill-red    { background: var(--cf-red-bg); color: var(--cf-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+            .cf-pill-purple { background: var(--cf-purple-bg); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
+            .cf-pill-gray   { background: rgba(255, 255, 255, 0.05); color: var(--cf-text-dim); border: 1px solid var(--cf-border-subtle); }
+
+            /* Right Detail Panel / Editor Workspace */
+            .cf-editor {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                overflow-y: auto;
+                padding: 20px 24px;
+                box-sizing: border-box;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-editor::-webkit-scrollbar {
+                width: 6px;
+            }
+            .cf-editor::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .cf-editor::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+
+            /* Empty State Card */
+            .cf-empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                text-align: center;
+                padding: 40px 20px;
+                color: var(--cf-text-muted);
+            }
+
+            .cf-empty-icon {
+                font-size: 3.5rem;
+                margin-bottom: 16px;
+                opacity: 0.8;
+            }
+
+            .cf-empty-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: #fff;
+                margin-bottom: 8px;
+            }
+
+            .cf-empty-desc {
+                font-size: 0.9rem;
+                max-width: 440px;
+                line-height: 1.5;
+                margin-bottom: 16px;
+            }
+
+            /* Media Hero Banner */
+            .cf-hero {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 16px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid var(--cf-border);
+                margin-bottom: 18px;
+                flex-wrap: wrap;
+            }
+
+            .cf-hero-meta {
+                min-width: 0;
+            }
+
+            .cf-hero-title {
+                margin: 0 0 4px 0;
+                font-size: 1.35rem;
+                font-weight: 700;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .cf-hero-sub {
+                font-size: 0.86rem;
+                color: var(--cf-text-muted);
+            }
+
+            .cf-hero-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            /* Button Styles */
+            .cf-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 7px 14px;
+                border-radius: 6px;
+                font-size: 0.84rem;
+                font-weight: 600;
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid var(--cf-border);
+                background: var(--cf-surface-elevated);
+                color: #fff;
+                transition: all 0.15s ease;
+            }
+
+            .cf-btn:hover {
+                background: var(--cf-surface-hover);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .cf-btn-primary {
+                background: var(--cf-primary);
+                border-color: var(--cf-primary);
+                box-shadow: 0 2px 8px var(--cf-primary-glow);
+            }
+
+            .cf-btn-primary:hover {
+                background: #0284c7;
+                border-color: #0284c7;
+            }
+
+            .cf-btn-danger {
+                background: var(--cf-red-bg);
+                color: var(--cf-red);
+                border-color: rgba(239, 68, 68, 0.4);
+            }
+
+            .cf-btn-danger:hover {
+                background: rgba(239, 68, 68, 0.25);
+            }
+
+            .cf-btn-sm {
+                padding: 4px 10px;
+                font-size: 0.78rem;
+            }
+
+            /* Sidecar Disk Alert Banner */
+            .cf-sidecar-alert {
+                display: none;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 10px 14px;
+                background: rgba(2, 132, 199, 0.12);
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                border-radius: 7px;
+                margin-bottom: 16px;
+                font-size: 0.85rem;
+            }
+
+            .cf-sidecar-alert-text {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #bae6fd;
+            }
+
+            /* Scan Tracker */
+            .cf-scan-card {
+                display: none;
+                padding: 14px 16px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                margin-bottom: 16px;
+            }
+
+            .cf-scan-hdr {
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.85rem;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+
+            .cf-progress-track {
+                width: 100%;
+                height: 7px;
+                background: rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                overflow: hidden;
+                margin-bottom: 6px;
+            }
+
+            .cf-progress-fill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #00a4dc, #52b54b);
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+
+            /* Drag & Drop Zone */
+            .cf-dropzone {
+                border: 2px dashed var(--cf-border);
+                border-radius: 8px;
+                padding: 22px 16px;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.01);
+                cursor: pointer;
+                transition: all 0.15s ease;
+                margin-bottom: 18px;
+            }
+
+            .cf-dropzone:hover, .cf-dropzone.dragover {
+                border-color: var(--cf-primary);
+                background: rgba(0, 164, 220, 0.06);
+            }
+
+            .cf-dropzone-icon {
+                font-size: 2rem;
+                margin-bottom: 6px;
+            }
+
+            .cf-dropzone-title {
+                font-weight: 600;
+                font-size: 0.95rem;
+                color: #fff;
+                margin-bottom: 4px;
+            }
+
+            .cf-dropzone-sub {
+                font-size: 0.8rem;
+                color: var(--cf-text-dim);
+            }
+
+            /* Batch Report Card */
+            .cf-batch-card {
+                display: none;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 16px;
+                font-size: 0.84rem;
+            }
+
+            .cf-batch-list {
+                max-height: 160px;
+                overflow-y: auto;
+                margin-top: 8px;
+                padding-right: 4px;
+            }
+
+            /* Segments Section */
+            .cf-segments-sec {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+            }
+
+            .cf-segments-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 10px 0;
+                margin-bottom: 8px;
+            }
+
+            .cf-cat-chips {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .cf-bulk-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            /* Segments Table */
+            .cf-table-container {
+                overflow-x: auto;
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                background: var(--cf-surface-elevated);
+            }
+
+            .cf-table {
+                width: 100%;
+                border-collapse: collapse;
+                text-align: left;
+                font-size: 0.83rem;
+            }
+
+            .cf-table th {
+                background: rgba(0, 0, 0, 0.25);
+                padding: 10px 14px;
+                color: var(--cf-text-muted);
+                font-weight: 700;
+                font-size: 0.74rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border-bottom: 1px solid var(--cf-border);
+            }
+
+            .cf-table td {
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--cf-border-subtle);
+                color: var(--cf-text-main);
+                vertical-align: middle;
+            }
+
+            .cf-table tbody tr:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            .cf-table tr.none-action td {
+                opacity: 0.45;
+            }
+
+            .cf-time-badge {
+                font-family: monospace;
+                font-size: 0.8rem;
+                font-weight: 600;
+                background: rgba(0, 0, 0, 0.25);
+                padding: 3px 6px;
+                border-radius: 4px;
+                border: 1px solid var(--cf-border-subtle);
+                white-space: nowrap;
+            }
+
+            .cf-duration-badge {
+                font-size: 0.72rem;
+                color: var(--cf-text-dim);
+                margin-left: 6px;
+            }
+
+            .cf-select-clean {
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid var(--cf-border);
+                color: #fff;
+                padding: 5px 8px;
+                border-radius: 5px;
+                font-size: 0.78rem;
+                font-weight: 600;
+                outline: none;
+                cursor: pointer;
+            }
+
+            .cf-select-clean:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-input-clean {
+                background: rgba(0, 0, 0, 0.2);
+                border: 1px solid transparent;
+                color: #fff;
+                padding: 5px 8px;
+                border-radius: 5px;
+                font-size: 0.82rem;
+                width: 100%;
+                box-sizing: border-box;
+                outline: none;
+                transition: all 0.15s ease;
+            }
+
+            .cf-input-clean:focus {
+                background: rgba(0, 0, 0, 0.4);
+                border-color: var(--cf-primary);
+            }
+
+            .cf-del-btn {
+                background: transparent;
+                border: none;
+                color: var(--cf-text-dim);
+                cursor: pointer;
+                font-size: 0.95rem;
+                padding: 4px 8px;
+                border-radius: 4px;
+                transition: all 0.15s ease;
+            }
+
+            .cf-del-btn:hover {
+                color: var(--cf-red);
+                background: var(--cf-red-bg);
+            }
+
+            /* Modal for Adding Segment */
+            .cf-modal-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.75);
+                z-index: 99999;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .cf-modal {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                width: 90%;
+                max-width: 480px;
+                padding: 24px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .cf-modal-hdr {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+
+            .cf-modal-title {
+                margin: 0;
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #fff;
+            }
+
+            .cf-form-row {
+                margin-bottom: 14px;
+            }
+
+            .cf-form-row label {
+                display: block;
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: var(--cf-text-muted);
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+
+            .cf-form-row input, .cf-form-row select {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 10px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.85rem;
+                outline: none;
+            }
+
+            .cf-form-row input:focus, .cf-form-row select:focus {
+                border-color: var(--cf-primary);
+            }
+
+            .cf-modal-footer {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 20px;
+            }
+
+            .cf-spinner {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: cf-spin 0.8s linear infinite;
+            }
+
+            @keyframes cf-spin {
+                to { transform: rotate(360deg); }
+            }
+        
+
+            /* Top Navigation Bar */
+            .cf-main-nav {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                border-bottom: 1px solid var(--cf-border);
+                padding-bottom: 12px;
+                flex-wrap: wrap;
+            }
+
+            .cf-main-tab-btn {
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-size: 0.92rem;
+                font-weight: 600;
+                cursor: pointer;
+                user-select: none;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                color: var(--cf-text-muted);
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .cf-main-tab-btn:hover {
+                background: var(--cf-surface-hover);
+                color: #fff;
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .cf-main-tab-btn.active {
+                background: var(--cf-primary);
+                border-color: var(--cf-primary);
+                color: #fff;
+                box-shadow: 0 3px 12px var(--cf-primary-glow);
+            }
+
+            .cf-tab-panel {
+                display: none;
+            }
+
+            .cf-tab-panel.active {
+                display: block;
+            }
+
+            /* Settings & Rules Cards */
+            .cf-settings-card {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                padding: 22px 24px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-settings-card-title {
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #fff;
+                margin: 0 0 6px 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .cf-settings-card-desc {
+                font-size: 0.88rem;
+                color: var(--cf-text-muted);
+                margin: 0 0 18px 0;
+                line-height: 1.5;
+            }
+
+            /* Rules Hierarchy Modern Dark Theme */
+            .cf-g {
+                margin-bottom: 16px;
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                overflow: hidden;
+                background: var(--cf-surface);
+            }
+
+            .cf-g-hdr {
+                background: var(--cf-surface-elevated);
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--cf-border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+            }
+
+            .cf-g-hdr-left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .cf-num {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                background: var(--cf-primary);
+                color: #fff;
+                font-size: 0.78rem;
+                font-weight: bold;
+                flex-shrink: 0;
+            }
+
+            .cf-g-title {
+                font-weight: 700;
+                font-size: 0.95rem;
+                letter-spacing: 0.04em;
+                color: #fff;
+            }
+
+            .cf-g-body {
+                padding: 14px 18px 18px;
+                background: rgba(0, 0, 0, 0.15);
+            }
+
+            .cf-c {
+                margin-top: 14px;
+                padding-left: 14px;
+                border-left: 3px solid var(--cf-primary);
+            }
+
+            .cf-c-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                user-select: none;
+                padding: 4px 0;
+            }
+
+            .cf-cname {
+                font-family: monospace;
+                background: var(--cf-surface-elevated);
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 0.88rem;
+                color: #bae6fd;
+                border: 1px solid var(--cf-border);
+            }
+
+            .cf-badge {
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 2px 7px;
+                border-radius: 4px;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            .cf-badge-word {
+                background: rgba(82, 181, 75, 0.15);
+                color: #86efac;
+                border: 1px solid rgba(82, 181, 75, 0.35);
+            }
+
+            .cf-badge-visual {
+                background: rgba(168, 85, 247, 0.15);
+                color: #d8b4fe;
+                border: 1px solid rgba(168, 85, 247, 0.35);
+            }
+
+            .cf-items {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 14px;
+                padding: 8px 0 6px 14px;
+                margin-top: 6px;
+            }
+
+            .cf-item {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--cf-border-subtle);
+                padding: 4px 10px;
+                border-radius: 6px;
+                transition: background 0.15s ease;
+            }
+
+            .cf-item:hover {
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            .cf-item > label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                user-select: none;
+                font-size: 0.84rem;
+                color: var(--cf-text-main);
+            }
+
+            .cf-off {
+                opacity: 0.35;
+                pointer-events: none;
+            }
+
+            /* Settings Input Fields */
+            .cf-field-group {
+                margin-bottom: 18px;
+            }
+
+            .cf-field-label {
+                display: block;
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: var(--cf-text-muted);
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+
+            .cf-field-helper {
+                font-size: 0.8rem;
+                color: var(--cf-text-dim);
+                margin-top: 4px;
+            }
+
+            .cf-field-input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 10px 12px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.9rem;
+                outline: none;
+                transition: border-color 0.2s ease;
+            }
+
+            .cf-field-input:focus {
+                border-color: var(--cf-primary);
+                box-shadow: 0 0 0 2px var(--cf-primary-glow);
+            }
+
+            .cf-checkbox-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                user-select: none;
+                padding: 8px 0;
+            }
+
+            .cf-checkbox-row span {
+                font-size: 0.92rem;
+                font-weight: 500;
+                color: #fff;
+            }
+
+            /* Save Action Bar */
+            .cf-save-bar {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-top: 24px;
+                padding-top: 16px;
+                border-top: 1px solid var(--cf-border);
+            }
+
         </style>
+
         <div data-role="content">
-            <div class="content-primary">
-                <form id="ContentFilterConfigForm">
-                    <div class="tabButtons">
-                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="filtersTab">Filters</button>
-                        <button is="emby-button" type="button" class="raised emby-button" data-tab-button="scanSettingsTab">Scan Settings</button>
+            <div class="content-primary cf-page-container">
+                
+                <!-- Main Header -->
+                <div class="cf-header">
+                    <div>
+                        <div class="cf-header-title">
+                            <h2>Content Filter Studio</h2>
+                            <span class="cf-header-tag">v1.0.5</span>
+                        </div>
+                        <div class="cf-header-sub">Review media cues, inspect disk sidecars, and manage playback filtering.</div>
+                    </div>
+                    <div class="cf-header-actions">
+                        <button id="scanSidecarsBtn" is="emby-button" type="button" class="raised emby-button">
+                            <span>🔄 Scan Disk Sidecars</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Top Navigation Tabs -->
+                <div class="cf-main-nav">
+                    <button class="cf-main-tab-btn active" data-cf-tab="studio">
+                        <span>🎬</span> Media Studio
+                    </button>
+                    <button class="cf-main-tab-btn" data-cf-tab="rules">
+                        <span>🛡️</span> Filter Rules
+                    </button>
+                    <button class="cf-main-tab-btn" data-cf-tab="settings">
+                        <span>⚙️</span> Scanner & AI Settings
+                    </button>
+                </div>
+
+                <!-- Tab 1: Media Studio (Default) -->
+                <div id="cfTabStudio" class="cf-tab-panel active">
+                    <!-- Studio Grid Workspace -->
+                    <div class="cf-workspace">
+                    
+                    <!-- Left Column: Library Browser -->
+                    <div class="cf-browser">
+                        <div class="cf-browser-tabs">
+                            <button id="tabShowsBtn" class="cf-tab-btn active" type="button">
+                                <span>📺 TV Shows</span>
+                                <span id="showsCountBadge" class="cf-pill cf-pill-gray" style="font-size:0.68rem;">--</span>
+                            </button>
+                            <button id="tabMoviesBtn" class="cf-tab-btn" type="button">
+                                <span>🎬 Movies</span>
+                                <span id="moviesCountBadge" class="cf-pill cf-pill-gray" style="font-size:0.68rem;">--</span>
+                            </button>
+                        </div>
+                        <div class="cf-search-box">
+                            <input id="mediaFilterInput" class="cf-search-input" type="text" placeholder="Filter shows, movies, or episodes…">
+                            <button id="searchClearBtn" class="cf-search-clear" type="button">✕</button>
+                        </div>
+                        <div id="mediaTreeContainer" class="cf-media-tree">
+                            <div style="text-align:center; padding: 28px; color: var(--cf-text-dim);">
+                                <div class="cf-spinner"></div> Loading library media…
+                            </div>
+                        </div>
                     </div>
 
-                    <div id="filtersTab" class="tabPanel active">
-                        <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom:16px;">
-                            <label class="emby-checkbox-label">
-                                <input id="IsEnabled" type="checkbox" is="emby-checkbox">
-                                <span>Enable Content Filtering</span>
-                            </label>
+                    <!-- Right Column: Workspace & Editor -->
+                    <div class="cf-editor">
+                        
+                        <!-- Empty State (when nothing is selected) -->
+                        <div id="emptyWorkspaceCard" class="cf-empty-state">
+                            <div class="cf-empty-icon">📺</div>
+                            <div class="cf-empty-title">Select Media from the Library</div>
+                            <div class="cf-empty-desc">
+                                Choose a TV Show or Movie from the left browser to review seasons, inspect cues, import .jcf files, or run automated scans.
+                            </div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-dim);">
+                                Tip: Drag &amp; drop any <code>.jcf</code> file directly onto this window to auto-match and import.
+                            </div>
                         </div>
+
+                        <!-- Active Detail Workspace -->
+                        <div id="mediaDetailCard" style="display:none; flex-direction:column; flex:1;">
+                            
+                            <!-- Hero Metadata & Actions -->
+                            <div class="cf-hero">
+                                <div class="cf-hero-meta">
+                                    <div class="cf-hero-title">
+                                        <span id="detailTitle">Untitled Media</span>
+                                        <span id="detailStatusBadge" class="cf-pill cf-pill-gray">Loading…</span>
+                                    </div>
+                                    <div id="detailSubtext" class="cf-hero-sub"></div>
+                                </div>
+                                <div class="cf-hero-actions">
+                                    <button id="uploadJcfBtn" class="cf-btn" type="button" title="Import JCF File">
+                                        <span>📥 Import JCF</span>
+                                    </button>
+                                    <button id="downloadJcfBtn" class="cf-btn" type="button" title="Download JCF File">
+                                        <span>⬇️ Download</span>
+                                    </button>
+                                    <button id="scanMediaBtn" class="cf-btn cf-btn-primary" type="button" title="Run Vision Scan">
+                                        <span>🔍 Scan Media</span>
+                                    </button>
+                                    <button id="deleteFilterBtn" class="cf-btn cf-btn-danger" type="button" title="Remove Filter">
+                                        <span>🗑️ Clear</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- On-Disk Sidecar Banner -->
+                            <div id="sidecarAlertBanner" class="cf-sidecar-alert">
+                                <div class="cf-sidecar-alert-text">
+                                    <span>📄</span>
+                                    <span>Disk sidecar detected: <code id="sidecarPathLabel" style="font-size:0.8rem; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;"></code></span>
+                                </div>
+                                <button id="reloadSidecarBtn" class="cf-btn cf-btn-sm" type="button">
+                                    <span>Re-import from Disk</span>
+                                </button>
+                            </div>
+
+                            <!-- Scan Progress Tracker -->
+                            <div id="scanTrackerCard" class="cf-scan-card">
+                                <div class="cf-scan-hdr">
+                                    <span id="scanStatusHeading">Automated Vision Scanning in Progress…</span>
+                                    <span id="scanPercentText" class="cf-pill cf-pill-blue">0%</span>
+                                </div>
+                                <div class="cf-progress-track">
+                                    <div id="scanProgressBar" class="cf-progress-fill"></div>
+                                </div>
+                                <div id="scanDetailsText" style="font-size:0.78rem; color:var(--cf-text-dim);">Connecting to local Vision LLM…</div>
+                            </div>
+
+                            <!-- Drop Zone -->
+                            <div id="itemDropzone" class="cf-dropzone">
+                                <div class="cf-dropzone-icon">☁️</div>
+                                <div id="dropzoneMainText" class="cf-dropzone-title">Drop JCF file for this media</div>
+                                <div id="dropzoneSubText" class="cf-dropzone-sub">
+                                    Drop a .jcf file to import cues (or drop multiple files to batch match this season)
+                                </div>
+                                <input type="file" id="fileUploadInput" accept=".jcf" multiple style="display:none;">
+                            </div>
+
+                            <!-- Batch Import Report -->
+                            <div id="batchReportCard" class="cf-batch-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span id="batchTitle" style="font-weight:700; color:#fff;">Batch Processing JCF Files…</span>
+                                    <span id="batchSummary" class="cf-pill cf-pill-blue">0 / 0</span>
+                                </div>
+                                <div id="batchList" class="cf-batch-list"></div>
+                            </div>
+
+                            <!-- Segments Table Section -->
+                            <div class="cf-segments-sec">
+                                <div class="cf-segments-toolbar">
+                                    <div id="categoryChips" class="cf-cat-chips">
+                                        <span class="cf-pill cf-pill-gray">0 Segments</span>
+                                    </div>
+                                    <div class="cf-bulk-actions">
+                                        <button id="addSegmentBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">
+                                            <span>+ Add Segment</span>
+                                        </button>
+                                        <button id="bulkSkipBtn" class="cf-btn cf-btn-sm" type="button">Skip All</button>
+                                        <button id="bulkMuteBtn" class="cf-btn cf-btn-sm" type="button">Mute All</button>
+                                        <button id="bulkNoneBtn" class="cf-btn cf-btn-sm" type="button">Set None</button>
+                                    </div>
+                                </div>
+
+                                <div class="cf-table-container">
+                                    <table class="cf-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 220px;">Time Range</th>
+                                                <th style="width: 140px;">Category</th>
+                                                <th style="width: 90px;">Channel</th>
+                                                <th style="width: 110px;">Action</th>
+                                                <th>Description / Rationale</th>
+                                                <th style="width: 45px; text-align: center;">✕</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="segmentsTableBody">
+                                            <tr>
+                                                <td colspan="6" style="text-align:center; color:var(--cf-text-dim); padding:32px;">
+                                                    No filtered cues configured for this item.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                    <!-- Add Segment Modal -->
+                    <div id="addSegmentModal" class="cf-modal-overlay">
+                    <div class="cf-modal">
+                        <div class="cf-modal-hdr">
+                            <h3 class="cf-modal-title">Add Content Filter Segment</h3>
+                            <button id="closeAddModalBtn" class="cf-del-btn" type="button">✕</button>
+                        </div>
+                        <form id="addSegmentForm">
+                            <div style="display:flex; gap:12px;">
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueStart">Start Time</label>
+                                    <input type="text" id="newCueStart" placeholder="00:01:30.000" required>
+                                </div>
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueEnd">End Time</label>
+                                    <input type="text" id="newCueEnd" placeholder="00:01:45.000" required>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px;">
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueCategory">Category</label>
+                                    <input type="text" id="newCueCategory" placeholder="Profanity, Violence, etc." required>
+                                </div>
+                                <div class="cf-form-row" style="flex:1;">
+                                    <label for="newCueChannel">Channel</label>
+                                    <select id="newCueChannel">
+                                        <option value="video">video</option>
+                                        <option value="audio">audio</option>
+                                        <option value="both" selected>both</option>
+                                        <option value="subtitles">subtitles</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="newCueAction">Action</label>
+                                <select id="newCueAction">
+                                    <option value="skip" selected>SKIP</option>
+                                    <option value="mute">MUTE</option>
+                                    <option value="none">NONE</option>
+                                </select>
+                            </div>
+                            <div class="cf-form-row">
+                                <label for="newCueDescription">Description</label>
+                                <input type="text" id="newCueDescription" placeholder="Notes or reasoning for segment…">
+                            </div>
+                            <div class="cf-modal-footer">
+                                <button id="cancelAddModalBtn" class="cf-btn" type="button">Cancel</button>
+                                <button type="submit" class="cf-btn cf-btn-primary">Add Segment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Tab 2: Filter Rules -->
+                <div id="cfTabRules" class="cf-tab-panel">
+                    <div class="cf-settings-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+                            <div>
+                                <h3 class="cf-settings-card-title">🛡️ Global Playback Filtering</h3>
+                                <div class="cf-settings-card-desc" style="margin:0;">
+                                    When enabled, media playback will automatically skip or mute flagged cues according to the rule categories selected below.
+                                </div>
+                            </div>
+                            <button id="saveRulesBtnTop" type="button" class="cf-btn cf-btn-primary">
+                                <span>💾 Save Rules</span>
+                            </button>
+                        </div>
+
+                        <label class="cf-checkbox-row" style="background:var(--cf-surface-elevated); padding:12px 16px; border-radius:8px; border:1px solid var(--cf-border); margin-bottom:20px;">
+                            <input id="IsEnabled" type="checkbox" is="emby-checkbox" style="width:18px; height:18px; cursor:pointer;">
+                            <span style="font-size:1.02rem; font-weight:700;">Enable Content Filtering Active Playback</span>
+                        </label>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                            <input id="rulesSearchInput" type="text" class="cf-field-input" placeholder="Search rules or words (e.g. profanity, violence, gore)..." style="max-width:380px;">
+                            <div style="display:flex; gap:8px;">
+                                <button id="rulesExpandAllBtn" type="button" class="cf-btn cf-btn-sm">Expand All</button>
+                                <button id="rulesCollapseAllBtn" type="button" class="cf-btn cf-btn-sm">Collapse All</button>
+                            </div>
+                        </div>
+
                         <div id="filterHierarchyContainer"></div>
-                    </div>
 
-                    <div id="scanSettingsTab" class="tabPanel">
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaBaseUrl">Vision API Base URL (oMLX: http://localhost:8000 · Ollama: http://localhost:11434)</label>
-                            <input id="OllamaBaseUrl" type="text" is="emby-input">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaVisionModel">Vision Model (local: Qwen2.5-VL-7B-Instruct-8bit · OpenRouter: qwen/qwen2.5-vl-72b-instruct)</label>
-                            <input id="OllamaVisionModel" type="text" is="emby-input">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaApiKey">Vision API Key (OpenRouter: sk-or-v1-... · leave blank for local oMLX/Ollama)</label>
-                            <input id="OllamaApiKey" type="password" is="emby-input" autocomplete="new-password">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="MaxConcurrentVisionRequests">Concurrent Vision Requests (1 for local GPU · 8–10 for OpenRouter)</label>
-                            <input id="MaxConcurrentVisionRequests" type="number" min="1" max="20" step="1" is="emby-input">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="OllamaTextModel">Ollama Text Model</label>
-                            <input id="OllamaTextModel" type="text" is="emby-input">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="ScanFramesPerSecond">Scan Frames Per Second</label>
-                            <input id="ScanFramesPerSecond" type="number" step="0.1" min="0" is="emby-input">
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="PreferredAudioLanguage">Preferred Audio Language (ISO 639-1, e.g. en)</label>
-                            <input id="PreferredAudioLanguage" type="text" is="emby-input">
-                        </div>
-                        <div class="checkboxContainer checkboxContainer-withDescription">
-                            <label class="emby-checkbox-label">
-                                <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox">
-                                <span>Analyze Audio Transcript</span>
-                            </label>
-                        </div>
-
-                    </div>
-
-                    <div id="debugConfigSection" style="margin-top:16px;border:1px solid #f0ad4e;border-radius:4px;padding:16px;">
-                        <h3 style="color:#f0ad4e;margin-top:0;">&#x1F41E; Debug Options</h3>
-                        <p style="color:#aaa;margin:0 0 12px;font-size:0.9em;">
-                            Visible because the server is at <strong>Debug</strong> log level
-                            (<code>JELLYFIN_LOG_LEVEL=Debug</code>).
-                        </p>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="DebugScanMaxSeconds">Max Scan Duration per File (seconds, 0 = full scan)</label>
-                            <input id="DebugScanMaxSeconds" type="number" min="0" step="1" is="emby-input">
+                        <div class="cf-save-bar">
+                            <button id="saveRulesBtn" type="button" class="cf-btn cf-btn-primary">
+                                <span>💾 Save Filter Rules</span>
+                            </button>
+                            <span id="rulesSaveStatus" style="font-size:0.88rem; color:var(--cf-green);"></span>
                         </div>
                     </div>
+                </div>
 
-                    <div style="display:flex;gap:8px;margin-top:16px;">
-                        <button is="emby-button" type="submit" class="raised button-submit emby-button">
-                            <span>Save</span>
+                <!-- Tab 3: Scanner & AI Settings -->
+                <div id="cfTabSettings" class="cf-tab-panel">
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🤖 AI Vision Configuration</h3>
+                        <div class="cf-settings-card-desc">
+                            Configure the multimodal vision model used to scan video frames for visual violence, nudity, and objectionable imagery.
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaBaseUrl">Vision API Base URL</label>
+                            <input id="OllamaBaseUrl" type="text" class="cf-field-input" placeholder="e.g. http://localhost:8000 or http://localhost:11434">
+                            <div class="cf-field-helper">Supports local oMLX (port 8000), Ollama (port 11434), or cloud endpoints like OpenRouter (https://openrouter.ai/api/v1).</div>
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaVisionModel">Vision Model Name</label>
+                            <input id="OllamaVisionModel" type="text" class="cf-field-input" placeholder="e.g. Qwen2.5-VL-7B-Instruct-8bit or qwen/qwen2.5-vl-72b-instruct">
+                            <div class="cf-field-helper">The vision model name to invoke for frame inspection.</div>
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaApiKey">Vision API Key</label>
+                            <input id="OllamaApiKey" type="password" class="cf-field-input" placeholder="sk-or-v1-... (leave blank for local Ollama/oMLX)" autocomplete="new-password">
+                            <div class="cf-field-helper">Required when using cloud providers like OpenRouter; leave blank for local inference.</div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="MaxConcurrentVisionRequests">Concurrent Vision Requests</label>
+                                <input id="MaxConcurrentVisionRequests" type="number" min="1" max="20" step="1" class="cf-field-input">
+                                <div class="cf-field-helper">Use 1 for single local GPU, or 8–10 for fast cloud API batches.</div>
+                            </div>
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="ScanFramesPerSecond">Scan Frames Per Second</label>
+                                <input id="ScanFramesPerSecond" type="number" step="0.1" min="0" class="cf-field-input">
+                                <div class="cf-field-helper">Sampling rate for frame extraction (e.g. 0.5 = 1 frame every 2 seconds).</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🎙️ Audio & Language Configuration</h3>
+                        <div class="cf-settings-card-desc">
+                            Configure subtitles and speech recognition parameters for language profanity detection.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="PreferredAudioLanguage">Preferred Audio Language</label>
+                                <input id="PreferredAudioLanguage" type="text" class="cf-field-input" placeholder="en">
+                                <div class="cf-field-helper">ISO 639-1 language code (e.g. en, fr, de, es).</div>
+                            </div>
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="OllamaTextModel">Text LLM Model</label>
+                                <input id="OllamaTextModel" type="text" class="cf-field-input" placeholder="e.g. llama3.2">
+                                <div class="cf-field-helper">Optional text model for contextual dialogue evaluation.</div>
+                            </div>
+                        </div>
+
+                        <label class="cf-checkbox-row" style="margin-top:6px;">
+                            <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                            <span>Analyze Audio Transcript & Subtitle Streams</span>
+                        </label>
+                    </div>
+
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🐞 Diagnostics & Limits</h3>
+                        <div class="cf-field-group" style="margin-bottom:0;">
+                            <label class="cf-field-label" for="DebugScanMaxSeconds">Debug Scan Max Seconds</label>
+                            <input id="DebugScanMaxSeconds" type="number" min="0" step="10" class="cf-field-input" style="max-width:240px;">
+                            <div class="cf-field-helper">Limit test scans to first N seconds of video (0 = scan entire video).</div>
+                        </div>
+                    </div>
+
+                    <div class="cf-save-bar">
+                        <button id="saveSettingsBtn" type="button" class="cf-btn cf-btn-primary">
+                            <span>💾 Save Scanner Settings</span>
                         </button>
-                        <button is="emby-button" type="button" id="openSegmentsBtn" class="raised emby-button">
-                            <span>Manage Segments</span>
-                        </button>
+                        <span id="settingsSaveStatus" style="font-size:0.88rem; color:var(--cf-green);"></span>
                     </div>
-                </form>
+                </div>
+
             </div>
         </div>
+
         <script type="text/javascript">
             var PLUGIN_ID = 'A62B2473-77E1-45C1-8470-57FB95A85394';
 
-            // 3-level: Group → Category → Individual items
-            // item key stored in DisabledFilterItems = categoryKey + ':' + itemLabel
+            // --- Tab Navigation ---
+            function switchMainTab(tabKey) {
+                document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-cf-tab') === tabKey);
+                });
+                document.querySelectorAll('.cf-tab-panel').forEach(function(panel) {
+                    panel.classList.remove('active');
+                });
+                var target = document.getElementById('cfTab' + tabKey.charAt(0).toUpperCase() + tabKey.slice(1));
+                if (target) target.classList.add('active');
+            }
+
+            document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    switchMainTab(btn.getAttribute('data-cf-tab'));
+                });
+            });
+
+            // --- Filter Hierarchy Configuration Logic ---
             var FH = [
                 { g:'Language', label:'Language & Profanity', cats:[
                     { key:'Language.GeneralProfanity',    label:'General Profanity',      badge:'word',
@@ -180,12 +1598,11 @@
                 return null;
             }
 
-            // Bleep a word-list term: show first char + last 1 (short) or 2 (long) chars
             function bleep(str) {
                 return str.split(' ').map(function(w) {
                     var n = w.length;
                     if (n <= 2) return w;
-                    var tail = n >= 6 ? 2 : 1;   // last 2 chars for longer words
+                    var tail = n >= 6 ? 2 : 1;
                     var stars = n - 1 - tail;
                     if (stars < 1) stars = 1;
                     return w[0] + '*'.repeat(stars) + w.slice(n - tail);
@@ -194,6 +1611,7 @@
 
             function renderHierarchy() {
                 var container = getEl('filterHierarchyContainer');
+                if (!container) return;
                 container.innerHTML = '';
                 FH.forEach(function(gDef, gIdx) {
                     var catsHtml = '';
@@ -208,65 +1626,81 @@
                             var display = isWord ? bleep(item) : item;
                             itemsHtml +=
                                 '<div class="cf-item">' +
-                                '<label><input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
-                                '<span>' + esc(display) + '</span></label></div>';
+                                    '<label>' +
+                                        '<input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
+                                        '<span>' + esc(display) + '</span>' +
+                                    '</label>' +
+                                '</div>';
                         });
+
                         catsHtml +=
                             '<div class="cf-c" data-fc="' + esc(cat.key) + '">' +
-                            '<label class="cf-c-header"><input type="checkbox" data-fck="' + esc(cat.key) + '">' +
-                            '<span class="cf-cname">' + esc(subName) + '</span>' +
-                            '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span></label>' +
-                            '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
+                                '<div class="cf-c-header">' +
+                                    '<input type="checkbox" data-catcb="' + esc(cat.key) + '">' +
+                                    '<span class="cf-cname">' + esc(subName) + '</span>' +
+                                    '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
+                                    '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + cat.items.length + ' items</span>' +
+                                '</div>' +
+                                '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
                             '</div>';
                     });
-                    var html =
-                        '<div class="cf-g" data-fg="' + esc(gDef.g) + '">' +
-                        '<div class="cf-g-hdr"><label><input type="checkbox" id="' + gDef.g + 'Enabled">' +
-                        '<span class="cf-num">' + (gIdx+1) + '</span>' +
-                        '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
-                        '</label></div>' +
-                        '<div class="cf-g-body">' + catsHtml + '</div>' +
+
+                    var gHtml =
+                        '<div class="cf-g" data-group="' + esc(gDef.g) + '">' +
+                            '<div class="cf-g-hdr">' +
+                                '<div class="cf-g-hdr-left">' +
+                                    '<span class="cf-num">' + (gIdx + 1) + '</span>' +
+                                    '<label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">' +
+                                        '<input type="checkbox" id="' + esc(gDef.g) + 'Enabled" style="width:16px;height:16px;">' +
+                                        '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
+                                    '</label>' +
+                                '</div>' +
+                                '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + gDef.cats.length + ' categories</span>' +
+                            '</div>' +
+                            '<div class="cf-g-body">' + catsHtml + '</div>' +
                         '</div>';
 
-                    var wrap = document.createElement('div');
-                    wrap.innerHTML = html;
-                    var groupEl = wrap.firstElementChild;
-                    var groupCb = groupEl.querySelector('#' + gDef.g + 'Enabled');
+                    container.insertAdjacentHTML('beforeend', gHtml);
+                });
 
-                    // Category checkbox → check/uncheck all its items
-                    groupEl.querySelectorAll('[data-fck]').forEach(function(catCb) {
-                        var catKey = catCb.getAttribute('data-fck');
-                        catCb.addEventListener('change', function() {
-                            var fiList = groupEl.querySelector('[data-fil="' + catKey + '"]');
-                            if (fiList) fiList.classList.toggle('cf-off', !catCb.checked);
-                            groupEl.querySelectorAll('[data-cat="' + catKey + '"]').forEach(function(cb) {
-                                cb.checked = catCb.checked;
+                // Hook change listeners
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
+
+                    if (groupCb && groupEl) {
+                        groupCb.addEventListener('change', function() {
+                            var on = groupCb.checked;
+                            groupEl.querySelectorAll('.cf-items, .cf-c').forEach(function(el) {
+                                el.classList.toggle('cf-off', !on);
                             });
                         });
-                    });
+                    }
 
-                    // Item checkbox → sync parent category state
-                    groupEl.querySelectorAll('[data-ik]').forEach(function(itemCb) {
-                        itemCb.addEventListener('change', function() {
-                            updateCatCb(groupEl, itemCb.getAttribute('data-cat'));
-                        });
-                    });
+                    gDef.cats.forEach(function(cat) {
+                        var catCb = groupEl ? groupEl.querySelector('[data-catcb="' + cat.key + '"]') : null;
+                        if (catCb) {
+                            catCb.addEventListener('change', function() {
+                                var checked = catCb.checked;
+                                groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
+                                    icb.checked = checked;
+                                });
+                            });
+                        }
 
-                    // Group checkbox → cascade to all categories and items
-                    groupCb.addEventListener('change', function() {
-                        var on = groupCb.checked;
-                        groupEl.querySelectorAll('[data-fck],[data-ik]').forEach(function(cb) { cb.checked = on; });
-                        groupEl.querySelectorAll('.cf-c,.cf-items').forEach(function(el) {
-                            el.classList.toggle('cf-off', !on);
-                        });
+                        if (groupEl) {
+                            groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
+                                icb.addEventListener('change', function() {
+                                    updateCatCb(groupEl, cat.key);
+                                });
+                            });
+                        }
                     });
-
-                    container.appendChild(groupEl);
                 });
             }
 
             function updateCatCb(groupEl, catKey) {
-                var catCb = groupEl.querySelector('[data-fck="' + catKey + '"]');
+                var catCb = groupEl.querySelector('[data-catcb="' + catKey + '"]');
                 if (!catCb) return;
                 var items = groupEl.querySelectorAll('[data-cat="' + catKey + '"]');
                 var allOn = true, allOff = true;
@@ -275,23 +1709,17 @@
                 catCb.indeterminate = !allOn && !allOff;
             }
 
-            function setActiveTab(tabId) {
-                document.querySelectorAll('.tabPanel').forEach(function(p) {
-                    p.classList.toggle('active', p.id === tabId);
-                });
-            }
-
-            function populateForm(config) {
-                getEl('IsEnabled').checked            = !!config.IsEnabled;
-                getEl('OllamaBaseUrl').value          = config.OllamaBaseUrl || '';
-                getEl('OllamaVisionModel').value      = config.OllamaVisionModel || '';
-                getEl('OllamaApiKey').value           = config.OllamaApiKey || '';
-                getEl('MaxConcurrentVisionRequests').value = config.MaxConcurrentVisionRequests ?? 1;
-                getEl('OllamaTextModel').value        = config.OllamaTextModel || '';
-                getEl('ScanFramesPerSecond').value    = config.ScanFramesPerSecond ?? 0.5;
-                getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
-                getEl('ScanAnalyzeAudio').checked     = !!config.ScanAnalyzeAudio;
-                getEl('DebugScanMaxSeconds').value    = config.DebugScanMaxSeconds ?? 0;
+            function populateConfigForm(config) {
+                if (getEl('IsEnabled')) getEl('IsEnabled').checked = !!config.IsEnabled;
+                if (getEl('OllamaBaseUrl')) getEl('OllamaBaseUrl').value = config.OllamaBaseUrl || '';
+                if (getEl('OllamaVisionModel')) getEl('OllamaVisionModel').value = config.OllamaVisionModel || '';
+                if (getEl('OllamaApiKey')) getEl('OllamaApiKey').value = config.OllamaApiKey || '';
+                if (getEl('MaxConcurrentVisionRequests')) getEl('MaxConcurrentVisionRequests').value = config.MaxConcurrentVisionRequests || 1;
+                if (getEl('OllamaTextModel')) getEl('OllamaTextModel').value = config.OllamaTextModel || '';
+                if (getEl('ScanFramesPerSecond')) getEl('ScanFramesPerSecond').value = config.ScanFramesPerSecond ?? 0.5;
+                if (getEl('PreferredAudioLanguage')) getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
+                if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
+                if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
 
                 var disabled = new Set(config.DisabledFilterItems || []);
 
@@ -320,17 +1748,17 @@
                 });
             }
 
-            function collectForm(config) {
-                config.IsEnabled             = getEl('IsEnabled').checked;
-                config.OllamaBaseUrl         = getEl('OllamaBaseUrl').value || '';
-                config.OllamaVisionModel     = getEl('OllamaVisionModel').value || '';
-                config.OllamaApiKey          = getEl('OllamaApiKey').value || '';
-                config.MaxConcurrentVisionRequests = parseInt(getEl('MaxConcurrentVisionRequests').value || '1', 10);
-                config.OllamaTextModel       = getEl('OllamaTextModel').value || '';
-                config.ScanFramesPerSecond   = parseFloat(getEl('ScanFramesPerSecond').value || '0');
-                config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
-                config.ScanAnalyzeAudio      = getEl('ScanAnalyzeAudio').checked;
-                config.DebugScanMaxSeconds   = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
+            function collectConfigForm(config) {
+                if (getEl('IsEnabled')) config.IsEnabled = getEl('IsEnabled').checked;
+                if (getEl('OllamaBaseUrl')) config.OllamaBaseUrl = getEl('OllamaBaseUrl').value || '';
+                if (getEl('OllamaVisionModel')) config.OllamaVisionModel = getEl('OllamaVisionModel').value || '';
+                if (getEl('OllamaApiKey')) config.OllamaApiKey = getEl('OllamaApiKey').value || '';
+                if (getEl('MaxConcurrentVisionRequests')) config.MaxConcurrentVisionRequests = parseInt(getEl('MaxConcurrentVisionRequests').value || '1', 10);
+                if (getEl('OllamaTextModel')) config.OllamaTextModel = getEl('OllamaTextModel').value || '';
+                if (getEl('ScanFramesPerSecond')) config.ScanFramesPerSecond = parseFloat(getEl('ScanFramesPerSecond').value || '0');
+                if (getEl('PreferredAudioLanguage')) config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
+                if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
+                if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
 
                 var disabled = [];
                 FH.forEach(function(gDef) {
@@ -347,33 +1775,1022 @@
                 config.DisabledFilterItems = disabled;
             }
 
+            function saveConfiguration(statusElId) {
+                var statusEl = document.getElementById(statusElId);
+                if (statusEl) statusEl.textContent = 'Saving...';
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                    collectConfigForm(config);
+                    ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then(function(result) {
+                        if (statusEl) {
+                            statusEl.textContent = '✓ Saved successfully!';
+                            setTimeout(function() { statusEl.textContent = ''; }, 4000);
+                        }
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    }).catch(function(err) {
+                        if (statusEl) statusEl.textContent = '❌ Error: ' + err.message;
+                    });
+                });
+            }
+
+            if (getEl('saveRulesBtn')) {
+                getEl('saveRulesBtn').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
+            }
+            if (getEl('saveRulesBtnTop')) {
+                getEl('saveRulesBtnTop').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
+            }
+            if (getEl('saveSettingsBtn')) {
+                getEl('saveSettingsBtn').addEventListener('click', function() { saveConfiguration('settingsSaveStatus'); });
+            }
+
+            // Search filter for rules
+            if (getEl('rulesSearchInput')) {
+                getEl('rulesSearchInput').addEventListener('input', function(e) {
+                    var q = e.target.value.toLowerCase().trim();
+                    document.querySelectorAll('.cf-g').forEach(function(gEl) {
+                        var groupMatch = false;
+                        gEl.querySelectorAll('.cf-item').forEach(function(itemEl) {
+                            var text = itemEl.textContent.toLowerCase();
+                            var match = !q || text.includes(q);
+                            itemEl.style.display = match ? 'inline-block' : 'none';
+                            if (match) groupMatch = true;
+                        });
+                        gEl.style.display = (!q || groupMatch) ? 'block' : 'none';
+                    });
+                });
+            }
+
+            if (getEl('rulesExpandAllBtn')) {
+                getEl('rulesExpandAllBtn').addEventListener('click', function() {
+                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'block'; });
+                });
+            }
+            if (getEl('rulesCollapseAllBtn')) {
+                getEl('rulesCollapseAllBtn').addEventListener('click', function() {
+                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'none'; });
+                });
+            }
+
             renderHierarchy();
 
-            document.querySelectorAll('[data-tab-button]').forEach(function(btn) {
-                btn.addEventListener('click', function() { setActiveTab(btn.getAttribute('data-tab-button')); });
+            // Load plugin configuration
+            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                populateConfigForm(config);
+            }).catch(function(err) {
+                console.warn('Could not load plugin config:', err);
             });
 
-            document.querySelector('#ContentFilterConfigPage').addEventListener('pageshow', function() {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
-                    populateForm(config);
-                    Dashboard.hideLoadingMsg();
+            // --- Studio Media & Segments Workspace Logic ---
+            // Global State
+            var currentMode = 'shows'; // 'shows' | 'movies'
+            var activeItemId = '';
+            var activeItemData = null;
+            var activeSeriesId = '';
+            var showsCache = [];
+            var moviesCache = [];
+            var episodesCache = {}; // seriesId -> data
+            var scanPollHandle = null;
+            var searchDebounceTimer = null;
+
+            function apiUrl(path) {
+                return ApiClient.getUrl(path);
+            }
+
+            function getQueryParam(name) {
+                var hash = window.location.hash || '';
+                var search = hash.includes('?') ? hash.slice(hash.indexOf('?')) : window.location.search;
+                return new URLSearchParams(search).get(name);
+            }
+
+            function esc(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function parseTimestampSeconds(ts) {
+                if (!ts) return 0;
+                var parts = ts.split(':');
+                if (parts.length < 3) return 0;
+                var secParts = parts[2].split('.');
+                var h = parseInt(parts[0], 10) || 0;
+                var m = parseInt(parts[1], 10) || 0;
+                var s = parseInt(secParts[0], 10) || 0;
+                var ms = (secParts[1] ? parseInt(secParts[1], 10) : 0) / 1000;
+                return (h * 3600) + (m * 60) + s + ms;
+            }
+
+            function formatDuration(startTs, endTs) {
+                var s1 = parseTimestampSeconds(startTs);
+                var s2 = parseTimestampSeconds(endTs);
+                var diff = Math.max(0, s2 - s1);
+                if (diff <= 0) return '';
+                if (diff < 60) return Math.round(diff) + 's';
+                var mins = Math.floor(diff / 60);
+                var remSec = Math.round(diff % 60);
+                return mins + 'm ' + remSec + 's';
+            }
+
+            function getCategoryClass(cat) {
+                if (!cat) return 'cf-pill-gray';
+                var l = cat.toLowerCase();
+                if (l.includes('violence') || l.includes('blood') || l.includes('gore')) return 'cf-pill-red';
+                if (l.includes('language') || l.includes('profanity') || l.includes('curse')) return 'cf-pill-amber';
+                if (l.includes('sex') || l.includes('nudity')) return 'cf-pill-purple';
+                if (l.includes('substance') || l.includes('drug') || l.includes('alcohol')) return 'cf-pill-blue';
+                return 'cf-pill-green';
+            }
+
+            // --- API Data Loading ---
+            function loadShows() {
+                var container = document.getElementById('mediaTreeContainer');
+                container.innerHTML = '<div style="text-align:center; padding:28px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading TV Shows…</div>';
+                
+                return fetch(apiUrl('ContentFilter/library/shows'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(shows) {
+                    showsCache = shows || [];
+                    document.getElementById('showsCountBadge').textContent = showsCache.length;
+                    renderShowsList(showsCache);
+                }).catch(function(err) {
+                    container.innerHTML = '<div style="padding:16px; color:var(--cf-red);">Failed to load TV shows: ' + esc(err.message) + '</div>';
                 });
+            }
+
+            function loadMovies() {
+                var container = document.getElementById('mediaTreeContainer');
+                container.innerHTML = '<div style="text-align:center; padding:28px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Loading Movies…</div>';
+
+                return fetch(apiUrl('ContentFilter/library/movies'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(movies) {
+                    moviesCache = movies || [];
+                    document.getElementById('moviesCountBadge').textContent = moviesCache.length;
+                    renderMoviesList(moviesCache);
+                }).catch(function(err) {
+                    container.innerHTML = '<div style="padding:16px; color:var(--cf-red);">Failed to load Movies: ' + esc(err.message) + '</div>';
+                });
+            }
+
+            function loadSeriesEpisodes(seriesId, forceReload) {
+                if (!forceReload && episodesCache[seriesId]) {
+                    return Promise.resolve(episodesCache[seriesId]);
+                }
+
+                return fetch(apiUrl('ContentFilter/series/' + seriesId + '/episodes'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(data) {
+                    episodesCache[seriesId] = data;
+                    return data;
+                });
+            }
+
+            // --- Media Tree Rendering ---
+            function renderShowsList(shows) {
+                var container = document.getElementById('mediaTreeContainer');
+                container.innerHTML = '';
+
+                if (!shows || shows.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--cf-text-dim);">No TV Shows found.</div>';
+                    return;
+                }
+
+                shows.forEach(function(show) {
+                    var showEl = document.createElement('div');
+                    showEl.className = 'cf-tree-series';
+                    showEl.setAttribute('data-series-id', show.id);
+
+                    var hdr = document.createElement('div');
+                    hdr.className = 'cf-tree-series-hdr';
+                    hdr.innerHTML = 
+                        '<div class="cf-series-info">' +
+                            '<span class="cf-expand-arrow">▸</span>' +
+                            '<span>📺</span>' +
+                            '<span class="cf-series-title">' + esc(show.name) + '</span>' +
+                            (show.year ? '<span class="cf-series-year">(' + show.year + ')</span>' : '') +
+                        '</div>' +
+                        '<span class="cf-pill cf-pill-gray show-badge">Load</span>';
+
+                    var seasonsContainer = document.createElement('div');
+                    seasonsContainer.className = 'cf-seasons-container';
+
+                    hdr.addEventListener('click', function() {
+                        toggleSeriesAccordion(show.id, showEl, seasonsContainer);
+                    });
+
+                    showEl.appendChild(hdr);
+                    showEl.appendChild(seasonsContainer);
+                    container.appendChild(showEl);
+                });
+            }
+
+            function toggleSeriesAccordion(seriesId, showEl, seasonsContainer) {
+                var arrow = showEl.querySelector('.cf-expand-arrow');
+                var badge = showEl.querySelector('.show-badge');
+                var isOpen = seasonsContainer.style.display === 'block';
+
+                if (isOpen) {
+                    seasonsContainer.style.display = 'none';
+                    arrow.classList.remove('open');
+                    return;
+                }
+
+                arrow.classList.add('open');
+                seasonsContainer.style.display = 'block';
+                activeSeriesId = seriesId;
+
+                if (!seasonsContainer.hasChildNodes()) {
+                    seasonsContainer.innerHTML = '<div style="padding:10px 4px; color:var(--cf-text-dim); font-size:0.8rem;"><div class="cf-spinner"></div> Loading all episodes…</div>';
+                    
+                    loadSeriesEpisodes(seriesId).then(function(data) {
+                        seasonsContainer.innerHTML = '';
+                        var totalEps = data.totalEpisodes || 0;
+                        var filteredEps = data.filteredEpisodes || 0;
+                        
+                        if (badge) {
+                            if (filteredEps > 0) {
+                                badge.className = 'cf-pill cf-pill-green';
+                                badge.textContent = filteredEps + '/' + totalEps + ' filtered';
+                            } else {
+                                badge.className = 'cf-pill cf-pill-gray';
+                                badge.textContent = totalEps + ' eps';
+                            }
+                        }
+
+                        if (!data.seasons || data.seasons.length === 0) {
+                            seasonsContainer.innerHTML = '<div style="padding:8px; color:var(--cf-text-dim);">No episodes found.</div>';
+                            return;
+                        }
+
+                        var isSingleSeason = (data.seasons.length === 1);
+
+                        data.seasons.forEach(function(season, sIdx) {
+                            var grp = document.createElement('div');
+                            grp.className = 'cf-season-grp';
+
+                            var sHdr = document.createElement('div');
+                            sHdr.className = 'cf-season-hdr';
+                            sHdr.innerHTML = 
+                                '<span>' + (isSingleSeason ? '' : '▾ ') + esc(season.seasonName) + '</span>' +
+                                '<span>' + season.episodes.length + ' eps</span>';
+
+                            var epList = document.createElement('div');
+                            epList.className = 'cf-season-episodes';
+
+                            if (!isSingleSeason) {
+                                sHdr.addEventListener('click', function(e) {
+                                    e.stopPropagation();
+                                    var collapsed = (epList.style.display === 'none');
+                                    epList.style.display = collapsed ? 'block' : 'none';
+                                    sHdr.querySelector('span:first-child').textContent = (collapsed ? '▾ ' : '▸ ') + season.seasonName;
+                                });
+                            }
+
+                            season.episodes.forEach(function(ep) {
+                                var epItem = document.createElement('div');
+                                epItem.className = 'cf-episode-item';
+                                epItem.setAttribute('data-item-id', ep.id);
+                                if (ep.id === activeItemId) epItem.classList.add('selected');
+
+                                var badgeHtml = '<span class="cf-pill cf-pill-gray">○</span>';
+                                if (ep.hasFilter) {
+                                    badgeHtml = '<span class="cf-pill cf-pill-green">✓ ' + (ep.cuesCount ? ep.cuesCount + ' cues' : 'Active') + '</span>';
+                                } else if (ep.hasSidecar) {
+                                    badgeHtml = '<span class="cf-pill cf-pill-blue">📄 Sidecar</span>';
+                                }
+
+                                var epNumStr = (ep.episodeNumber != null) ? ('E' + String(ep.episodeNumber).padStart(2, '0')) : 'E--';
+
+                                epItem.innerHTML = 
+                                    '<div class="cf-ep-meta">' +
+                                        '<span class="cf-ep-num">' + epNumStr + '</span>' +
+                                        '<span class="cf-ep-title" title="' + esc(ep.name) + '">' + esc(ep.name) + '</span>' +
+                                    '</div>' +
+                                    badgeHtml;
+
+                                epItem.addEventListener('click', function(e) {
+                                    e.stopPropagation();
+                                    document.querySelectorAll('.cf-episode-item, .cf-movie-item').forEach(function(el) { el.classList.remove('selected'); });
+                                    epItem.classList.add('selected');
+                                    selectMediaItem(ep.id, ep.name, data.seriesName + ' › ' + season.seasonName + ' · ' + epNumStr, ep);
+                                });
+
+                                epList.appendChild(epItem);
+                            });
+
+                            grp.appendChild(sHdr);
+                            grp.appendChild(epList);
+                            seasonsContainer.appendChild(grp);
+                        });
+                    }).catch(function(err) {
+                        seasonsContainer.innerHTML = '<div style="padding:8px; color:var(--cf-red);">Error loading episodes: ' + esc(err.message) + '</div>';
+                    });
+                }
+            }
+
+            function renderMoviesList(movies) {
+                var container = document.getElementById('mediaTreeContainer');
+                container.innerHTML = '';
+
+                if (!movies || movies.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--cf-text-dim);">No Movies found in library.</div>';
+                    return;
+                }
+
+                movies.forEach(function(movie) {
+                    var mItem = document.createElement('div');
+                    mItem.className = 'cf-movie-item';
+                    mItem.setAttribute('data-item-id', movie.id);
+                    if (movie.id === activeItemId) mItem.classList.add('selected');
+
+                    var badgeHtml = '<span class="cf-pill cf-pill-gray">○</span>';
+                    if (movie.hasFilter) {
+                        badgeHtml = '<span class="cf-pill cf-pill-green">✓ ' + (movie.cuesCount ? movie.cuesCount + ' cues' : 'Active') + '</span>';
+                    } else if (movie.hasSidecar) {
+                        badgeHtml = '<span class="cf-pill cf-pill-blue">📄 Sidecar</span>';
+                    }
+
+                    mItem.innerHTML = 
+                        '<div class="cf-ep-meta">' +
+                            '<span>🎬</span>' +
+                            '<span class="cf-ep-title" title="' + esc(movie.name) + '">' + esc(movie.name) + '</span>' +
+                            (movie.year ? ' <span style="font-size:0.75rem; color:var(--cf-text-dim);">(' + movie.year + ')</span>' : '') +
+                        '</div>' +
+                        badgeHtml;
+
+                    mItem.addEventListener('click', function() {
+                        document.querySelectorAll('.cf-episode-item, .cf-movie-item').forEach(function(el) { el.classList.remove('selected'); });
+                        mItem.classList.add('selected');
+                        activeSeriesId = '';
+                        selectMediaItem(movie.id, movie.name, 'Movie' + (movie.year ? ' · ' + movie.year : ''), movie);
+                    });
+
+                    container.appendChild(mItem);
+                });
+            }
+
+            // --- Media Search & Filter ---
+            var filterInput = document.getElementById('mediaFilterInput');
+            var searchClearBtn = document.getElementById('searchClearBtn');
+
+            filterInput.addEventListener('input', function(e) {
+                var q = e.target.value.trim();
+                searchClearBtn.style.display = q.length > 0 ? 'block' : 'none';
+                clearTimeout(searchDebounceTimer);
+
+                if (q.length === 0) {
+                    if (currentMode === 'shows') renderShowsList(showsCache);
+                    else renderMoviesList(moviesCache);
+                    return;
+                }
+
+                searchDebounceTimer = setTimeout(function() {
+                    executeSearch(q);
+                }, 250);
             });
 
-            getEl('openSegmentsBtn').addEventListener('click', function() {
-                Dashboard.navigate('configurationpage?name=' + encodeURIComponent('Jellyfin Content Filter - Segments'));
+            searchClearBtn.addEventListener('click', function() {
+                filterInput.value = '';
+                searchClearBtn.style.display = 'none';
+                if (currentMode === 'shows') renderShowsList(showsCache);
+                else renderMoviesList(moviesCache);
             });
 
-            document.querySelector('#ContentFilterConfigForm').addEventListener('submit', function(e) {
+            function executeSearch(query) {
+                var container = document.getElementById('mediaTreeContainer');
+                container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--cf-text-dim);"><div class="cf-spinner"></div> Searching…</div>';
+
+                fetch(apiUrl('ContentFilter/items/search?query=' + encodeURIComponent(query)), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(items) {
+                    container.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--cf-text-dim);">No matching media found.</div>';
+                        return;
+                    }
+
+                    items.forEach(function(item) {
+                        var row = document.createElement('div');
+                        row.className = 'cf-movie-item';
+                        
+                        var icon = item.type === 'Series' ? '📺' : (item.type === 'Episode' ? '🎞️' : '🎬');
+                        var badgeHtml = item.hasFilter 
+                            ? '<span class="cf-pill cf-pill-green">✓ Filter</span>'
+                            : (item.hasSidecar ? '<span class="cf-pill cf-pill-blue">📄 Sidecar</span>' : '');
+
+                        var displayTitle = esc(item.name);
+                        if (item.seriesName) {
+                            displayTitle = esc(item.seriesName) + ' › ' + (item.seasonNumber != null ? 'S' + item.seasonNumber : '') + (item.episodeNumber != null ? 'E' + item.episodeNumber : '') + ' ' + displayTitle;
+                        }
+
+                        row.innerHTML = 
+                            '<div class="cf-ep-meta">' +
+                                '<span>' + icon + '</span>' +
+                                '<span class="cf-ep-title">' + displayTitle + '</span>' +
+                            '</div>' +
+                            badgeHtml;
+
+                        row.addEventListener('click', function() {
+                            document.querySelectorAll('.cf-episode-item, .cf-movie-item').forEach(function(el) { el.classList.remove('selected'); });
+                            row.classList.add('selected');
+                            
+                            if (item.type === 'Series') {
+                                activeSeriesId = item.id;
+                                document.getElementById('tabShowsBtn').click();
+                                setTimeout(function() {
+                                    var targetShow = document.querySelector('[data-series-id="' + item.id + '"]');
+                                    if (targetShow) {
+                                        targetShow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        var hdr = targetShow.querySelector('.cf-tree-series-hdr');
+                                        if (hdr) hdr.click();
+                                    }
+                                }, 250);
+                            } else {
+                                if (item.seriesId) activeSeriesId = item.seriesId;
+                                var sub = item.seriesName ? (item.seriesName + ' › S' + (item.seasonNumber || 1) + ' · E' + (item.episodeNumber || 1)) : ('Movie' + (item.year ? ' · ' + item.year : ''));
+                                selectMediaItem(item.id, item.name, sub, item);
+                            }
+                        });
+
+                        container.appendChild(row);
+                    });
+                }).catch(function(err) {
+                    container.innerHTML = '<div style="padding:14px; color:var(--cf-red);">Search failed: ' + esc(err.message) + '</div>';
+                });
+            }
+
+            // --- Media Item Selection & Detail Loading ---
+            function selectMediaItem(itemId, title, subtext, rawItem) {
+                activeItemId = itemId;
+                activeItemData = rawItem;
+
+                document.getElementById('emptyWorkspaceCard').style.display = 'none';
+                var detailCard = document.getElementById('mediaDetailCard');
+                detailCard.style.display = 'flex';
+
+                document.getElementById('detailTitle').textContent = title || 'Untitled Media';
+                document.getElementById('detailSubtext').textContent = subtext || '';
+
+                if (rawItem && rawItem.seriesId) {
+                    activeSeriesId = rawItem.seriesId;
+                }
+
+                // Contextual hints
+                if (activeSeriesId) {
+                    document.getElementById('dropzoneMainText').textContent = 'Drop JCF file for this episode';
+                    document.getElementById('dropzoneSubText').textContent = 'Or drop multiple files (e.g. S01E01.jcf, S01E02.jcf) to batch import this season!';
+                } else {
+                    document.getElementById('dropzoneMainText').textContent = 'Drop JCF file for this movie';
+                    document.getElementById('dropzoneSubText').textContent = 'Replaces or initializes the active content filter';
+                }
+
+                stopPollingScan();
+                loadFilterDetails(itemId);
+                refreshScanStatus(itemId);
+            }
+
+            function loadFilterDetails(itemId) {
+                var statusBadge = document.getElementById('detailStatusBadge');
+                statusBadge.className = 'cf-pill cf-pill-gray';
+                statusBadge.textContent = 'Loading…';
+
+                var sidecarAlert = document.getElementById('sidecarAlertBanner');
+                sidecarAlert.style.display = 'none';
+
+                return fetch(apiUrl('ContentFilter/filters/' + itemId), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (res.status === 404) return null;
+                    if (!res.ok) throw new Error('Status ' + res.status);
+                    return res.json();
+                }).then(function(filter) {
+                    if (!filter) {
+                        statusBadge.className = 'cf-pill cf-pill-gray';
+                        statusBadge.textContent = '○ No Filter Active';
+                        renderSegmentsTable([]);
+                        renderCategoryChips({});
+                        return;
+                    }
+
+                    var cueCount = (filter.cues && filter.cues.length) || 0;
+                    statusBadge.className = 'cf-pill cf-pill-green';
+                    statusBadge.textContent = '✓ Filter Active (' + cueCount + ' cues)';
+                    renderSegmentsTable(filter.cues || []);
+
+                    var cats = {};
+                    (filter.cues || []).forEach(function(c) {
+                        var cat = c.category || 'General';
+                        cats[cat] = (cats[cat] || 0) + 1;
+                    });
+                    renderCategoryChips(cats);
+                }).catch(function() {
+                    statusBadge.className = 'cf-pill cf-pill-red';
+                    statusBadge.textContent = 'Error loading filter';
+                    renderSegmentsTable([]);
+                    renderCategoryChips({});
+                });
+            }
+
+            function renderCategoryChips(categories) {
+                var container = document.getElementById('categoryChips');
+                container.innerHTML = '';
+
+                var keys = Object.keys(categories);
+                if (keys.length === 0) {
+                    container.innerHTML = '<span class="cf-pill cf-pill-gray">0 Segments</span>';
+                    return;
+                }
+
+                var total = 0;
+                keys.forEach(function(k) { total += categories[k]; });
+                container.innerHTML = '<span class="cf-pill cf-pill-green" style="font-weight:700;">' + total + ' Cues Total</span>';
+
+                keys.forEach(function(k) {
+                    var pill = document.createElement('span');
+                    pill.className = 'cf-pill ' + getCategoryClass(k);
+                    pill.textContent = k + ': ' + categories[k];
+                    container.appendChild(pill);
+                });
+            }
+
+            function renderSegmentsTable(cues) {
+                var tbody = document.getElementById('segmentsTableBody');
+                tbody.innerHTML = '';
+
+                if (!cues || cues.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--cf-text-dim); padding:32px;">No filtered cues configured for this item. Drop a .jcf file above or click "+ Add Segment".</td></tr>';
+                    return;
+                }
+
+                cues.forEach(function(cue) {
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-cue-key', cue.key);
+                    var action = (cue.action || 'skip').toLowerCase();
+                    if (action === 'none') tr.classList.add('none-action');
+
+                    // Time cell
+                    var dur = formatDuration(cue.start, cue.end);
+                    var timeTd = document.createElement('td');
+                    timeTd.innerHTML = 
+                        '<span class="cf-time-badge">' + esc(cue.start) + ' → ' + esc(cue.end) + '</span>' +
+                        (dur ? '<span class="cf-duration-badge">' + dur + '</span>' : '');
+                    tr.appendChild(timeTd);
+
+                    // Category cell
+                    var catTd = document.createElement('td');
+                    catTd.innerHTML = '<span class="cf-pill ' + getCategoryClass(cue.category) + '">' + esc(cue.category || 'Unknown') + '</span>';
+                    tr.appendChild(catTd);
+
+                    // Channel cell
+                    var chanTd = document.createElement('td');
+                    chanTd.innerHTML = '<span class="cf-pill cf-pill-gray">' + esc(cue.channel || 'video') + '</span>';
+                    tr.appendChild(chanTd);
+
+                    // Action cell
+                    var actionTd = document.createElement('td');
+                    var sel = document.createElement('select');
+                    sel.className = 'cf-select-clean';
+                    ['skip', 'mute', 'none'].forEach(function(act) {
+                        var opt = document.createElement('option');
+                        opt.value = act;
+                        opt.textContent = act.toUpperCase();
+                        sel.appendChild(opt);
+                    });
+                    sel.value = action;
+                    actionTd.appendChild(sel);
+                    tr.appendChild(actionTd);
+
+                    // Description cell
+                    var descTd = document.createElement('td');
+                    var descInput = document.createElement('input');
+                    descInput.type = 'text';
+                    descInput.className = 'cf-input-clean';
+                    descInput.value = cue.description || '';
+                    descInput.placeholder = 'Segment notes…';
+                    descTd.appendChild(descInput);
+                    tr.appendChild(descTd);
+
+                    // Delete cell
+                    var delTd = document.createElement('td');
+                    delTd.style.textAlign = 'center';
+                    var delBtn = document.createElement('button');
+                    delBtn.className = 'cf-del-btn';
+                    delBtn.type = 'button';
+                    delBtn.title = 'Remove Segment';
+                    delBtn.textContent = '✕';
+                    delBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteSingleCue(cue.key);
+                    });
+                    delTd.appendChild(delBtn);
+                    tr.appendChild(delTd);
+
+                    // Event handlers
+                    sel.addEventListener('change', function() {
+                        tr.classList.toggle('none-action', sel.value === 'none');
+                        saveCueAction(cue.key, sel.value, descInput.value);
+                    });
+
+                    descInput.addEventListener('blur', function() {
+                        saveCueAction(cue.key, sel.value, descInput.value);
+                    });
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function saveCueAction(cueKey, action, description) {
+                if (!activeItemId) return;
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/action'), {
+                    method: 'PUT',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ cueKey: cueKey, action: action, description: description })
+                }).catch(function(err) {
+                    console.error('Failed to update cue action', err);
+                });
+            }
+
+            function deleteSingleCue(cueKey) {
+                if (!activeItemId) return;
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/' + encodeURIComponent(cueKey)), {
+                    method: 'DELETE',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (res.ok) {
+                        loadFilterDetails(activeItemId);
+                    }
+                }).catch(function(err) {
+                    console.error('Delete cue failed', err);
+                });
+            }
+
+            function applyBulkAction(action) {
+                if (!activeItemId) return;
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/bulk-action'), {
+                    method: 'PUT',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: action })
+                }).then(function(res) {
+                    if (res.ok) {
+                        loadFilterDetails(activeItemId);
+                    }
+                }).catch(function(err) {
+                    console.error('Bulk action failed', err);
+                });
+            }
+
+            document.getElementById('bulkSkipBtn').addEventListener('click', function() { applyBulkAction('skip'); });
+            document.getElementById('bulkMuteBtn').addEventListener('click', function() { applyBulkAction('mute'); });
+            document.getElementById('bulkNoneBtn').addEventListener('click', function() { applyBulkAction('none'); });
+
+            // --- Add Segment Modal Logic ---
+            var addModal = document.getElementById('addSegmentModal');
+            document.getElementById('addSegmentBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                addModal.style.display = 'flex';
+                document.getElementById('newCueStart').focus();
+            });
+
+            function closeAddModal() {
+                addModal.style.display = 'none';
+                document.getElementById('addSegmentForm').reset();
+            }
+
+            document.getElementById('closeAddModalBtn').addEventListener('click', closeAddModal);
+            document.getElementById('cancelAddModalBtn').addEventListener('click', closeAddModal);
+
+            document.getElementById('addSegmentForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
-                    collectForm(config);
-                    ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                if (!activeItemId) return;
+
+                var payload = {
+                    start: document.getElementById('newCueStart').value.trim(),
+                    end: document.getElementById('newCueEnd').value.trim(),
+                    category: document.getElementById('newCueCategory').value.trim(),
+                    channel: document.getElementById('newCueChannel').value,
+                    action: document.getElementById('newCueAction').value,
+                    description: document.getElementById('newCueDescription').value.trim()
+                };
+
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments'), {
+                    method: 'POST',
+                    headers: {
+                        'X-Emby-Token': ApiClient.accessToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }).then(function(res) {
+                    if (res.ok) {
+                        closeAddModal();
+                        loadFilterDetails(activeItemId);
+                    } else {
+                        return res.text().then(function(t) { alert('Failed to add segment: ' + t); });
+                    }
+                }).catch(function(err) {
+                    alert('Error adding segment: ' + err.message);
                 });
-                return false;
             });
+
+            // --- Scan & Progress Polling ---
+            function stopPollingScan() {
+                if (scanPollHandle) {
+                    clearInterval(scanPollHandle);
+                    scanPollHandle = null;
+                }
+                document.getElementById('scanTrackerCard').style.display = 'none';
+            }
+
+            function refreshScanStatus(itemId) {
+                if (!itemId) return;
+                fetch(apiUrl('ContentFilter/scan/' + itemId + '/status'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(status) {
+                    if (!status) return;
+                    var state = (status.state || 'idle').toLowerCase();
+                    var card = document.getElementById('scanTrackerCard');
+
+                    if (state === 'scanning') {
+                        card.style.display = 'block';
+                        var prog = status.progress || 0;
+                        var pct = (prog <= 1 ? prog * 100 : prog).toFixed(1);
+                        document.getElementById('scanPercentText').textContent = pct + '%';
+                        document.getElementById('scanProgressBar').style.width = pct + '%';
+                        document.getElementById('scanDetailsText').textContent = 'State: ' + status.state + ' | Cues detected: ' + (status.cuesFound || 0);
+
+                        if (!scanPollHandle) {
+                            scanPollHandle = setInterval(function() {
+                                refreshScanStatus(activeItemId);
+                            }, 2000);
+                        }
+                    } else {
+                        if (scanPollHandle) {
+                            stopPollingScan();
+                            loadFilterDetails(itemId);
+                            if (activeSeriesId) loadSeriesEpisodes(activeSeriesId, true);
+                        }
+                    }
+                }).catch(function() {
+                    stopPollingScan();
+                });
+            }
+
+            document.getElementById('scanMediaBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                fetch(apiUrl('ContentFilter/scan/' + activeItemId), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function() {
+                    refreshScanStatus(activeItemId);
+                }).catch(function(err) {
+                    alert('Scan request error: ' + err.message);
+                });
+            });
+
+            // --- Actions Toolbar: Download, Delete, Upload ---
+            document.getElementById('downloadJcfBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                window.location = apiUrl('ContentFilter/filters/' + activeItemId + '/download');
+            });
+
+            document.getElementById('deleteFilterBtn').addEventListener('click', function() {
+                if (!activeItemId) return;
+                if (!confirm('Are you sure you want to remove the content filter for this item?')) return;
+                fetch(apiUrl('ContentFilter/filters/' + activeItemId), {
+                    method: 'DELETE',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function() {
+                    loadFilterDetails(activeItemId);
+                    if (activeSeriesId) {
+                        delete episodesCache[activeSeriesId];
+                        var seasonsCont = document.querySelector('.cf-tree-series[data-series-id="' + activeSeriesId + '"] .cf-seasons-container');
+                        if (seasonsCont) seasonsCont.innerHTML = '';
+                        loadSeriesEpisodes(activeSeriesId).then(function() {
+                            if (seasonsCont) toggleSeriesAccordion(activeSeriesId, seasonsCont.parentElement, seasonsCont);
+                        });
+                    }
+                });
+            });
+
+            // --- Drag & Drop / File Import ---
+            var dropzone = document.getElementById('itemDropzone');
+            var fileInput = document.getElementById('fileUploadInput');
+
+            document.getElementById('uploadJcfBtn').addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            dropzone.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            dropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+
+            dropzone.addEventListener('dragleave', function() {
+                dropzone.classList.remove('dragover');
+            });
+
+            dropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    handleFiles(fileInput.files);
+                }
+            });
+
+            function handleFiles(files) {
+                if (files.length === 1) {
+                    importSingleFile(files[0]);
+                } else {
+                    importBatchFiles(files);
+                }
+            }
+
+            function importSingleFile(file) {
+                var form = new FormData();
+                form.append('file', file, file.name);
+
+                var url = 'ContentFilter/filters/import?saveIfMatched=true';
+                if (activeItemId) url += '&itemId=' + encodeURIComponent(activeItemId);
+                if (activeSeriesId) url += '&seriesId=' + encodeURIComponent(activeSeriesId);
+
+                fetch(apiUrl(url), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() },
+                    body: form
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(data) {
+                    if (data.matched && data.saved) {
+                        var targetId = (data.item && data.item.id) || activeItemId;
+                        selectMediaItem(targetId, (data.item && data.item.name) || data.title, data.year || '', data.item);
+                        if (activeSeriesId) {
+                            delete episodesCache[activeSeriesId];
+                            loadSeriesEpisodes(activeSeriesId);
+                        }
+                    } else {
+                        alert('Could not match ' + file.name + ' to library media. Select an episode or movie first.');
+                    }
+                }).catch(function(err) {
+                    alert('Import error: ' + err.message);
+                });
+            }
+
+            function importBatchFiles(files) {
+                var card = document.getElementById('batchReportCard');
+                var title = document.getElementById('batchTitle');
+                var summary = document.getElementById('batchSummary');
+                var list = document.getElementById('batchList');
+
+                card.style.display = 'block';
+                list.innerHTML = '';
+                title.textContent = 'Batch Importing ' + files.length + ' JCF Files…';
+                summary.className = 'cf-pill cf-pill-blue';
+                summary.textContent = '0 / ' + files.length;
+
+                var idx = 0;
+                var successCount = 0;
+
+                function processNext() {
+                    if (idx >= files.length) {
+                        summary.className = 'cf-pill cf-pill-green';
+                        summary.textContent = 'Completed ' + successCount + '/' + files.length;
+                        if (activeItemId) loadFilterDetails(activeItemId);
+                        if (activeSeriesId) {
+                            delete episodesCache[activeSeriesId];
+                            loadSeriesEpisodes(activeSeriesId);
+                        }
+                        return;
+                    }
+
+                    var file = files[idx];
+                    var form = new FormData();
+                    form.append('file', file, file.name);
+
+                    var url = 'ContentFilter/filters/import?saveIfMatched=true';
+                    if (activeSeriesId) url += '&seriesId=' + encodeURIComponent(activeSeriesId);
+
+                    var row = document.createElement('div');
+                    row.style.padding = '4px 0';
+                    row.style.borderBottom = '1px solid var(--cf-border-subtle)';
+                    row.innerHTML = '<span>[' + (idx + 1) + '/' + files.length + '] ' + esc(file.name) + '</span> … ';
+                    list.appendChild(row);
+                    row.scrollIntoView({ block: 'nearest' });
+
+                    fetch(apiUrl(url), {
+                        method: 'POST',
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() },
+                        body: form
+                    }).then(function(res) {
+                        return res.json();
+                    }).then(function(data) {
+                        if (data.matched && data.saved) {
+                            successCount++;
+                            row.innerHTML += '<span style="color:var(--cf-green);">✓ Matched to ' + esc(data.item ? data.item.name : data.title) + ' (' + data.cues + ' cues)</span>';
+                        } else {
+                            row.innerHTML += '<span style="color:var(--cf-amber);">○ No unique match</span>';
+                        }
+                    }).catch(function(err) {
+                        row.innerHTML += '<span style="color:var(--cf-red);">✕ ' + esc(err.message) + '</span>';
+                    }).finally(function() {
+                        idx++;
+                        summary.textContent = idx + ' / ' + files.length;
+                        processNext();
+                    });
+                }
+
+                processNext();
+            }
+
+            // --- Scan Disk Sidecars ---
+            document.getElementById('scanSidecarsBtn').addEventListener('click', function() {
+                var btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<span><div class="cf-spinner"></div> Scanning Disk…</span>';
+
+                fetch(apiUrl('ContentFilter/filters/scan-sidecars'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(data) {
+                    alert('Disk Sidecar Scan Complete! Discovered ' + (data.total || 0) + ' .jcf file(s) across library media.');
+                    episodesCache = {};
+                    if (currentMode === 'shows') loadShows();
+                    else loadMovies();
+                    if (activeItemId) loadFilterDetails(activeItemId);
+                }).catch(function(err) {
+                    alert('Sidecar scan failed: ' + err.message);
+                }).finally(function() {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>🔄 Scan Disk Sidecars</span>';
+                });
+            });
+
+            // --- Tab Mode Buttons ---
+            document.getElementById('tabShowsBtn').addEventListener('click', function() {
+                currentMode = 'shows';
+                document.getElementById('tabShowsBtn').classList.add('active');
+                document.getElementById('tabMoviesBtn').classList.remove('active');
+                filterInput.value = '';
+                searchClearBtn.style.display = 'none';
+                loadShows();
+            });
+
+            document.getElementById('tabMoviesBtn').addEventListener('click', function() {
+                currentMode = 'movies';
+                document.getElementById('tabMoviesBtn').classList.add('active');
+                document.getElementById('tabShowsBtn').classList.remove('active');
+                filterInput.value = '';
+                searchClearBtn.style.display = 'none';
+                loadMovies();
+            });
+
+            document.getElementById('configPageBtn').addEventListener('click', function() {
+                switchMainTab('rules');
+            });
+
+            // --- Initial Page Boot ---
+            (function init() {
+                loadShows();
+                var initialItemId = getQueryParam('itemId');
+                if (initialItemId) {
+                    fetch(apiUrl('ContentFilter/items/search?query=' + encodeURIComponent(initialItemId)), {
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                    }).then(function(res) { return res.json(); }).then(function(items) {
+                        if (items && items.length > 0) {
+                            var item = items[0];
+                            selectMediaItem(item.id, item.name, item.seriesName || (item.year ? 'Movie · ' + item.year : ''), item);
+                        }
+                    });
+                }
+            })();
         </script>
     </div>
 </body>
