@@ -79,14 +79,14 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
-    /// Searches library items by title or name.
+    /// Searches library items by title or name (including Series, Movies, and Episodes).
     /// </summary>
     /// <param name="query">The search term.</param>
     /// <param name="limit">Maximum number of results to return.</param>
     /// <returns>A collection of matching library items.</returns>
     [HttpGet("items/search")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<object>> SearchItems([FromQuery] string? query, [FromQuery] int limit = 15)
+    public ActionResult<IEnumerable<object>> SearchItems([FromQuery] string? query, [FromQuery] int limit = 25)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -96,33 +96,162 @@ public class ContentFilterController : ControllerBase
         var internalQuery = new InternalItemsQuery
         {
             SearchTerm = query.Trim(),
-            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video],
+            IncludeItemTypes = [BaseItemKind.Series, BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video],
             Recursive = true,
-            Limit = Math.Clamp(limit, 1, 50)
+            Limit = Math.Clamp(limit, 1, 100)
         };
 
         var items = _libraryManager.GetItemList(internalQuery);
         var results = items.Select(item =>
         {
-            var seriesName = item is MediaBrowser.Controller.Entities.TV.Episode ep ? ep.SeriesName : null;
-            var seasonNum = item is MediaBrowser.Controller.Entities.TV.Episode ep2 ? ep2.ParentIndexNumber : null;
-            var epNum = item is MediaBrowser.Controller.Entities.TV.Episode ep3 ? ep3.IndexNumber : null;
+            var ep = item as MediaBrowser.Controller.Entities.TV.Episode;
+            var series = item as MediaBrowser.Controller.Entities.TV.Series;
+            var filter = _filterStore.GetFilter(item.Id);
 
             return new
             {
                 id = item.Id,
                 name = item.Name,
                 year = item.ProductionYear,
-                type = item.GetType().Name,
-                seriesName,
-                seasonNumber = seasonNum,
-                episodeNumber = epNum,
+                type = series is not null ? "Series" : (ep is not null ? "Episode" : item.GetType().Name),
+                seriesName = ep?.SeriesName,
+                seriesId = ep?.SeriesId,
+                seasonNumber = ep?.ParentIndexNumber,
+                episodeNumber = ep?.IndexNumber,
                 hasFilter = _filterStore.HasFilter(item.Id),
-                hasSidecar = _filterStore.GetSidecarPath(item.Id) is not null
+                hasSidecar = _filterStore.GetSidecarPath(item.Id) is not null,
+                cuesCount = filter?.Cues.Count ?? 0
             };
         });
 
         return Ok(results);
+    }
+
+    /// <summary>
+    /// Gets all TV series in the library.
+    /// </summary>
+    /// <returns>A list of TV series.</returns>
+    [HttpGet("library/shows")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<IEnumerable<object>> GetShows()
+    {
+        var query = new InternalItemsQuery
+        {
+            IncludeItemTypes = [BaseItemKind.Series],
+            Recursive = true
+        };
+
+        var shows = _libraryManager.GetItemList(query)
+            .OfType<MediaBrowser.Controller.Entities.TV.Series>()
+            .OrderBy(s => s.Name)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.Name,
+                year = s.ProductionYear
+            })
+            .ToList();
+
+        return Ok(shows);
+    }
+
+    /// <summary>
+    /// Gets all movies in the library with filter status.
+    /// </summary>
+    /// <returns>A list of movies with filter status.</returns>
+    [HttpGet("library/movies")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<IEnumerable<object>> GetMovies()
+    {
+        var query = new InternalItemsQuery
+        {
+            IncludeItemTypes = [BaseItemKind.Movie],
+            Recursive = true
+        };
+
+        var movies = _libraryManager.GetItemList(query)
+            .OrderBy(m => m.Name)
+            .Select(m =>
+            {
+                var filter = _filterStore.GetFilter(m.Id);
+                return new
+                {
+                    id = m.Id,
+                    name = m.Name,
+                    year = m.ProductionYear,
+                    hasFilter = _filterStore.HasFilter(m.Id),
+                    hasSidecar = _filterStore.GetSidecarPath(m.Id) is not null,
+                    cuesCount = filter?.Cues.Count ?? 0
+                };
+            })
+            .ToList();
+
+        return Ok(movies);
+    }
+
+    /// <summary>
+    /// Gets all seasons and episodes for a series with filter status.
+    /// </summary>
+    /// <param name="seriesId">The series identifier.</param>
+    /// <returns>A hierarchical structure of seasons and episodes.</returns>
+    [HttpGet("series/{seriesId:guid}/episodes")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetSeriesEpisodes(Guid seriesId)
+    {
+        var series = _libraryManager.GetItemById(seriesId) as MediaBrowser.Controller.Entities.TV.Series;
+        if (series is null)
+        {
+            return NotFound();
+        }
+
+        var epQuery = new InternalItemsQuery
+        {
+            ParentId = seriesId,
+            IncludeItemTypes = [BaseItemKind.Episode],
+            Recursive = true
+        };
+
+        var allEpisodes = _libraryManager.GetItemList(epQuery)
+            .OfType<MediaBrowser.Controller.Entities.TV.Episode>()
+            .OrderBy(e => e.ParentIndexNumber ?? 0)
+            .ThenBy(e => e.IndexNumber ?? 0)
+            .ToList();
+
+        var seasons = allEpisodes
+            .GroupBy(e => e.ParentIndexNumber ?? 0)
+            .OrderBy(g => g.Key)
+            .Select(g => new
+            {
+                seasonNumber = g.Key,
+                seasonName = g.Key == 0 ? "Specials" : $"Season {g.Key}",
+                episodes = g.Select(ep =>
+                {
+                    var filter = _filterStore.GetFilter(ep.Id);
+                    return new
+                    {
+                        id = ep.Id,
+                        name = ep.Name,
+                        seasonNumber = ep.ParentIndexNumber,
+                        episodeNumber = ep.IndexNumber,
+                        hasFilter = _filterStore.HasFilter(ep.Id),
+                        hasSidecar = _filterStore.GetSidecarPath(ep.Id) is not null,
+                        cuesCount = filter?.Cues.Count ?? 0
+                    };
+                }).ToList()
+            }).ToList();
+
+        var totalEpisodes = allEpisodes.Count;
+        var filteredEpisodes = allEpisodes.Count(e => _filterStore.HasFilter(e.Id));
+
+        return Ok(new
+        {
+            seriesId,
+            seriesName = series?.Name ?? "Unknown Series",
+            year = series?.ProductionYear,
+            totalEpisodes,
+            filteredEpisodes,
+            seasons
+        });
     }
 
     /// <summary>
@@ -161,6 +290,7 @@ public class ContentFilterController : ControllerBase
     /// </summary>
     /// <param name="file">The uploaded JCF file.</param>
     /// <param name="itemId">Optional explicit item identifier.</param>
+    /// <param name="seriesId">Optional series identifier for scoped episode matching.</param>
     /// <param name="saveIfMatched">Whether to automatically save the filter when a unique match is found.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>Import or match result with preview breakdown.</returns>
@@ -171,6 +301,7 @@ public class ContentFilterController : ControllerBase
     public async Task<IActionResult> ImportFilterAsync(
         IFormFile? file,
         [FromQuery] Guid? itemId,
+        [FromQuery] Guid? seriesId,
         [FromQuery] bool saveIfMatched = true,
         CancellationToken cancellationToken = default)
     {
@@ -202,7 +333,7 @@ public class ContentFilterController : ControllerBase
             }
 
             // Auto-match based on IMDB ID, Title/Year, and filename
-            var candidates = FindMatchingItems(filter, file?.FileName);
+            var candidates = FindMatchingItems(filter, file?.FileName, seriesId);
             if (candidates.Count == 1)
             {
                 var matchedItem = candidates[0];
@@ -366,6 +497,27 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Bulk updates the action for all cues of a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="request">The bulk action request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result.</returns>
+    [HttpPut("filters/{itemId:guid}/segments/bulk-action")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetBulkCueActionAsync(Guid itemId, [FromBody] SetBulkCueActionRequest? request, CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Action))
+        {
+            return BadRequest("action is required.");
+        }
+
+        await _filterStore.SetBulkCueActionAsync(itemId, request.Action, cancellationToken).ConfigureAwait(false);
+        return Ok();
+    }
+
+    /// <summary>
     /// Gets the filtered subtitle file for a media item.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>
@@ -417,22 +569,39 @@ public class ContentFilterController : ControllerBase
         throw new FormatException("A JCF file is required. Send multipart form field 'file' or raw text starting with WEBVTT.");
     }
 
-    private List<MediaBrowser.Controller.Entities.BaseItem> FindMatchingItems(JcfFilter filter, string? filename)
+    private List<MediaBrowser.Controller.Entities.BaseItem> FindMatchingItems(JcfFilter filter, string? filename, Guid? seriesId = null)
     {
         var candidates = new List<MediaBrowser.Controller.Entities.BaseItem>();
 
-        // 1. Try matching via season/episode in filename or title (e.g. S01E03)
+        // 1. Try matching via season/episode in filename or title (e.g. S01E03 or 1x03)
         var textToSearch = $"{filename} {filter.Title}";
-        var seMatch = System.Text.RegularExpressions.Regex.Match(textToSearch, @"[sS](?<season>\d{1,2})[eE](?<ep>\d{1,2})");
+        var seMatch = System.Text.RegularExpressions.Regex.Match(textToSearch, @"[sS](?<season>\d{1,2})[eE](?<ep>\d{1,2})|(?<season>\d{1,2})x(?<ep>\d{1,2})");
         if (seMatch.Success)
         {
             var seasonNumber = int.Parse(seMatch.Groups["season"].Value, CultureInfo.InvariantCulture);
             var episodeNumber = int.Parse(seMatch.Groups["ep"].Value, CultureInfo.InvariantCulture);
 
-            var titleBase = System.Text.RegularExpressions.Regex.Replace(filter.Title ?? string.Empty, @"[sS]\d{1,2}[eE]\d{1,2}.*$", string.Empty).Trim();
+            if (seriesId.HasValue)
+            {
+                var targetEpQuery = new InternalItemsQuery
+                {
+                    ParentId = seriesId.Value,
+                    IncludeItemTypes = [BaseItemKind.Episode],
+                    IndexNumber = episodeNumber,
+                    ParentIndexNumber = seasonNumber,
+                    Recursive = true
+                };
+                var targetEpisodes = _libraryManager.GetItemList(targetEpQuery);
+                if (targetEpisodes.Count == 1)
+                {
+                    return targetEpisodes.ToList();
+                }
+            }
+
+            var titleBase = System.Text.RegularExpressions.Regex.Replace(filter.Title ?? string.Empty, @"([sS]\d{1,2}[eE]\d{1,2}|\d{1,2}x\d{1,2}).*$", string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(titleBase) && !string.IsNullOrWhiteSpace(filename))
             {
-                titleBase = System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(filename), @"[sS]\d{1,2}[eE]\d{1,2}.*$", string.Empty).Trim(' ', '.', '_', '-');
+                titleBase = System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(filename), @"([sS]\d{1,2}[eE]\d{1,2}|\d{1,2}x\d{1,2}).*$", string.Empty).Trim(' ', '.', '_', '-');
             }
 
             var epQuery = new InternalItemsQuery
@@ -520,4 +689,15 @@ public sealed class SetCueActionRequest
     /// Gets or sets the optional cue description.
     /// </summary>
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// Request payload for bulk updating cue actions.
+/// </summary>
+public sealed class SetBulkCueActionRequest
+{
+    /// <summary>
+    /// Gets or sets the cue action.
+    /// </summary>
+    public required string Action { get; set; }
 }

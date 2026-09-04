@@ -113,6 +113,29 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Updates the action for all cues in an item's filter in a single save.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="action">The action value to apply to all cues.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that completes when persistence has finished.</returns>
+    public async Task SetBulkCueActionAsync(Guid itemId, string action, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return;
+        }
+
+        foreach (var cue in filter.Cues)
+        {
+            cue.Action = action;
+        }
+
+        await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Deletes a filter for an item and associated filtered subtitle output.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
