@@ -84,7 +84,7 @@ public static class ClientScriptInjector
             var json = $$"""
             {
                 "id": "A62B2473-77E1-45C1-8470-57FB95A85394",
-                "fileNamePattern": "index.html",
+                "fileNamePattern": "(?:^|[\\\\/])index\\.html$",
                 "callbackAssembly": "{{typeof(ClientScriptInjector).Assembly.FullName}}",
                 "callbackClass": "{{typeof(ClientScriptInjector).FullName}}",
                 "callbackMethod": "{{nameof(TransformIndexHtml)}}"
@@ -116,6 +116,13 @@ public static class ClientScriptInjector
             return input?.Contents ?? string.Empty;
         }
 
+        // Only inject into actual HTML documents, never into JS chunks or other assets
+        if (!input.Contents.Contains("<html", StringComparison.OrdinalIgnoreCase) &&
+            !input.Contents.Contains("<!DOCTYPE", StringComparison.OrdinalIgnoreCase))
+        {
+            return input.Contents;
+        }
+
         const string scriptTag = "<script src=\"../ContentFilter/client.js\" defer></script>";
         if (input.Contents.Contains(scriptTag, StringComparison.Ordinal))
         {
@@ -134,6 +141,6 @@ public static class ClientScriptInjector
             return input.Contents.Insert(bodyClose, $"{scriptTag}\n");
         }
 
-        return input.Contents + "\n" + scriptTag;
+        return input.Contents;
     }
 }
