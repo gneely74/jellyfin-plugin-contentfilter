@@ -730,7 +730,7 @@
                 '          <option value="SexAndNudity.Graphic">SexAndNudity.Graphic (Intercourse)</option>',
                 '          <option value="SexAndNudity.ImpliedSex">SexAndNudity.ImpliedSex (Suggestive)</option>',
                 '          <option value="SexAndNudity.SexualAssault">SexAndNudity.SexualAssault</option>',
-                '          <option value="SexAndNudity.FullNudity">SexAndNudity.FullNudity (Frontal)</option>',
+                '          <option value="SexAndNudity.FullNudity" selected>SexAndNudity.FullNudity (Frontal)</option>',
                 '          <option value="SexAndNudity.PartialNudity">SexAndNudity.PartialNudity (Lingerie)</option>',
                 '          <option value="SexAndNudity.PhysicalIntimacy">SexAndNudity.PhysicalIntimacy (Kissing)</option>',
                 '          <option value="SexAndNudity.Mild">SexAndNudity.Mild (Swimwear)</option>',
@@ -1028,6 +1028,7 @@
         // Category dropdown custom trigger
         var catSelect = modal.querySelector('#cfSelectCategory');
         var customCatInput = modal.querySelector('#cfInputCustomCategory');
+        if (catSelect) catSelect.value = 'SexAndNudity.FullNudity';
         catSelect.addEventListener('change', function () {
             if (catSelect.value === '__custom__') {
                 customCatInput.style.display = 'block';
@@ -1186,7 +1187,7 @@
             startInput.value = '';
             endInput.value = '';
             descInput.value = '';
-            catSelect.value = 'Violence.Moderate';
+            catSelect.value = 'SexAndNudity.FullNudity';
             customCatInput.style.display = 'none';
             customCatInput.value = '';
             addStatus.textContent = '';
@@ -1976,6 +1977,10 @@
 
         var startInput = modal.querySelector('#cfInputStart');
         var endInput = modal.querySelector('#cfInputEnd');
+        if (!editingCueKey) {
+            var cs = modal.querySelector('#cfSelectCategory');
+            if (cs && !cs.value) cs.value = 'SexAndNudity.FullNudity';
+        }
         if (activeVideo && !startInput.value && !editingCueKey) {
             startInput.value = formatTimecode(activeVideo.currentTime);
             endInput.value = formatTimecode(activeVideo.currentTime + 10);

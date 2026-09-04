@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Add automated library-wide subtitle downloading and clean processing (.default.srt), default subtitle assignment for all users, daily scheduled sync, remote search and time offset overrides, kill-switch toggle, and subtitle lock.",
+  "changelog": "Default new cue category to SexAndNudity.FullNudity across player HUD editor, admin studio, and API controller.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,6 +9,6 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-09-04T00:00:00Z",
-  "version": "1.0.25.0"
+  "version": "1.0.26.0"
 }
 

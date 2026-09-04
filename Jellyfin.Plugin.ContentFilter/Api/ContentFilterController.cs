@@ -726,7 +726,7 @@ public class ContentFilterController : ControllerBase
         {
             Start = startTs,
             End = endTs,
-            Category = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category,
+            Category = string.IsNullOrWhiteSpace(request.Category) ? "SexAndNudity.FullNudity" : request.Category,
             Channel = string.IsNullOrWhiteSpace(request.Channel) ? "video" : request.Channel,
             Action = string.IsNullOrWhiteSpace(request.Action) ? "skip" : request.Action,
             Description = request.Description
@@ -765,7 +765,7 @@ public class ContentFilterController : ControllerBase
         {
             Start = startTs,
             End = endTs,
-            Category = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category,
+            Category = string.IsNullOrWhiteSpace(request.Category) ? "SexAndNudity.FullNudity" : request.Category,
             Channel = string.IsNullOrWhiteSpace(request.Channel) ? "video" : request.Channel,
             Action = string.IsNullOrWhiteSpace(request.Action) ? "skip" : request.Action,
             Description = request.Description

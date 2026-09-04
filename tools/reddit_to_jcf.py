@@ -271,7 +271,7 @@ def parse_reddit_post_text(
     cues: List[ParsedCue] = []
     lines = text.splitlines()
 
-    current_category_header = default_category or "Violence.Moderate"
+    current_category_header = default_category or "SexAndNudity.FullNudity"
 
     for i, line in enumerate(lines):
         trimmed = clean_line_typos(line.strip())
