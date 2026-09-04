@@ -60,7 +60,8 @@
         if (document.fullscreenElement) {
             return document.fullscreenElement;
         }
-        var container = document.querySelector('.videoPlayerContainer') ||
+        var container = document.querySelector('#videoOsdPage') ||
+                        document.querySelector('.videoPlayerContainer') ||
                         document.querySelector('.htmlvideoplayer') ||
                         (activeVideo && activeVideo.parentElement) ||
                         document.body;
@@ -89,7 +90,7 @@
                 '-webkit-backdrop-filter: blur(12px)',
                 'padding: 10px 18px',
                 'border-radius: 12px',
-                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 'font-size: 14px',
                 'font-weight: 600',
                 'display: flex',
@@ -179,16 +180,14 @@
     }
 
     function resolveMediaItemId(video) {
+        // 1. Direct match on HTML5 video stream URL
         if (video) {
             var src = video.currentSrc || video.src || '';
-            var m = src.match(/(?:\/videos\/|[?&]mediasourceid=|\/items\/|\/videos\/transcode\/)([a-f0-9]{32})/i);
+            var m = src.match(/(?:\/videos\/|[?&]mediasourceid=|\/videos\/transcode\/)([a-f0-9]{32})/i);
             if (m) return m[1];
-
-            var poster = video.poster || '';
-            var pm = poster.match(/\/items\/([a-f0-9]{32})/i);
-            if (pm) return pm[1];
         }
 
+        // 2. Jellyfin playbackManager
         try {
             if (window.playbackManager && typeof window.playbackManager.currentItem === 'function') {
                 var curItem = window.playbackManager.currentItem();
@@ -196,6 +195,7 @@
             }
         } catch (e) {}
 
+        // 3. Current URL hash
         var hash = window.location.hash || '';
         var match = hash.match(/[?&]id=([a-f0-9]{32})/i);
         if (match) return match[1];
@@ -286,8 +286,8 @@
                 'position: fixed',
                 'top: 24px',
                 'left: 24px',
-                'z-index: 999998',
-                'background: rgba(15, 23, 42, 0.85)',
+                'z-index: 1000000',
+                'background: rgba(15, 23, 42, 0.88)',
                 'color: #38bdf8',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
                 'box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4)',
@@ -313,7 +313,7 @@
                 launchBtn.style.transform = 'scale(1.04)';
             });
             launchBtn.addEventListener('mouseleave', function () {
-                launchBtn.style.background = 'rgba(15, 23, 42, 0.85)';
+                launchBtn.style.background = 'rgba(15, 23, 42, 0.88)';
                 launchBtn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
                 launchBtn.style.transform = 'scale(1)';
             });
@@ -1082,23 +1082,23 @@
         document.addEventListener('playbackstart', onPlaybackStart);
         document.addEventListener('playbackprogress', function (e) {
             var video = document.querySelector('video');
-            if (video && (!activeVideo || !activeItemId)) {
+            if (video) {
                 var itemId = (e.detail && e.detail.ItemId) || resolveMediaItemId(video);
-                if (itemId) attachToVideo(video, itemId);
+                if (itemId && itemId !== activeItemId) attachToVideo(video, itemId);
             }
         });
 
         setInterval(function () {
             var video = document.querySelector('video');
-            if (video && (!activeVideo || !activeItemId)) {
+            if (video) {
                 var itemId = resolveMediaItemId(video);
-                if (itemId) {
+                if (itemId && itemId !== activeItemId) {
                     attachToVideo(video, itemId);
                 }
             } else if (!video && activeVideo) {
                 detach();
             }
-        }, 800);
+        }, 600);
     }
 
     if (document.readyState === 'loading') {
