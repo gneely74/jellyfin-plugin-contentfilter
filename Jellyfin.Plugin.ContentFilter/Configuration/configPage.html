@@ -8,6 +8,7 @@
     <div id="ContentFilterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <style>
 
+
             :root {
                 --cf-bg: #101119;
                 --cf-surface: #171826;
@@ -1146,6 +1147,278 @@
                 border-top: 1px solid var(--cf-border);
             }
 
+        
+
+            /* Top Navigation Bar */
+            .cf-main-nav {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                border-bottom: 1px solid var(--cf-border);
+                padding-bottom: 12px;
+                flex-wrap: wrap;
+            }
+
+            .cf-main-tab-btn {
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-size: 0.92rem;
+                font-weight: 600;
+                cursor: pointer;
+                user-select: none;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                color: var(--cf-text-muted);
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .cf-main-tab-btn:hover {
+                background: var(--cf-surface-hover);
+                color: #fff;
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .cf-main-tab-btn.active {
+                background: var(--cf-primary);
+                border-color: var(--cf-primary);
+                color: #fff;
+                box-shadow: 0 3px 12px var(--cf-primary-glow);
+            }
+
+            .cf-tab-panel {
+                display: none;
+            }
+
+            .cf-tab-panel.active {
+                display: block;
+            }
+
+            /* Settings & Rules Cards */
+            .cf-settings-card {
+                background: var(--cf-surface);
+                border: 1px solid var(--cf-border);
+                border-radius: 10px;
+                padding: 22px 24px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            }
+
+            .cf-settings-card-title {
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #fff;
+                margin: 0 0 6px 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .cf-settings-card-desc {
+                font-size: 0.88rem;
+                color: var(--cf-text-muted);
+                margin: 0 0 18px 0;
+                line-height: 1.5;
+            }
+
+            /* Rules Hierarchy Modern Dark Theme */
+            .cf-g {
+                margin-bottom: 16px;
+                border: 1px solid var(--cf-border);
+                border-radius: 8px;
+                overflow: hidden;
+                background: var(--cf-surface);
+            }
+
+            .cf-g-hdr {
+                background: var(--cf-surface-elevated);
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--cf-border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+            }
+
+            .cf-g-hdr-left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .cf-num {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                background: var(--cf-primary);
+                color: #fff;
+                font-size: 0.78rem;
+                font-weight: bold;
+                flex-shrink: 0;
+            }
+
+            .cf-g-title {
+                font-weight: 700;
+                font-size: 0.95rem;
+                letter-spacing: 0.04em;
+                color: #fff;
+            }
+
+            .cf-g-body {
+                padding: 14px 18px 18px;
+                background: rgba(0, 0, 0, 0.15);
+            }
+
+            .cf-c {
+                margin-top: 14px;
+                padding-left: 14px;
+                border-left: 3px solid var(--cf-primary);
+            }
+
+            .cf-c-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                user-select: none;
+                padding: 4px 0;
+            }
+
+            .cf-cname {
+                font-family: monospace;
+                background: var(--cf-surface-elevated);
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 0.88rem;
+                color: #bae6fd;
+                border: 1px solid var(--cf-border);
+            }
+
+            .cf-badge {
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 2px 7px;
+                border-radius: 4px;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            .cf-badge-word {
+                background: rgba(82, 181, 75, 0.15);
+                color: #86efac;
+                border: 1px solid rgba(82, 181, 75, 0.35);
+            }
+
+            .cf-badge-visual {
+                background: rgba(168, 85, 247, 0.15);
+                color: #d8b4fe;
+                border: 1px solid rgba(168, 85, 247, 0.35);
+            }
+
+            .cf-items {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 14px;
+                padding: 8px 0 6px 14px;
+                margin-top: 6px;
+            }
+
+            .cf-item {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--cf-border-subtle);
+                padding: 4px 10px;
+                border-radius: 6px;
+                transition: background 0.15s ease;
+            }
+
+            .cf-item:hover {
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            .cf-item > label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                user-select: none;
+                font-size: 0.84rem;
+                color: var(--cf-text-main);
+            }
+
+            .cf-off {
+                opacity: 0.35;
+                pointer-events: none;
+            }
+
+            /* Settings Input Fields */
+            .cf-field-group {
+                margin-bottom: 18px;
+            }
+
+            .cf-field-label {
+                display: block;
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: var(--cf-text-muted);
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+
+            .cf-field-helper {
+                font-size: 0.8rem;
+                color: var(--cf-text-dim);
+                margin-top: 4px;
+            }
+
+            .cf-field-input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 10px 12px;
+                background: var(--cf-surface-elevated);
+                border: 1px solid var(--cf-border);
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.9rem;
+                outline: none;
+                transition: border-color 0.2s ease;
+            }
+
+            .cf-field-input:focus {
+                border-color: var(--cf-primary);
+                box-shadow: 0 0 0 2px var(--cf-primary-glow);
+            }
+
+            .cf-checkbox-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                user-select: none;
+                padding: 8px 0;
+            }
+
+            .cf-checkbox-row span {
+                font-size: 0.92rem;
+                font-weight: 500;
+                color: #fff;
+            }
+
+            /* Save Action Bar */
+            .cf-save-bar {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-top: 24px;
+                padding-top: 16px;
+                border-top: 1px solid var(--cf-border);
+            }
+
         </style>
 
         <div data-role="content">
@@ -1511,11 +1784,457 @@
                         <span id="settingsSaveStatus" style="font-size:0.88rem; color:var(--cf-green);"></span>
                     </div>
                 </div>
+                </div>
+
+                <!-- Tab 2: Filter Rules -->
+                <div id="cfTabRules" class="cf-tab-panel">
+                    <div class="cf-settings-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+                            <div>
+                                <h3 class="cf-settings-card-title">🛡️ Global Playback Filtering</h3>
+                                <div class="cf-settings-card-desc" style="margin:0;">
+                                    When enabled, media playback will automatically skip or mute flagged cues according to the rule categories selected below.
+                                </div>
+                            </div>
+                            <button id="saveRulesBtnTop" type="button" class="cf-btn cf-btn-primary">
+                                <span>💾 Save Rules</span>
+                            </button>
+                        </div>
+
+                        <label class="cf-checkbox-row" style="background:var(--cf-surface-elevated); padding:12px 16px; border-radius:8px; border:1px solid var(--cf-border); margin-bottom:20px;">
+                            <input id="IsEnabled" type="checkbox" is="emby-checkbox" style="width:18px; height:18px; cursor:pointer;">
+                            <span style="font-size:1.02rem; font-weight:700;">Enable Content Filtering Active Playback</span>
+                        </label>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                            <input id="rulesSearchInput" type="text" class="cf-field-input" placeholder="Search rules or words (e.g. profanity, violence, gore)..." style="max-width:380px;">
+                            <div style="display:flex; gap:8px;">
+                                <button id="rulesExpandAllBtn" type="button" class="cf-btn cf-btn-sm">Expand All</button>
+                                <button id="rulesCollapseAllBtn" type="button" class="cf-btn cf-btn-sm">Collapse All</button>
+                            </div>
+                        </div>
+
+                        <div id="filterHierarchyContainer"></div>
+
+                        <div class="cf-save-bar">
+                            <button id="saveRulesBtn" type="button" class="cf-btn cf-btn-primary">
+                                <span>💾 Save Filter Rules</span>
+                            </button>
+                            <span id="rulesSaveStatus" style="font-size:0.88rem; color:var(--cf-green);"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Scanner & AI Settings -->
+                <div id="cfTabSettings" class="cf-tab-panel">
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🤖 AI Vision Configuration</h3>
+                        <div class="cf-settings-card-desc">
+                            Configure the multimodal vision model used to scan video frames for visual violence, nudity, and objectionable imagery.
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaBaseUrl">Vision API Base URL</label>
+                            <input id="OllamaBaseUrl" type="text" class="cf-field-input" placeholder="e.g. http://localhost:8000 or http://localhost:11434">
+                            <div class="cf-field-helper">Supports local oMLX (port 8000), Ollama (port 11434), or cloud endpoints like OpenRouter (https://openrouter.ai/api/v1).</div>
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaVisionModel">Vision Model Name</label>
+                            <input id="OllamaVisionModel" type="text" class="cf-field-input" placeholder="e.g. Qwen2.5-VL-7B-Instruct-8bit or qwen/qwen2.5-vl-72b-instruct">
+                            <div class="cf-field-helper">The vision model name to invoke for frame inspection.</div>
+                        </div>
+
+                        <div class="cf-field-group">
+                            <label class="cf-field-label" for="OllamaApiKey">Vision API Key</label>
+                            <input id="OllamaApiKey" type="password" class="cf-field-input" placeholder="sk-or-v1-... (leave blank for local Ollama/oMLX)" autocomplete="new-password">
+                            <div class="cf-field-helper">Required when using cloud providers like OpenRouter; leave blank for local inference.</div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="MaxConcurrentVisionRequests">Concurrent Vision Requests</label>
+                                <input id="MaxConcurrentVisionRequests" type="number" min="1" max="20" step="1" class="cf-field-input">
+                                <div class="cf-field-helper">Use 1 for single local GPU, or 8–10 for fast cloud API batches.</div>
+                            </div>
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="ScanFramesPerSecond">Scan Frames Per Second</label>
+                                <input id="ScanFramesPerSecond" type="number" step="0.1" min="0" class="cf-field-input">
+                                <div class="cf-field-helper">Sampling rate for frame extraction (e.g. 0.5 = 1 frame every 2 seconds).</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🎙️ Audio & Language Configuration</h3>
+                        <div class="cf-settings-card-desc">
+                            Configure subtitles and speech recognition parameters for language profanity detection.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="PreferredAudioLanguage">Preferred Audio Language</label>
+                                <input id="PreferredAudioLanguage" type="text" class="cf-field-input" placeholder="en">
+                                <div class="cf-field-helper">ISO 639-1 language code (e.g. en, fr, de, es).</div>
+                            </div>
+                            <div class="cf-field-group">
+                                <label class="cf-field-label" for="OllamaTextModel">Text LLM Model</label>
+                                <input id="OllamaTextModel" type="text" class="cf-field-input" placeholder="e.g. llama3.2">
+                                <div class="cf-field-helper">Optional text model for contextual dialogue evaluation.</div>
+                            </div>
+                        </div>
+
+                        <label class="cf-checkbox-row" style="margin-top:6px;">
+                            <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                            <span>Analyze Audio Transcript & Subtitle Streams</span>
+                        </label>
+                    </div>
+
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">🐞 Diagnostics & Limits</h3>
+                        <div class="cf-field-group" style="margin-bottom:0;">
+                            <label class="cf-field-label" for="DebugScanMaxSeconds">Debug Scan Max Seconds</label>
+                            <input id="DebugScanMaxSeconds" type="number" min="0" step="10" class="cf-field-input" style="max-width:240px;">
+                            <div class="cf-field-helper">Limit test scans to first N seconds of video (0 = scan entire video).</div>
+                        </div>
+                    </div>
+
+                    <div class="cf-save-bar">
+                        <button id="saveSettingsBtn" type="button" class="cf-btn cf-btn-primary">
+                            <span>💾 Save Scanner Settings</span>
+                        </button>
+                        <span id="settingsSaveStatus" style="font-size:0.88rem; color:var(--cf-green);"></span>
+                    </div>
+                </div>
 
             </div>
         </div>
 
         <script type="text/javascript">
+            var PLUGIN_ID = 'A62B2473-77E1-45C1-8470-57FB95A85394';
+
+            // --- Tab Navigation ---
+            function switchMainTab(tabKey) {
+                document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-cf-tab') === tabKey);
+                });
+                document.querySelectorAll('.cf-tab-panel').forEach(function(panel) {
+                    panel.classList.remove('active');
+                });
+                var target = document.getElementById('cfTab' + tabKey.charAt(0).toUpperCase() + tabKey.slice(1));
+                if (target) target.classList.add('active');
+            }
+
+            document.querySelectorAll('.cf-main-tab-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    switchMainTab(btn.getAttribute('data-cf-tab'));
+                });
+            });
+
+            // --- Filter Hierarchy Configuration Logic ---
+            var FH = [
+                { g:'Language', label:'Language & Profanity', cats:[
+                    { key:'Language.GeneralProfanity',    label:'General Profanity',      badge:'word',
+                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','cock','crap','cunt','damn','dick','douche','fuck','fucking','fucker','hell','piss','prick','pussy','screw','shit','twat','wank'] },
+                    { key:'Language.Blasphemy',           label:'Blasphemy',              badge:'word',
+                      items:['Jesus Christ','Oh God'] },
+                    { key:'Language.RacialAndBigotedSlurs', label:'Racial & Bigoted Slurs', badge:'word',
+                      items:['chink','cracker','heeb','jap','jiz','kike','kraut','nigger','pollack','wetback','wop'] },
+                    { key:'Language.ChildishLanguage',    label:'Childish Language',      badge:'word',
+                      items:['bum','butt','dumb','fart','stupid'] },
+                    { key:'Language.CaptionsWithProfanity', label:'Captions with Profanity', badge:'word',
+                      items:['arse','ass','bastard','bitch','bloody','bollocks','bugger','crap','damn','fuck','fucking','fucker','hell','shit'] }
+                ]},
+                { g:'SexualReferences', label:'Sexual References & Anatomy', cats:[
+                    { key:'SexualReferences.ExplicitWords', label:'Explicit Words', badge:'word',
+                      items:['anus','balls','beastial','blowjob','clit','cock','condom','cum','cunillingus','dick','dildo','dink','douche','ejaculate','fag','fellatio','gangbang','hard on','horniest','hump','jerk','kooch','masturbate','nuts','orgasm','picker','penis','porn','prick','piss','pussy','queer','rimjob','scrotum','sex','skeet','slut','testicle','tits','twat','vagina','wank','whore'] },
+                    { key:'SexualReferences.ContextualDialogue', label:'Contextual Dialogue', badge:'visual',
+                      items:['A man makes a sexual remark to a man.','A man makes a sexual remark to a woman.','A woman makes a sexual remark to a man.','A woman makes a sexual remark to a woman.'] },
+                    { key:'SexualReferences.Visuals', label:'Visuals', badge:'visual',
+                      items:['Vulgar Gestures'] }
+                ]},
+                { g:'SexAndNudity', label:'Sex & Nudity', cats:[
+                    { key:'SexAndNudity.OnscreenActivity', label:'Onscreen Activity', badge:'visual',
+                      items:['Sex with Nudity','Sex without Nudity','Sexual Assault','Implied Sex','Sexually Suggestive'] },
+                    { key:'SexAndNudity.NudityProfiles',  label:'Nudity Profiles',    badge:'visual',
+                      items:['Female Nudity','Male Nudity','Implied Nudity','Female Immodesty','Male Immodesty','Male & Female Immodesty','Nude Statues & Paintings'] },
+                    { key:'SexAndNudity.PhysicalIntimacy', label:'Physical Intimacy', badge:'visual',
+                      items:['Heterosexual Kissing (Normal)','Heterosexual Kissing (Passionate)','Homosexual Kissing (Normal)','Homosexual Kissing (Passionate)'] }
+                ]},
+                { g:'Violence', label:'Violence & Horror', cats:[
+                    { key:'Violence.Tiers', label:'Tiers', badge:'visual',
+                      items:['Gore','Graphic Violence','Non-graphic Violence','Implied Violence','Disturbing Images','Objectionable, Disturbing, or Scary'] }
+                ]},
+                { g:'Substances', label:'Substance Use', cats:[
+                    { key:'Substances.Usage', label:'Usage', badge:'visual',
+                      items:['Illegal Usage','Legal Usage','Implied Usage'] }
+                ]},
+                { g:'Medical', label:'Medical & Biological Processes', cats:[
+                    { key:'Medical.Events', label:'Events', badge:'visual',
+                      items:['Medical Graphic','Medical Procedures','Life Events','Bodily Functions/Jokes'] }
+                ]},
+                { g:'Structural', label:'Structural Timestamps', cats:[
+                    { key:'Structural.Timestamps', label:'Timestamps', badge:'visual',
+                      items:['Opening Credits','Closing Credits','Episode Recap/Outtakes'] }
+                ]}
+            ];
+
+            function esc(s) {
+                return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            function getEl(id) { return document.getElementById(id); }
+
+            function findItemCb(key) {
+                var all = document.querySelectorAll('[data-ik]');
+                for (var i = 0; i < all.length; i++) {
+                    if (all[i].getAttribute('data-ik') === key) return all[i];
+                }
+                return null;
+            }
+
+            function bleep(str) {
+                return str.split(' ').map(function(w) {
+                    var n = w.length;
+                    if (n <= 2) return w;
+                    var tail = n >= 6 ? 2 : 1;
+                    var stars = n - 1 - tail;
+                    if (stars < 1) stars = 1;
+                    return w[0] + '*'.repeat(stars) + w.slice(n - tail);
+                }).join(' ');
+            }
+
+            function renderHierarchy() {
+                var container = getEl('filterHierarchyContainer');
+                if (!container) return;
+                container.innerHTML = '';
+                FH.forEach(function(gDef, gIdx) {
+                    var catsHtml = '';
+                    gDef.cats.forEach(function(cat) {
+                        var subName = cat.key.split('.')[1];
+                        var isWord = cat.badge === 'word';
+                        var badgeCls = isWord ? 'cf-badge-word' : 'cf-badge-visual';
+                        var badgeTxt = isWord ? 'word' : 'visual';
+                        var itemsHtml = '';
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var display = isWord ? bleep(item) : item;
+                            itemsHtml +=
+                                '<div class="cf-item">' +
+                                    '<label>' +
+                                        '<input type="checkbox" data-ik="' + esc(ik) + '" data-cat="' + esc(cat.key) + '">' +
+                                        '<span>' + esc(display) + '</span>' +
+                                    '</label>' +
+                                '</div>';
+                        });
+
+                        catsHtml +=
+                            '<div class="cf-c" data-fc="' + esc(cat.key) + '">' +
+                                '<div class="cf-c-header">' +
+                                    '<input type="checkbox" data-catcb="' + esc(cat.key) + '">' +
+                                    '<span class="cf-cname">' + esc(subName) + '</span>' +
+                                    '<span class="cf-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
+                                    '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + cat.items.length + ' items</span>' +
+                                '</div>' +
+                                '<div class="cf-items" data-fil="' + esc(cat.key) + '">' + itemsHtml + '</div>' +
+                            '</div>';
+                    });
+
+                    var gHtml =
+                        '<div class="cf-g" data-group="' + esc(gDef.g) + '">' +
+                            '<div class="cf-g-hdr">' +
+                                '<div class="cf-g-hdr-left">' +
+                                    '<span class="cf-num">' + (gIdx + 1) + '</span>' +
+                                    '<label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">' +
+                                        '<input type="checkbox" id="' + esc(gDef.g) + 'Enabled" style="width:16px;height:16px;">' +
+                                        '<span class="cf-g-title">' + esc(gDef.label.toUpperCase()) + '</span>' +
+                                    '</label>' +
+                                '</div>' +
+                                '<span style="font-size:0.8rem;color:var(--cf-text-dim);">' + gDef.cats.length + ' categories</span>' +
+                            '</div>' +
+                            '<div class="cf-g-body">' + catsHtml + '</div>' +
+                        '</div>';
+
+                    container.insertAdjacentHTML('beforeend', gHtml);
+                });
+
+                // Hook change listeners
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
+
+                    if (groupCb && groupEl) {
+                        groupCb.addEventListener('change', function() {
+                            var on = groupCb.checked;
+                            groupEl.querySelectorAll('.cf-items, .cf-c').forEach(function(el) {
+                                el.classList.toggle('cf-off', !on);
+                            });
+                        });
+                    }
+
+                    gDef.cats.forEach(function(cat) {
+                        var catCb = groupEl ? groupEl.querySelector('[data-catcb="' + cat.key + '"]') : null;
+                        if (catCb) {
+                            catCb.addEventListener('change', function() {
+                                var checked = catCb.checked;
+                                groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
+                                    icb.checked = checked;
+                                });
+                            });
+                        }
+
+                        if (groupEl) {
+                            groupEl.querySelectorAll('[data-cat="' + cat.key + '"]').forEach(function(icb) {
+                                icb.addEventListener('change', function() {
+                                    updateCatCb(groupEl, cat.key);
+                                });
+                            });
+                        }
+                    });
+                });
+            }
+
+            function updateCatCb(groupEl, catKey) {
+                var catCb = groupEl.querySelector('[data-catcb="' + catKey + '"]');
+                if (!catCb) return;
+                var items = groupEl.querySelectorAll('[data-cat="' + catKey + '"]');
+                var allOn = true, allOff = true;
+                items.forEach(function(cb) { if (cb.checked) allOff = false; else allOn = false; });
+                catCb.checked = allOn;
+                catCb.indeterminate = !allOn && !allOff;
+            }
+
+            function populateConfigForm(config) {
+                if (getEl('IsEnabled')) getEl('IsEnabled').checked = !!config.IsEnabled;
+                if (getEl('OllamaBaseUrl')) getEl('OllamaBaseUrl').value = config.OllamaBaseUrl || '';
+                if (getEl('OllamaVisionModel')) getEl('OllamaVisionModel').value = config.OllamaVisionModel || '';
+                if (getEl('OllamaApiKey')) getEl('OllamaApiKey').value = config.OllamaApiKey || '';
+                if (getEl('MaxConcurrentVisionRequests')) getEl('MaxConcurrentVisionRequests').value = config.MaxConcurrentVisionRequests || 1;
+                if (getEl('OllamaTextModel')) getEl('OllamaTextModel').value = config.OllamaTextModel || '';
+                if (getEl('ScanFramesPerSecond')) getEl('ScanFramesPerSecond').value = config.ScanFramesPerSecond ?? 0.5;
+                if (getEl('PreferredAudioLanguage')) getEl('PreferredAudioLanguage').value = config.PreferredAudioLanguage || 'en';
+                if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
+                if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
+
+                var disabled = new Set(config.DisabledFilterItems || []);
+
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    if (groupCb) groupCb.checked = !!config[gDef.g + 'Enabled'];
+                    var groupOn = groupCb ? groupCb.checked : true;
+                    var groupEl = groupCb ? groupCb.closest('.cf-g') : null;
+
+                    gDef.cats.forEach(function(cat) {
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var cb = findItemCb(ik);
+                            if (cb) cb.checked = !disabled.has(ik);
+                        });
+                        if (groupEl) {
+                            updateCatCb(groupEl, cat.key);
+                            if (!groupOn) {
+                                var fiList = groupEl.querySelector('[data-fil="' + cat.key + '"]');
+                                if (fiList) fiList.classList.add('cf-off');
+                                var fc = groupEl.querySelector('[data-fc="' + cat.key + '"]');
+                                if (fc) fc.classList.add('cf-off');
+                            }
+                        }
+                    });
+                });
+            }
+
+            function collectConfigForm(config) {
+                if (getEl('IsEnabled')) config.IsEnabled = getEl('IsEnabled').checked;
+                if (getEl('OllamaBaseUrl')) config.OllamaBaseUrl = getEl('OllamaBaseUrl').value || '';
+                if (getEl('OllamaVisionModel')) config.OllamaVisionModel = getEl('OllamaVisionModel').value || '';
+                if (getEl('OllamaApiKey')) config.OllamaApiKey = getEl('OllamaApiKey').value || '';
+                if (getEl('MaxConcurrentVisionRequests')) config.MaxConcurrentVisionRequests = parseInt(getEl('MaxConcurrentVisionRequests').value || '1', 10);
+                if (getEl('OllamaTextModel')) config.OllamaTextModel = getEl('OllamaTextModel').value || '';
+                if (getEl('ScanFramesPerSecond')) config.ScanFramesPerSecond = parseFloat(getEl('ScanFramesPerSecond').value || '0');
+                if (getEl('PreferredAudioLanguage')) config.PreferredAudioLanguage = getEl('PreferredAudioLanguage').value || 'en';
+                if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
+                if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
+
+                var disabled = [];
+                FH.forEach(function(gDef) {
+                    var groupCb = getEl(gDef.g + 'Enabled');
+                    if (groupCb) config[gDef.g + 'Enabled'] = groupCb.checked;
+                    gDef.cats.forEach(function(cat) {
+                        cat.items.forEach(function(item) {
+                            var ik = cat.key + ':' + item;
+                            var cb = findItemCb(ik);
+                            if (cb && !cb.checked) disabled.push(ik);
+                        });
+                    });
+                });
+                config.DisabledFilterItems = disabled;
+            }
+
+            function saveConfiguration(statusElId) {
+                var statusEl = document.getElementById(statusElId);
+                if (statusEl) statusEl.textContent = 'Saving...';
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                    collectConfigForm(config);
+                    ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then(function(result) {
+                        if (statusEl) {
+                            statusEl.textContent = '✓ Saved successfully!';
+                            setTimeout(function() { statusEl.textContent = ''; }, 4000);
+                        }
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    }).catch(function(err) {
+                        if (statusEl) statusEl.textContent = '❌ Error: ' + err.message;
+                    });
+                });
+            }
+
+            if (getEl('saveRulesBtn')) {
+                getEl('saveRulesBtn').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
+            }
+            if (getEl('saveRulesBtnTop')) {
+                getEl('saveRulesBtnTop').addEventListener('click', function() { saveConfiguration('rulesSaveStatus'); });
+            }
+            if (getEl('saveSettingsBtn')) {
+                getEl('saveSettingsBtn').addEventListener('click', function() { saveConfiguration('settingsSaveStatus'); });
+            }
+
+            // Search filter for rules
+            if (getEl('rulesSearchInput')) {
+                getEl('rulesSearchInput').addEventListener('input', function(e) {
+                    var q = e.target.value.toLowerCase().trim();
+                    document.querySelectorAll('.cf-g').forEach(function(gEl) {
+                        var groupMatch = false;
+                        gEl.querySelectorAll('.cf-item').forEach(function(itemEl) {
+                            var text = itemEl.textContent.toLowerCase();
+                            var match = !q || text.includes(q);
+                            itemEl.style.display = match ? 'inline-block' : 'none';
+                            if (match) groupMatch = true;
+                        });
+                        gEl.style.display = (!q || groupMatch) ? 'block' : 'none';
+                    });
+                });
+            }
+
+            if (getEl('rulesExpandAllBtn')) {
+                getEl('rulesExpandAllBtn').addEventListener('click', function() {
+                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'block'; });
+                });
+            }
+            if (getEl('rulesCollapseAllBtn')) {
+                getEl('rulesCollapseAllBtn').addEventListener('click', function() {
+                    document.querySelectorAll('.cf-g-body').forEach(function(b) { b.style.display = 'none'; });
+                });
+            }
+
+            renderHierarchy();
+
+            // Load plugin configuration
+            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                populateConfigForm(config);
+            }).catch(function(err) {
+                console.warn('Could not load plugin config:', err);
+            });
+
+            // --- Studio Media & Segments Workspace Logic ---
             var PLUGIN_ID = 'A62B2473-77E1-45C1-8470-57FB95A85394';
 
             // --- Tab Navigation ---
@@ -2772,7 +3491,7 @@
                 loadMovies();
             });
 
-            document.getElementById('configPageBtn').addEventListener('click', function() {
+            var cfgBtn = document.getElementById('configPageBtn'); if (cfgBtn) cfgBtn.addEventListener('click', function() {
                 switchMainTab('rules');
             });
 
