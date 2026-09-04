@@ -135,11 +135,11 @@ public class PlaybackMonitor : IHostedService
 
         var itemId = session.NowPlayingItem.Id;
         var sessionId = session.Id;
-        var state = _sessionState.GetOrAdd(sessionId, _ => new SessionState(itemId, false, 0, int.MinValue));
+        var state = _sessionState.GetOrAdd(sessionId, _ => new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue));
         var isNewItem = state.ItemId != itemId;
         if (isNewItem)
         {
-            state = new SessionState(itemId, false, 0, int.MinValue);
+            state = new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue);
             _sessionState[sessionId] = state;
         }
 
@@ -168,7 +168,7 @@ public class PlaybackMonitor : IHostedService
 
         var positionTicks = session.PlayState?.PositionTicks ?? 0;
         var position = positionTicks > 0 ? TimeSpan.FromTicks(positionTicks) : TimeSpan.Zero;
-        var windowEnd = position + TimeSpan.FromSeconds(3);
+        var windowEnd = position + TimeSpan.FromSeconds(3.5);
 
         var activeCues = filter.Cues
             .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
@@ -186,13 +186,21 @@ public class PlaybackMonitor : IHostedService
         if (seekCue is not null)
         {
             var seekTarget = seekCue.End.Ticks;
-            if (state.LastSeekTarget != seekTarget)
-            {
-                _logger.LogInformation(
-                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: seeking past {Category} cue ({Channel}) to {End:mm\\:ss}",
-                    sessionId, session.UserName, session.DeviceName, position, seekCue.Category, seekCue.Channel, seekCue.End);
+            var now = DateTime.UtcNow;
+            var isNewTarget = state.LastSeekTarget != seekTarget;
+            var shouldRetry = !isNewTarget &&
+                              (now - state.LastSeekTime) >= TimeSpan.FromSeconds(1.5) &&
+                              state.SeekRetryCount < 10 &&
+                              positionTicks < seekTarget;
 
-                await SendPlaystateToSessionOrGroupAsync(session, new PlaystateRequest
+            if (isNewTarget || shouldRetry)
+            {
+                var attempt = isNewTarget ? 1 : state.SeekRetryCount + 1;
+                _logger.LogInformation(
+                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: seeking past {Category} cue ({Channel}) to {End:mm\\:ss} (attempt {Attempt})",
+                    sessionId, session.UserName, session.DeviceName, position, seekCue.Category, seekCue.Channel, seekCue.End, attempt);
+
+                var sent = await SendPlaystateToSessionOrGroupAsync(session, new PlaystateRequest
                 {
                     Command = PlaystateCommand.Seek,
                     SeekPositionTicks = seekTarget
@@ -205,7 +213,29 @@ public class PlaybackMonitor : IHostedService
                     state = state with { IsMuted = false };
                 }
 
-                state = state with { LastSeekTarget = seekTarget };
+                if (sent)
+                {
+                    state = state with
+                    {
+                        LastSeekTarget = seekTarget,
+                        LastSeekTime = now,
+                        SeekRetryCount = attempt
+                    };
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "ContentFilter: Session {SessionId} ({User}/{Device}) has no active controllers to receive seek command; will retry when connected",
+                        sessionId, session.UserName, session.DeviceName);
+
+                    state = state with
+                    {
+                        LastSeekTarget = seekTarget,
+                        LastSeekTime = now - TimeSpan.FromSeconds(1.0),
+                        SeekRetryCount = 0
+                    };
+                }
+
                 _sessionState[sessionId] = state;
             }
 
@@ -217,7 +247,7 @@ public class PlaybackMonitor : IHostedService
         {
             if (positionTicks >= state.LastSeekTarget || positionTicks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
             {
-                state = state with { LastSeekTarget = 0 };
+                state = state with { LastSeekTarget = 0, LastSeekTime = DateTime.MinValue, SeekRetryCount = 0 };
                 _sessionState[sessionId] = state;
             }
         }
@@ -249,35 +279,50 @@ public class PlaybackMonitor : IHostedService
     private HashSet<string> GetTargetSessionIds(SessionInfo session)
     {
         var targets = new HashSet<string>(StringComparer.Ordinal);
-        if (!string.IsNullOrWhiteSpace(session.Id))
+        if (session.SessionControllers.Count > 0)
         {
             targets.Add(session.Id);
         }
 
         // If the playing session has no active controllers, check other sessions with same device ID or user ID
-        if (session.SessionControllers.Count == 0)
+        foreach (var candidate in _sessionManager.Sessions)
         {
-            foreach (var candidate in _sessionManager.Sessions)
+            if (candidate.SessionControllers.Count > 0 &&
+                ((!string.IsNullOrEmpty(session.DeviceId) && string.Equals(candidate.DeviceId, session.DeviceId, StringComparison.Ordinal)) ||
+                 (candidate.UserId != Guid.Empty && candidate.UserId == session.UserId)))
             {
-                if (candidate.SessionControllers.Count > 0 &&
-                    ((!string.IsNullOrEmpty(session.DeviceId) && candidate.DeviceId == session.DeviceId) ||
-                     (candidate.UserId != Guid.Empty && candidate.UserId == session.UserId)))
-                {
-                    targets.Add(candidate.Id);
-                }
+                targets.Add(candidate.Id);
             }
+        }
+
+        if (targets.Count == 0 && !string.IsNullOrWhiteSpace(session.Id))
+        {
+            targets.Add(session.Id);
         }
 
         return targets;
     }
 
-    private async Task SendPlaystateToSessionOrGroupAsync(SessionInfo session, PlaystateRequest request, CancellationToken ct)
+    private async Task<bool> SendPlaystateToSessionOrGroupAsync(SessionInfo session, PlaystateRequest request, CancellationToken ct)
     {
         var targetSessionIds = GetTargetSessionIds(session);
+        var anySent = false;
         foreach (var targetId in targetSessionIds)
         {
-            await SendPlaystateAsync(targetId, request, ct).ConfigureAwait(false);
+            var targetSession = _sessionManager.Sessions.FirstOrDefault(s => string.Equals(s.Id, targetId, StringComparison.Ordinal));
+            if (targetSession is not null && targetSession.SessionControllers.Count == 0)
+            {
+                continue;
+            }
+
+            var sent = await SendPlaystateAsync(targetId, request, ct).ConfigureAwait(false);
+            if (sent)
+            {
+                anySent = true;
+            }
         }
+
+        return anySent;
     }
 
     private async Task SendMuteToSessionOrGroupAsync(SessionInfo session, CancellationToken ct)
@@ -299,15 +344,23 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
-    private async Task SendPlaystateAsync(string sessionId, PlaystateRequest request, CancellationToken ct)
+    private async Task<bool> SendPlaystateAsync(string sessionId, PlaystateRequest request, CancellationToken ct)
     {
         try
         {
+            var session = _sessionManager.Sessions.FirstOrDefault(s => string.Equals(s.Id, sessionId, StringComparison.Ordinal));
+            if (session is null || session.SessionControllers.Count == 0)
+            {
+                return false;
+            }
+
             await _sessionManager.SendPlaystateCommand(string.Empty, sessionId, request, ct).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to send playstate command {Command} to session {SessionId}", request.Command, sessionId);
+            return false;
         }
     }
 
@@ -336,5 +389,11 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
-    private sealed record SessionState(Guid ItemId, bool IsMuted, long LastSeekTarget, int FilteredSubtitleIndex);
+    private sealed record SessionState(
+        Guid ItemId,
+        bool IsMuted,
+        long LastSeekTarget,
+        DateTime LastSeekTime,
+        int SeekRetryCount,
+        int FilteredSubtitleIndex);
 }
