@@ -436,7 +436,13 @@
                 '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px;">',
                 '  <!-- Edit Banner (hidden unless editing) -->',
                 '  <div id="cfEditBanner" style="display:none; justify-content:space-between; align-items:center; background:rgba(234, 179, 8, 0.15); border:1px solid rgba(234, 179, 8, 0.4); border-radius:8px; padding:8px 12px; color:#fef08a; font-size:12px;">',
-                '    <div id="cfEditBannerText">✏️ Editing Cue</div>',
+                '    <div style="display:flex; align-items:center; gap:8px;">',
+                '      <div id="cfEditBannerText">✏️ Editing Cue</div>',
+                '      <div style="display:flex; gap:4px; align-items:center; margin-left:4px;">',
+                '        <button id="cfBannerShiftM10" title="Shift cue 10s earlier" style="background:rgba(234, 179, 8, 0.25); border:1px solid rgba(234, 179, 8, 0.6); color:#fef08a; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">-10s</button>',
+                '        <button id="cfBannerShiftP10" title="Shift cue 10s later" style="background:rgba(234, 179, 8, 0.25); border:1px solid rgba(234, 179, 8, 0.6); color:#fef08a; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">+10s</button>',
+                '      </div>',
+                '    </div>',
                 '    <button id="cfBtnCancelEdit" style="background:transparent; border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;">Cancel Edit</button>',
                 '  </div>',
 
@@ -472,6 +478,22 @@
                 '    <div style="display:flex; gap:8px;">',
                 '      <input id="cfInputEnd" type="text" placeholder="e.g. 31:45 or 00:31:45.000" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:ui-monospace,monospace; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnMarkEnd" style="background:#0284c7; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;">📍 Mark Out (Now)</button>',
+                '    </div>',
+                '  </div>',
+                '',
+                '  <!-- Shift Entire Cue Block -->',
+                '  <div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">',
+                '    <div>',
+                '      <span style="font-weight:600; color:#cbd5e1; font-size:12px;">Shift Entire Cue:</span>',
+                '      <span style="font-size:11px; color:#94a3b8; margin-left:6px;">(moves In & Out together)</span>',
+                '    </div>',
+                '    <div style="display:flex; gap:4px; align-items:center;">',
+                '      <button id="cfShiftCueM10" title="Shift entire cue 10s earlier" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:4px 8px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px;">-10s</button>',
+                '      <button id="cfShiftCueM5" title="Shift cue 5s earlier" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 7px; border-radius:6px; cursor:pointer; font-weight:600; font-size:11px;">-5s</button>',
+                '      <button id="cfShiftCueM1" title="Shift cue 1s earlier" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 7px; border-radius:6px; cursor:pointer; font-weight:600; font-size:11px;">-1s</button>',
+                '      <button id="cfShiftCueP1" title="Shift cue 1s later" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 7px; border-radius:6px; cursor:pointer; font-weight:600; font-size:11px;">+1s</button>',
+                '      <button id="cfShiftCueP5" title="Shift cue 5s later" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 7px; border-radius:6px; cursor:pointer; font-weight:600; font-size:11px;">+5s</button>',
+                '      <button id="cfShiftCueP10" title="Shift entire cue 10s later" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:4px 8px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px;">+10s</button>',
                 '    </div>',
                 '  </div>',
 
@@ -783,6 +805,41 @@
         modal.querySelector('#cfQuickDuration30').addEventListener('click', function () { setRelativeDuration(30); });
         modal.querySelector('#cfNudgeEndM02').addEventListener('click', function () { nudgeEnd(-0.2); });
         modal.querySelector('#cfNudgeEndP02').addEventListener('click', function () { nudgeEnd(0.2); });
+
+        // Shift Entire Cue handler (moves In and Out points together)
+        function shiftEntireCue(deltaSec) {
+            var sVal = parseTimecode(startInput.value);
+            var eVal = parseTimecode(endInput.value);
+            if (sVal === 0 && eVal === 0 && activeVideo) {
+                sVal = activeVideo.currentTime;
+                eVal = activeVideo.currentTime + 10;
+            }
+            var duration = Math.max(0.1, eVal - sVal);
+            var newStart = Math.max(0, sVal + deltaSec);
+            var newEnd = newStart + duration;
+
+            startInput.value = formatTimecode(newStart);
+            endInput.value = formatTimecode(newEnd);
+
+            if (activeVideo && activeVideo.paused) {
+                activeVideo.currentTime = newStart;
+            }
+
+            var sign = deltaSec > 0 ? '+' : '';
+            showHud('Shifted cue by ' + sign + deltaSec + 's (' + formatTime(newStart) + ' - ' + formatTime(newEnd) + ')', '⏱️');
+        }
+
+        modal.querySelector('#cfShiftCueM10').addEventListener('click', function () { shiftEntireCue(-10); });
+        modal.querySelector('#cfShiftCueM5').addEventListener('click', function () { shiftEntireCue(-5); });
+        modal.querySelector('#cfShiftCueM1').addEventListener('click', function () { shiftEntireCue(-1); });
+        modal.querySelector('#cfShiftCueP1').addEventListener('click', function () { shiftEntireCue(1); });
+        modal.querySelector('#cfShiftCueP5').addEventListener('click', function () { shiftEntireCue(5); });
+        modal.querySelector('#cfShiftCueP10').addEventListener('click', function () { shiftEntireCue(10); });
+
+        var bannerShiftM10 = modal.querySelector('#cfBannerShiftM10');
+        var bannerShiftP10 = modal.querySelector('#cfBannerShiftP10');
+        if (bannerShiftM10) bannerShiftM10.addEventListener('click', function () { shiftEntireCue(-10); });
+        if (bannerShiftP10) bannerShiftP10.addEventListener('click', function () { shiftEntireCue(10); });
 
         // Cancel Edit handler
         var editBanner = modal.querySelector('#cfEditBanner');
