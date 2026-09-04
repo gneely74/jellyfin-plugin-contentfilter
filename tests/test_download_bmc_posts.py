@@ -74,3 +74,20 @@ def test_clean_post_creation():
     assert post.media_title == "The Matrix"
     assert post.year == 1999
     assert post.is_unlocked is True
+
+
+def test_load_dotenv(tmp_path, monkeypatch):
+    import os
+    from download_bmc_posts import load_dotenv
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("BMC_TEST_EMAIL=test@example.com\nBMC_TEST_PASS=secret123\n# Comment\n")
+
+    monkeypatch.delenv("BMC_TEST_EMAIL", raising=False)
+    monkeypatch.delenv("BMC_TEST_PASS", raising=False)
+
+    load_dotenv(env_file)
+
+    assert os.environ.get("BMC_TEST_EMAIL") == "test@example.com"
+    assert os.environ.get("BMC_TEST_PASS") == "secret123"
+

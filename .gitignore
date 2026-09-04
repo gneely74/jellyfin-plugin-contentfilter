@@ -14,9 +14,12 @@ __pycache__/
 jcf_output/
 
 # Buy Me a Coffee session & download outputs
+.env
+.env.*
 bmc_session.json
 .bmc_session.json
 *.session.json
 thetimestampdudes_posts/
 bmc_posts/
 jcf_thetimestampdudes/
+

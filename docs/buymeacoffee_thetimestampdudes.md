@@ -37,15 +37,52 @@ pip install requests beautifulsoup4 selenium
 
 ## Stage 1: Downloading Posts (`download_bmc_posts.py`)
 
-### Initial Login & Session Persistence
+### Authentication & Credential Configuration
 
-When logging in for the first time, the script launches Chrome, fills in your email and password, and prompts for your 2FA one-time passcode (OTP) in the terminal:
+Credentials can be supplied in three ways (evaluated in order of precedence):
 
-```bash
-./download_bmc_posts.py --email your.email@example.com --password "your-password"
-```
+1. **Secure Interactive Prompt (Recommended)**:
+   If no credentials are provided via flags or environment variables, the script prompts you interactively:
+   ```bash
+   ./download_bmc_posts.py
+   ```
+   Email is entered normally, and password input is masked using Python's `getpass` (characters are not printed to screen or saved in shell history).
 
-If Buy Me a Coffee sends a temporary verification code to your email, the terminal will prompt:
+2. **Environment Variables or `.env` File**:
+   Set `BMC_EMAIL` and `BMC_PASSWORD` in your shell, or place them in a `.env` file in the project root (which is automatically loaded and ignored by git):
+   ```bash
+   # .env
+   BMC_EMAIL=your.email@example.com
+   BMC_PASSWORD=your-secure-password
+   ```
+   Or export them in your current shell:
+   ```bash
+   export BMC_EMAIL="your.email@example.com"
+   export BMC_PASSWORD="your-secure-password"
+   ./download_bmc_posts.py
+   ```
+
+3. **Config File (`--config`)**:
+   Point to a custom JSON configuration file or environment file:
+   ```json
+   {
+     "email": "your.email@example.com",
+     "password": "your-secure-password"
+   }
+   ```
+   ```bash
+   ./download_bmc_posts.py --config my_bmc_config.json
+   ```
+
+4. **Command-Line Arguments**:
+   Pass credentials directly when running in automated environments:
+   ```bash
+   ./download_bmc_posts.py --email "your.email@example.com" --password "your-secure-password"
+   ```
+
+### 2FA Verification (OTP)
+
+If Buy Me a Coffee detects a new device or browser session, it will send a 6-digit one-time code to your registered email address. The script detects this and prompts for the code:
 ```text
 ==================================================
 [!] Buy Me a Coffee sent a login verification code to your.email@example.com.
@@ -53,14 +90,17 @@ If Buy Me a Coffee sends a temporary verification code to your email, the termin
 ==================================================
 ```
 
-Once logged in, all session cookies (including HttpOnly tokens) are stored in `bmc_session.json`.
+### Session Persistence & Security
+
+Once authenticated, session cookies (including secure session identifiers) are saved locally to `bmc_session.json` (or custom path via `--session-file`).
 
 > [!IMPORTANT]
-> `bmc_session.json` is automatically ignored by `.gitignore`. Never commit or share this file, as it contains your active session credentials.
+> **No passwords or session tokens are committed to GitHub.**
+> `bmc_session.json`, `*.session.json`, `thetimestampdudes_posts/`, and `jcf_thetimestampdudes/` are excluded by `.gitignore`. Never track or push session files or plain-text passwords.
 
 ### Subsequent Runs
 
-For subsequent runs, the script automatically reuses `bmc_session.json` and connects directly via HTTP without opening a browser or prompting for passwords:
+For subsequent runs, the script automatically loads `bmc_session.json` and connects directly via HTTP without opening a browser or requiring re-authentication:
 
 ```bash
 ./download_bmc_posts.py
@@ -70,6 +110,7 @@ For subsequent runs, the script automatically reuses `bmc_session.json` and conn
 
 | Flag | Default | Description |
 | :--- | :--- | :--- |
+| `--config` | `None` | Path to JSON (`{"email":"...", "password":"..."}`) or `.env` credentials config |
 | `--creator` | `thetimestampdudes` | Buy Me a Coffee creator handle |
 | `--session-file` | `bmc_session.json` | Path to save/load session cookies |
 | `--output-dir` | `thetimestampdudes_posts` | Destination directory for downloaded posts |

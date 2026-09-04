@@ -512,9 +512,36 @@ class BuyMeACoffeeClient:
         return summary
 
 
+def load_dotenv(path: str | Path = ".env") -> None:
+    """Load key-value pairs from a .env file into os.environ if not already present."""
+    p = Path(path)
+    if not p.is_file():
+        return
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip("'\"")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
 def main():
+    load_dotenv(".env")
+
     parser = argparse.ArgumentParser(
         description="Download all Buy Me a Coffee posts by thetimestampdudes for JCF creation."
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to optional JSON or .env configuration file containing credentials",
     )
     parser.add_argument(
         "--creator",
@@ -538,12 +565,12 @@ def main():
     )
     parser.add_argument(
         "--email",
-        default=os.environ.get("BMC_EMAIL"),
+        default=None,
         help="BMC account email (or BMC_EMAIL env var)",
     )
     parser.add_argument(
         "--password",
-        default=os.environ.get("BMC_PASSWORD"),
+        default=None,
         help="BMC account password (or BMC_PASSWORD env var)",
     )
     parser.add_argument(
@@ -553,6 +580,24 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.config:
+        cfg_path = Path(args.config)
+        if cfg_path.is_file():
+            if cfg_path.suffix.lower() == ".json":
+                try:
+                    with open(cfg_path, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                    if not args.email and "email" in cfg:
+                        args.email = cfg["email"]
+                    if not args.password and "password" in cfg:
+                        args.password = cfg["password"]
+                    if "creator" in cfg and args.creator == DEFAULT_CREATOR:
+                        args.creator = cfg["creator"]
+                except Exception as e:
+                    print(f"[!] Warning: Failed to parse config JSON: {e}", file=sys.stderr)
+            else:
+                load_dotenv(cfg_path)
 
     client = BuyMeACoffeeClient(
         creator=args.creator,
@@ -571,9 +616,9 @@ def main():
         else:
             print("[!] Existing session expired or not authenticated. Re-authenticating...")
 
-        email = args.email or input("Buy Me a Coffee Email: ").strip()
+        email = args.email or os.environ.get("BMC_EMAIL") or input("Buy Me a Coffee Email: ").strip()
         import getpass
-        password = args.password or getpass.getpass("Buy Me a Coffee Password: ")
+        password = args.password or os.environ.get("BMC_PASSWORD") or getpass.getpass("Buy Me a Coffee Password: ")
 
         ok = client.login_browser(
             email=email,
