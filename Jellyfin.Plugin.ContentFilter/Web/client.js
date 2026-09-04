@@ -60,12 +60,7 @@
         if (document.fullscreenElement) {
             return document.fullscreenElement;
         }
-        var container = document.querySelector('#videoOsdPage') ||
-                        document.querySelector('.videoPlayerContainer') ||
-                        document.querySelector('.htmlvideoplayer') ||
-                        (activeVideo && activeVideo.parentElement) ||
-                        document.body;
-        return container;
+        return document.body;
     }
 
     // --- Toast HUD ---
@@ -284,9 +279,10 @@
             launchBtn.innerHTML = '<span style="font-size:16px;">🛡️</span> <span>Cue Editor</span>';
             launchBtn.style.cssText = [
                 'position: fixed',
-                'top: 24px',
+                'top: 76px',
                 'left: 24px',
-                'z-index: 1000000',
+                'z-index: 2147483647',
+                'pointer-events: auto',
                 'background: rgba(15, 23, 42, 0.88)',
                 'color: #38bdf8',
                 'border: 1px solid rgba(56, 189, 248, 0.4)',
