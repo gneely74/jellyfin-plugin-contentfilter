@@ -21,6 +21,7 @@ public class ContentFilterController : ControllerBase
 {
     private readonly FilterStore _filterStore;
     private readonly SubtitleFilter _subtitleFilter;
+    private readonly SubtitleWordScanner _subtitleWordScanner;
     private readonly ILibraryManager _libraryManager;
 
     /// <summary>
@@ -28,11 +29,17 @@ public class ContentFilterController : ControllerBase
     /// </summary>
     /// <param name="filterStore">The filter store service.</param>
     /// <param name="subtitleFilter">The subtitle filter service.</param>
+    /// <param name="subtitleWordScanner">The subtitle word scanner service.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
-    public ContentFilterController(FilterStore filterStore, SubtitleFilter subtitleFilter, ILibraryManager libraryManager)
+    public ContentFilterController(
+        FilterStore filterStore,
+        SubtitleFilter subtitleFilter,
+        SubtitleWordScanner subtitleWordScanner,
+        ILibraryManager libraryManager)
     {
         _filterStore = filterStore;
         _subtitleFilter = subtitleFilter;
+        _subtitleWordScanner = subtitleWordScanner;
         _libraryManager = libraryManager;
     }
 
@@ -888,6 +895,223 @@ public class ContentFilterController : ControllerBase
         var content = reader.ReadToEnd();
         return Content(content, "application/javascript");
     }
+
+    /// <summary>
+    /// Gets available subtitle tracks for an item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>A list of subtitle track descriptors.</returns>
+    [HttpGet("subtitles/{itemId:guid}/tracks")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<List<SubtitleTrackInfo>> GetSubtitleTracks(Guid itemId)
+    {
+        var tracks = _subtitleWordScanner.GetAvailableTracks(itemId);
+        return Ok(tracks);
+    }
+
+    /// <summary>
+    /// Scans an item's subtitle for filterable words.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The requested subtitle language code (defaults to eng).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Detected words and their occurrences.</returns>
+    [HttpGet("subtitles/{itemId:guid}/words")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<SubtitleScanResult>> GetSubtitleWords(
+        Guid itemId,
+        [FromQuery] string? language,
+        CancellationToken cancellationToken)
+    {
+        var lang = string.IsNullOrWhiteSpace(language) ? "eng" : language;
+        var result = await _subtitleWordScanner.ScanWordsAsync(itemId, lang, cancellationToken).ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Applies blanket filtering for one or more detected words across an item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="request">The blanket filter request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result indicating the number of cues added.</returns>
+    [HttpPost("subtitles/{itemId:guid}/blanket-filter")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ApplyBlanketFilterAsync(
+        Guid itemId,
+        [FromBody] BlanketFilterRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        var targetWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(request.Word))
+        {
+            targetWords.Add(request.Word.Trim());
+        }
+
+        if (request.Words is { Count: > 0 })
+        {
+            foreach (var w in request.Words)
+            {
+                if (!string.IsNullOrWhiteSpace(w))
+                {
+                    targetWords.Add(w.Trim());
+                }
+            }
+        }
+
+        if (targetWords.Count == 0)
+        {
+            return BadRequest("At least one word must be specified.");
+        }
+
+        var scan = await _subtitleWordScanner.ScanWordsAsync(itemId, request.Language ?? "eng", cancellationToken).ConfigureAwait(false);
+        var cuesToAdd = new List<FilterCue>();
+        var action = string.IsNullOrWhiteSpace(request.Action) ? "mute" : request.Action;
+        var channel = action.Equals("skip", StringComparison.OrdinalIgnoreCase) ? "both" : "audio";
+
+        foreach (var group in scan.Words.Where(g => targetWords.Contains(g.Word)))
+        {
+            foreach (var occ in group.Occurrences)
+            {
+                if (!ParseFlexibleTimestamp(occ.CueStart, out var startTs) ||
+                    !ParseFlexibleTimestamp(occ.CueEnd, out var endTs))
+                {
+                    startTs = TimeSpan.FromSeconds(occ.StartSeconds);
+                    endTs = TimeSpan.FromSeconds(occ.EndSeconds);
+                }
+
+                cuesToAdd.Add(new FilterCue
+                {
+                    Start = startTs,
+                    End = endTs,
+                    Category = group.Category,
+                    Channel = channel,
+                    Action = action,
+                    Description = $"Spoken: \"{group.Word}\""
+                });
+            }
+        }
+
+        var addedCount = await _filterStore.AddCuesAsync(itemId, cuesToAdd, cancellationToken).ConfigureAwait(false);
+
+        if (request.Global && Plugin.Instance is not null)
+        {
+            var config = Plugin.Instance.Configuration;
+            config.BlanketFilterWords ??= [];
+            bool changed = false;
+            foreach (var w in targetWords)
+            {
+                if (!config.BlanketFilterWords.Contains(w, StringComparer.OrdinalIgnoreCase))
+                {
+                    config.BlanketFilterWords.Add(w);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                Plugin.Instance.SaveConfiguration();
+            }
+        }
+
+        return Ok(new
+        {
+            itemId,
+            words = targetWords.ToList(),
+            cuesAdded = addedCount,
+            totalCues = _filterStore.GetFilter(itemId)?.Cues.Count ?? 0
+        });
+    }
+
+    /// <summary>
+    /// Removes cues matching a word from an item's filter.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="request">The remove request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of cues removed.</returns>
+    [HttpPost("subtitles/{itemId:guid}/remove-word-filter")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveWordFilterAsync(
+        Guid itemId,
+        [FromBody] RemoveWordFilterRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Word))
+        {
+            return BadRequest("Word is required.");
+        }
+
+        var removed = await _filterStore.RemoveCuesForWordAsync(itemId, request.Word.Trim(), cancellationToken).ConfigureAwait(false);
+
+        if (request.RemoveFromGlobal && Plugin.Instance is not null)
+        {
+            var config = Plugin.Instance.Configuration;
+            if (config.BlanketFilterWords != null)
+            {
+                var removedFromGlobal = config.BlanketFilterWords.RemoveAll(w => w.Equals(request.Word.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (removedFromGlobal > 0)
+                {
+                    Plugin.Instance.SaveConfiguration();
+                }
+            }
+        }
+
+        return Ok(new
+        {
+            itemId,
+            word = request.Word,
+            cuesRemoved = removed,
+            totalCues = _filterStore.GetFilter(itemId)?.Cues.Count ?? 0
+        });
+    }
+
+    /// <summary>
+    /// Gets the list of global blanket filter words.
+    /// </summary>
+    /// <returns>A list of strings.</returns>
+    [HttpGet("subtitles/global-blanket-words")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<List<string>> GetGlobalBlanketWords()
+    {
+        var words = Plugin.Instance?.Configuration.BlanketFilterWords ?? [];
+        return Ok(words);
+    }
+
+    /// <summary>
+    /// Updates the list of global blanket filter words.
+    /// </summary>
+    /// <param name="request">The request payload containing blanket words.</param>
+    /// <returns>The updated list of words.</returns>
+    [HttpPost("subtitles/global-blanket-words")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<List<string>> SetGlobalBlanketWords([FromBody] GlobalBlanketWordsRequest? request)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        if (Plugin.Instance is not null)
+        {
+            var config = Plugin.Instance.Configuration;
+            config.BlanketFilterWords = request.Words?
+                .Where(w => !string.IsNullOrWhiteSpace(w))
+                .Select(w => w.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? [];
+            Plugin.Instance.SaveConfiguration();
+        }
+
+        return Ok(Plugin.Instance?.Configuration.BlanketFilterWords ?? []);
+    }
 }
 
 /// <summary>
@@ -967,5 +1191,63 @@ public sealed class ShiftCuesRequest
     /// Gets or sets the offset in seconds (can be positive or negative).
     /// </summary>
     public double OffsetSeconds { get; set; }
+}
+
+/// <summary>
+/// Request payload for applying blanket word filtering.
+/// </summary>
+public sealed class BlanketFilterRequest
+{
+    /// <summary>
+    /// Gets or sets a single word to filter.
+    /// </summary>
+    public string? Word { get; set; }
+
+    /// <summary>
+    /// Gets or sets multiple words to filter.
+    /// </summary>
+    public List<string>? Words { get; set; }
+
+    /// <summary>
+    /// Gets or sets the language code.
+    /// </summary>
+    public string? Language { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cue action ("mute" or "skip").
+    /// </summary>
+    public string? Action { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to add word to global blanket list.
+    /// </summary>
+    public bool Global { get; set; }
+}
+
+/// <summary>
+/// Request payload for removing word filter cues.
+/// </summary>
+public sealed class RemoveWordFilterRequest
+{
+    /// <summary>
+    /// Gets or sets the word to remove cues for.
+    /// </summary>
+    public string? Word { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to also remove from global blanket list.
+    /// </summary>
+    public bool RemoveFromGlobal { get; set; }
+}
+
+/// <summary>
+/// Request payload for updating the global blanket words list.
+/// </summary>
+public sealed class GlobalBlanketWordsRequest
+{
+    /// <summary>
+    /// Gets or sets the list of words.
+    /// </summary>
+    public List<string>? Words { get; set; }
 }
 

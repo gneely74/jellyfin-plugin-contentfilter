@@ -12,3 +12,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 jcf_output/
+
+# Buy Me a Coffee session & download outputs
+bmc_session.json
+.bmc_session.json
+*.session.json
+thetimestampdudes_posts/
+bmc_posts/

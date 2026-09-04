@@ -23,6 +23,9 @@
     var editorTimeInterval = null;
     var currentActiveTab = 'add';
     var editingCueKey = null; // When non-null, editing an existing cue
+    var subtitleTracks = null;
+    var subtitleWords = null;
+    var selectedSubtitleLanguage = 'eng';
 
     function parseTimecode(tc) {
         if (!tc) return 0;
@@ -373,7 +376,7 @@
                 'left: 50%',
                 'transform: translate(-50%, -50%)',
                 'z-index: 2147483647',
-                'width: 540px',
+                'width: 560px',
                 'max-width: 95vw',
                 'max-height: 88vh',
                 'overflow-y: auto',
@@ -426,9 +429,10 @@
                 '</div>',
 
                 // Navigation Tabs
-                '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">',
+                '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; flex-wrap:wrap;">',
                 '  <button id="cfTabBtnAdd" style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.4); padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">➕ Set Cue Point</button>',
                 '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift All Cues</button>',
+                '  <button id="cfTabBtnWords" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">💬 Subtitle Words (<span id="cfTabWordsCount">0</span>)</button>',
                 '  <button id="cfTabBtnList" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">📋 Active Cues (<span id="cfTabCuesCount">0</span>)</button>',
                 '</div>',
 
@@ -576,7 +580,30 @@
                 '  <div id="cfShiftStatusMsg" style="font-size:12px; color:#10b981; font-weight:600; min-height:16px;"></div>',
                 '</div>',
 
-                // Tab 3: Active Cues List View
+                // Tab 3: Subtitle Words View
+                '<div id="cfTabPaneWords" style="display:none; flex-direction:column; gap:12px;">',
+                '  <div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">',
+                '    <div style="display:flex; align-items:center; gap:8px;">',
+                '      <label style="font-weight:600; color:#cbd5e1; font-size:12px;">Language:</label>',
+                '      <select id="cfSelectSubLanguage" style="background:rgba(15, 23, 42, 0.9); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; padding:5px 8px; border-radius:6px; font-size:12px; max-width:210px;">',
+                '        <option value="eng">English (eng)</option>',
+                '      </select>',
+                '    </div>',
+                '    <div style="display:flex; gap:6px; align-items:center;">',
+                '      <button id="cfBtnScanSubs" style="background:#0284c7; border:none; color:#fff; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:4px;">🔄 Scan Subtitles</button>',
+                '    </div>',
+                '  </div>',
+                '  <div style="display:flex; gap:8px; align-items:center;">',
+                '    <input id="cfInputSearchWords" type="text" placeholder="Search detected words (e.g. bastard, profanity)..." style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:7px 10px; border-radius:8px; font-size:12px; user-select:text;">',
+                '    <button id="cfBtnBlanketVisibleWords" title="Blanket filter all currently visible words" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:7px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px; white-space:nowrap;">⚡ Blanket All</button>',
+                '  </div>',
+                '  <div id="cfWordsStatusMsg" style="font-size:11px; color:#94a3b8; min-height:16px;"></div>',
+                '  <div id="cfWordsListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
+                '    <div style="text-align:center; color:#94a3b8; padding:24px;">Click "Scan Subtitles" to detect filterable words.</div>',
+                '  </div>',
+                '</div>',
+
+                // Tab 4: Active Cues List View
                 '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px;">',
                 '  <div id="cfCuesListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
                 '    <div style="text-align:center; color:#94a3b8; padding:20px;">No cues loaded</div>',
@@ -691,9 +718,11 @@
         // Tabs
         var tabBtnAdd = modal.querySelector('#cfTabBtnAdd');
         var tabBtnShift = modal.querySelector('#cfTabBtnShift');
+        var tabBtnWords = modal.querySelector('#cfTabBtnWords');
         var tabBtnList = modal.querySelector('#cfTabBtnList');
         var paneAdd = modal.querySelector('#cfTabPaneAdd');
         var paneShift = modal.querySelector('#cfTabPaneShift');
+        var paneWords = modal.querySelector('#cfTabPaneWords');
         var paneList = modal.querySelector('#cfTabPaneList');
 
         function switchTab(tab) {
@@ -706,21 +735,29 @@
             tabBtnShift.style.color = tab === 'shift' ? '#38bdf8' : '#94a3b8';
             tabBtnShift.style.borderColor = tab === 'shift' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
 
+            tabBtnWords.style.background = tab === 'words' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
+            tabBtnWords.style.color = tab === 'words' ? '#38bdf8' : '#94a3b8';
+            tabBtnWords.style.borderColor = tab === 'words' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
+
             tabBtnList.style.background = tab === 'list' ? 'rgba(56, 189, 248, 0.2)' : 'transparent';
             tabBtnList.style.color = tab === 'list' ? '#38bdf8' : '#94a3b8';
             tabBtnList.style.borderColor = tab === 'list' ? 'rgba(56, 189, 248, 0.4)' : 'transparent';
 
             paneAdd.style.display = tab === 'add' ? 'flex' : 'none';
             paneShift.style.display = tab === 'shift' ? 'flex' : 'none';
+            paneWords.style.display = tab === 'words' ? 'flex' : 'none';
             paneList.style.display = tab === 'list' ? 'flex' : 'none';
 
-            if (tab === 'list') {
+            if (tab === 'words') {
+                loadAndRenderSubtitleWords(false);
+            } else if (tab === 'list') {
                 renderActiveCuesList();
             }
         }
 
         tabBtnAdd.addEventListener('click', function () { switchTab('add'); });
         tabBtnShift.addEventListener('click', function () { switchTab('shift'); });
+        tabBtnWords.addEventListener('click', function () { switchTab('words'); });
         tabBtnList.addEventListener('click', function () { switchTab('list'); });
 
         // Category dropdown custom trigger
@@ -747,6 +784,28 @@
         isolateInput(descInput);
         isolateInput(shiftInput);
         isolateInput(customCatInput);
+
+        var searchWordsInput = modal.querySelector('#cfInputSearchWords');
+        isolateInput(searchWordsInput);
+        searchWordsInput.addEventListener('input', function () {
+            renderSubtitleWordsList(searchWordsInput.value.trim());
+        });
+
+        var langSelect = modal.querySelector('#cfSelectSubLanguage');
+        langSelect.addEventListener('change', function () {
+            selectedSubtitleLanguage = langSelect.value;
+            loadAndRenderSubtitleWords(true);
+        });
+
+        var scanBtn = modal.querySelector('#cfBtnScanSubs');
+        scanBtn.addEventListener('click', function () {
+            loadAndRenderSubtitleWords(true);
+        });
+
+        var blanketVisibleBtn = modal.querySelector('#cfBtnBlanketVisibleWords');
+        blanketVisibleBtn.addEventListener('click', function () {
+            blanketFilterVisibleWords();
+        });
 
         // Normalize inputs on blur if user typed freeform (e.g. "31:20" -> "00:31:20.000")
         startInput.addEventListener('blur', function () {
@@ -1053,6 +1112,394 @@
         }
     }
 
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadSubtitleTracks() {
+        var client = getApiClient();
+        if (!client || !activeItemId) return Promise.resolve([]);
+        var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/tracks');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        return fetch(url, {
+            headers: { 'X-Emby-Token': token }
+        }).then(function (res) {
+            if (!res.ok) return [];
+            return res.json();
+        }).then(function (tracks) {
+            subtitleTracks = tracks || [];
+            populateLanguageSelector();
+            return subtitleTracks;
+        }).catch(function (e) {
+            console.warn('[ContentFilter] Failed to fetch subtitle tracks:', e);
+            return [];
+        });
+    }
+
+    function populateLanguageSelector() {
+        var modal = ensureEditorModal();
+        var sel = modal.querySelector('#cfSelectSubLanguage');
+        if (!sel) return;
+
+        var tracks = subtitleTracks || [];
+        sel.innerHTML = '';
+
+        if (tracks.length === 0) {
+            var opt = document.createElement('option');
+            opt.value = 'eng';
+            opt.textContent = 'English (eng) [default]';
+            sel.appendChild(opt);
+            return;
+        }
+
+        // Sort: English first
+        var sorted = tracks.slice().sort(function (a, b) {
+            var aIsEng = (a.language || '').toLowerCase().startsWith('en') ? 1 : 0;
+            var bIsEng = (b.language || '').toLowerCase().startsWith('en') ? 1 : 0;
+            return bIsEng - aIsEng;
+        });
+
+        sorted.forEach(function (tr) {
+            var opt = document.createElement('option');
+            opt.value = tr.language || 'eng';
+            var codec = tr.codec ? (' (' + tr.codec + ')') : '';
+            var ext = tr.isExternal ? ' [ext]' : '';
+            opt.textContent = (tr.displayName || tr.language || 'Subtitles') + codec + ext;
+            if (tr.language === selectedSubtitleLanguage) {
+                opt.selected = true;
+            }
+            sel.appendChild(opt);
+        });
+
+        if (!sel.value && sel.options.length > 0) {
+            sel.options[0].selected = true;
+            selectedSubtitleLanguage = sel.value;
+        }
+    }
+
+    function loadAndRenderSubtitleWords(forceRefresh) {
+        var modal = ensureEditorModal();
+        var statusMsg = modal.querySelector('#cfWordsStatusMsg');
+        var container = modal.querySelector('#cfWordsListContainer');
+        var wordsBadge = modal.querySelector('#cfTabWordsCount');
+        var client = getApiClient();
+
+        if (!client || !activeItemId) {
+            if (statusMsg) statusMsg.textContent = 'No active media item.';
+            return;
+        }
+
+        if (!subtitleTracks || forceRefresh) {
+            loadSubtitleTracks();
+        }
+
+        if (subtitleWords && !forceRefresh) {
+            renderSubtitleWordsList(modal.querySelector('#cfInputSearchWords').value.trim());
+            return;
+        }
+
+        if (statusMsg) {
+            statusMsg.style.color = '#38bdf8';
+            statusMsg.textContent = '⏳ Scanning subtitles for ' + selectedSubtitleLanguage + '...';
+        }
+        if (container) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:24px;">Scanning subtitles for filterable words...</div>';
+        }
+
+        var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/words?language=' + encodeURIComponent(selectedSubtitleLanguage));
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            headers: { 'X-Emby-Token': token }
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+        }).then(function (data) {
+            subtitleWords = data;
+            var list = (data && data.words) || [];
+            if (wordsBadge) wordsBadge.textContent = list.length;
+            if (statusMsg) {
+                statusMsg.style.color = '#10b981';
+                statusMsg.textContent = '✅ Found ' + list.length + ' filterable word(s) (' + (data.totalProfanities || 0) + ' total occurrences)';
+            }
+            renderSubtitleWordsList(modal.querySelector('#cfInputSearchWords').value.trim());
+        }).catch(function (err) {
+            if (statusMsg) {
+                statusMsg.style.color = '#ef4444';
+                statusMsg.textContent = 'Scan failed: ' + err.message;
+            }
+            if (container) {
+                container.innerHTML = '<div style="text-align:center; color:#ef4444; padding:20px;">Could not extract subtitles for this item.<br><span style="font-size:11px; color:#94a3b8;">Ensure media has embedded or external subtitles in ' + selectedSubtitleLanguage + '.</span></div>';
+            }
+        });
+    }
+
+    function renderSubtitleWordsList(searchTerm) {
+        var modal = ensureEditorModal();
+        var container = modal.querySelector('#cfWordsListContainer');
+        if (!container) return;
+
+        var groups = (subtitleWords && subtitleWords.words) || [];
+        if (groups.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:24px;">No filterable words found in this subtitle track.</div>';
+            return;
+        }
+
+        var filterLower = (searchTerm || '').toLowerCase();
+        var filteredGroups = groups.filter(function (g) {
+            if (!filterLower) return true;
+            return g.word.toLowerCase().indexOf(filterLower) !== -1 ||
+                   (g.category && g.category.toLowerCase().indexOf(filterLower) !== -1);
+        });
+
+        if (filteredGroups.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">No words match "' + escHtml(searchTerm) + '".</div>';
+            return;
+        }
+
+        container.innerHTML = filteredGroups.map(function (g, gIdx) {
+            var catColor = g.category.indexOf('Slur') !== -1 ? '#ef4444' :
+                           g.category.indexOf('Explicit') !== -1 ? '#ec4899' :
+                           g.category.indexOf('Blasphemy') !== -1 ? '#f59e0b' : '#38bdf8';
+
+            var isFiltered = g.isFiltered;
+            var isGlobal = g.isGlobalBlanket;
+
+            return [
+                '<div class="cf-word-card" data-word="' + escHtml(g.word) + '" style="background:rgba(30, 41, 59, 0.75); border:1px solid ' + (isFiltered ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.08)') + '; border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">',
+                '  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">',
+                '    <div style="display:flex; align-items:center; gap:8px;">',
+                '      <span style="font-size:14px; font-weight:700; color:#f8fafc;">' + escHtml(g.word) + '</span>',
+                '      <span style="font-size:11px; background:rgba(255,255,255,0.1); color:' + catColor + '; padding:2px 7px; border-radius:4px; font-weight:600;">' + escHtml(g.category) + '</span>',
+                '      <span style="font-size:11px; background:rgba(56, 189, 248, 0.15); color:#38bdf8; padding:2px 6px; border-radius:4px; font-weight:700;">' + g.count + 'x</span>',
+                isFiltered ? '      <span style="font-size:11px; background:rgba(16, 185, 129, 0.2); color:#10b981; padding:2px 6px; border-radius:4px; font-weight:600;">✅ Filtered</span>' : '',
+                '    </div>',
+                '    <div style="display:flex; align-items:center; gap:6px;">',
+                '      <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:4px; cursor:pointer; user-select:none;" title="Filter this word across ALL media items">',
+                '        <input type="checkbox" class="cf-word-global-cb" data-word="' + escHtml(g.word) + '" ' + (isGlobal ? 'checked' : '') + '> 🌐 Global',
+                '      </label>',
+                isFiltered
+                    ? ('      <button class="cf-btn-unfilter-word" data-word="' + escHtml(g.word) + '" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">🗑️ Unfilter</button>')
+                    : ('      <button class="cf-btn-blanket-word" data-word="' + escHtml(g.word) + '" style="background:#0284c7; border:none; color:#fff; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">⚡ Blanket Mute</button>'),
+                '      <button class="cf-btn-toggle-occ" data-word-idx="' + gIdx + '" style="background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px;">▼</button>',
+                '    </div>',
+                '  </div>',
+                '  <!-- Occurrences list (hidden by default) -->',
+                '  <div id="cfOccList_' + gIdx + '" style="display:none; flex-direction:column; gap:6px; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; margin-top:2px;">',
+                g.occurrences.map(function (occ) {
+                    var escapedWord = g.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    var highlightedText = escHtml(occ.text).replace(new RegExp('(' + escapedWord + ')', 'gi'), '<strong style="color:#f87171; background:rgba(239,68,68,0.2); padding:1px 3px; border-radius:3px;">$1</strong>');
+                    return [
+                        '    <div style="background:rgba(15, 23, 42, 0.6); border:1px solid rgba(255,255,255,0.05); border-radius:6px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">',
+                        '      <div style="font-size:12px; color:#cbd5e1; line-height:1.4; flex:1;">',
+                        '        <span style="font-family:monospace; color:#38bdf8; font-size:11px; margin-right:6px;">' + escHtml(occ.start) + '</span>',
+                        '        <span>' + highlightedText + '</span>',
+                        '      </div>',
+                        '      <button class="cf-occ-jump-btn" data-sec="' + occ.startSeconds + '" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3); color:#38bdf8; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:11px; white-space:nowrap;">▶ Jump (-1.5s)</button>',
+                        '    </div>'
+                    ].join('');
+                }).join(''),
+                '  </div>',
+                '</div>'
+            ].join('');
+        }).join('');
+
+        // Wire occurrence toggle
+        container.querySelectorAll('.cf-btn-toggle-occ').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var idx = btn.getAttribute('data-word-idx');
+                var occEl = container.querySelector('#cfOccList_' + idx);
+                if (occEl) {
+                    var isShown = occEl.style.display === 'flex';
+                    occEl.style.display = isShown ? 'none' : 'flex';
+                    btn.textContent = isShown ? '▼' : '▲';
+                }
+            });
+        });
+
+        // Wire jump buttons inside occurrences
+        container.querySelectorAll('.cf-occ-jump-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var sec = parseFloat(btn.getAttribute('data-sec')) || 0;
+                if (activeVideo) {
+                    activeVideo.currentTime = Math.max(0, sec - 1.5);
+                    showHud('Jumped to ' + formatTime(Math.max(0, sec - 1.5)), '▶');
+                }
+            });
+        });
+
+        // Wire blanket button
+        container.querySelectorAll('.cf-btn-blanket-word').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var word = btn.getAttribute('data-word');
+                var card = btn.closest('.cf-word-card');
+                var globalCb = card ? card.querySelector('.cf-word-global-cb') : null;
+                var isGlobal = globalCb ? globalCb.checked : false;
+                applyBlanketFilter(word, isGlobal);
+            });
+        });
+
+        // Wire unfilter button
+        container.querySelectorAll('.cf-btn-unfilter-word').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var word = btn.getAttribute('data-word');
+                var card = btn.closest('.cf-word-card');
+                var globalCb = card ? card.querySelector('.cf-word-global-cb') : null;
+                var isGlobal = globalCb ? globalCb.checked : false;
+                removeWordFilter(word, isGlobal);
+            });
+        });
+    }
+
+    function applyBlanketFilter(word, isGlobal) {
+        var client = getApiClient();
+        if (!client || !activeItemId) return;
+
+        var modal = ensureEditorModal();
+        var statusMsg = modal.querySelector('#cfWordsStatusMsg');
+        if (statusMsg) {
+            statusMsg.style.color = '#38bdf8';
+            statusMsg.textContent = 'Applying blanket filter for "' + word + '"...';
+        }
+
+        var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/blanket-filter');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Token': token
+            },
+            body: JSON.stringify({
+                word: word,
+                language: selectedSubtitleLanguage,
+                action: 'mute',
+                global: isGlobal
+            })
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+        }).then(function (data) {
+            showHud('Blanket muted "' + word + '" (' + (data.cuesAdded || 0) + ' cues added)', '⚡');
+            fetchItemFilter(activeItemId).then(function (refreshed) {
+                if (refreshed) activeFilter = refreshed;
+                updateCuesBadge();
+                loadAndRenderSubtitleWords(true);
+            });
+        }).catch(function (err) {
+            if (statusMsg) {
+                statusMsg.style.color = '#ef4444';
+                statusMsg.textContent = 'Blanket filter failed: ' + err.message;
+            }
+        });
+    }
+
+    function removeWordFilter(word, removeFromGlobal) {
+        var client = getApiClient();
+        if (!client || !activeItemId) return;
+
+        var modal = ensureEditorModal();
+        var statusMsg = modal.querySelector('#cfWordsStatusMsg');
+        if (statusMsg) {
+            statusMsg.style.color = '#38bdf8';
+            statusMsg.textContent = 'Removing filter for "' + word + '"...';
+        }
+
+        var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/remove-word-filter');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Token': token
+            },
+            body: JSON.stringify({
+                word: word,
+                removeFromGlobal: removeFromGlobal
+            })
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+        }).then(function (data) {
+            showHud('Removed filter for "' + word + '" (' + (data.cuesRemoved || 0) + ' cues removed)', '🗑️');
+            fetchItemFilter(activeItemId).then(function (refreshed) {
+                if (refreshed) activeFilter = refreshed;
+                updateCuesBadge();
+                loadAndRenderSubtitleWords(true);
+            });
+        }).catch(function (err) {
+            if (statusMsg) {
+                statusMsg.style.color = '#ef4444';
+                statusMsg.textContent = 'Remove failed: ' + err.message;
+            }
+        });
+    }
+
+    function blanketFilterVisibleWords() {
+        var modal = ensureEditorModal();
+        var searchWordsInput = modal.querySelector('#cfInputSearchWords');
+        var searchTerm = searchWordsInput ? searchWordsInput.value.trim().toLowerCase() : '';
+
+        var groups = (subtitleWords && subtitleWords.words) || [];
+        var targets = groups.filter(function (g) {
+            if (g.isFiltered) return false;
+            if (!searchTerm) return true;
+            return g.word.toLowerCase().indexOf(searchTerm) !== -1 ||
+                   (g.category && g.category.toLowerCase().indexOf(searchTerm) !== -1);
+        });
+
+        if (targets.length === 0) {
+            alert('No un-filtered words match the current filter.');
+            return;
+        }
+
+        var wordList = targets.map(function (g) { return g.word; });
+        if (!confirm('Blanket filter all ' + wordList.length + ' visible words in this media item?')) {
+            return;
+        }
+
+        var client = getApiClient();
+        if (!client || !activeItemId) return;
+
+        var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/blanket-filter');
+        var token = client.accessToken ? client.accessToken() : '';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Token': token
+            },
+            body: JSON.stringify({
+                words: wordList,
+                language: selectedSubtitleLanguage,
+                action: 'mute',
+                global: false
+            })
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+        }).then(function (data) {
+            showHud('Blanket filtered ' + wordList.length + ' words (' + (data.cuesAdded || 0) + ' cues added)', '⚡');
+            fetchItemFilter(activeItemId).then(function (refreshed) {
+                if (refreshed) activeFilter = refreshed;
+                updateCuesBadge();
+                loadAndRenderSubtitleWords(true);
+            });
+        }).catch(function (err) {
+            alert('Failed to blanket filter words: ' + err.message);
+        });
+    }
+
     function updateCuesBadge() {
         var count = (activeFilter && activeFilter.cues) ? activeFilter.cues.length : 0;
         var badge = document.querySelector('#cfTabCuesCount');
@@ -1331,6 +1778,8 @@
 
         activeFilter = null;
         activeItemId = null;
+        subtitleTracks = null;
+        subtitleWords = null;
         activeVideo = null;
         isMutedByFilter = false;
         lastSkippedCue = null;

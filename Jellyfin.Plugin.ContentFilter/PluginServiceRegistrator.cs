@@ -22,6 +22,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         });
         serviceCollection.AddSingleton<FilterStore>();
         serviceCollection.AddSingleton<SubtitleFilter>();
+        serviceCollection.AddSingleton<SubtitleWordScanner>();
         serviceCollection.AddSingleton<OllamaClient>();
         // Register VideoScanner as a concrete singleton so ScanController can resolve it directly,
         // then also wire it up as a hosted service using the same instance.

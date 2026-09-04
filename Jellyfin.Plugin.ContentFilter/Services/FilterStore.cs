@@ -236,6 +236,75 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Adds multiple cues to an item's filter in a single batch.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="newCues">The cues to add.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of new cues added.</returns>
+    public async Task<int> AddCuesAsync(Guid itemId, IEnumerable<FilterCue> newCues, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            filter = new JcfFilter
+            {
+                Title = _libraryManager.GetItemById(itemId)?.Name ?? "Filtered Item"
+            };
+        }
+
+        int added = 0;
+        foreach (var cue in newCues)
+        {
+            bool exists = filter.Cues.Any(c =>
+                c.Start == cue.Start &&
+                c.End == cue.End &&
+                c.Action.Equals(cue.Action, StringComparison.OrdinalIgnoreCase));
+
+            if (!exists)
+            {
+                filter.Cues.Add(cue);
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return added;
+    }
+
+    /// <summary>
+    /// Removes cues matching a word description.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="word">The word to remove cues for.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of cues removed.</returns>
+    public async Task<int> RemoveCuesForWordAsync(Guid itemId, string word, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return 0;
+        }
+
+        var removed = filter.Cues.RemoveAll(c =>
+            c.Description?.Contains($"\"{word}\"", StringComparison.OrdinalIgnoreCase) == true ||
+            c.Description?.Equals(word, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (removed > 0)
+        {
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return removed;
+    }
+
+    /// <summary>
     /// Shifts all cues in an item's filter by the specified offset in seconds.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>

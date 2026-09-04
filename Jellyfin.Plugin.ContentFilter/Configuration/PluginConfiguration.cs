@@ -96,4 +96,14 @@ public class PluginConfiguration : BasePluginConfiguration
     /// A value of 0 disables the limit (full scan). Only respected when the server is at debug log level.
     /// </summary>
     public int DebugScanMaxSeconds { get; set; } = 0;
+
+    /// <summary>
+    /// Gets or sets the list of words or phrases that are automatically blanket-filtered across all media items.
+    /// </summary>
+    public List<string> BlanketFilterWords { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the default action applied to subtitle word matches ("mute" or "skip").
+    /// </summary>
+    public string SubtitleWordAction { get; set; } = "mute";
 }
