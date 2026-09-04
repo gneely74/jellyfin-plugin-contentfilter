@@ -13629,7 +13629,391 @@
     "jcf_path": "jcf_database/shows/Game of Thrones/S01E01.jcf",
     "cue_count": 11,
     "categories": [
-      "Violence.Graphic"
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 735,
+    "title": "Game of Thrones S01E03",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 1,
+    "episode": 3,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S01E03.jcf",
+    "cue_count": 2,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 736,
+    "title": "Game of Thrones S01E09",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 1,
+    "episode": 9,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S01E09.jcf",
+    "cue_count": 3,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 737,
+    "title": "Game of Thrones S01E10",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 1,
+    "episode": 10,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S01E10.jcf",
+    "cue_count": 6,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 738,
+    "title": "Game of Thrones S02E04",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 2,
+    "episode": 4,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S02E04.jcf",
+    "cue_count": 4,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 739,
+    "title": "Game of Thrones S02E08",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 2,
+    "episode": 8,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S02E08.jcf",
+    "cue_count": 1,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 740,
+    "title": "Game of Thrones S02E09",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 2,
+    "episode": 9,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S02E09.jcf",
+    "cue_count": 4,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 741,
+    "title": "Game of Thrones S02E10",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 2,
+    "episode": 10,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S02E10.jcf",
+    "cue_count": 2,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 742,
+    "title": "Game of Thrones S03E03",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 3,
+    "episode": 3,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S03E03.jcf",
+    "cue_count": 5,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 743,
+    "title": "Game of Thrones S03E05",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 3,
+    "episode": 5,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S03E05.jcf",
+    "cue_count": 7,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 744,
+    "title": "Game of Thrones S03E07",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 3,
+    "episode": 7,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S03E07.jcf",
+    "cue_count": 9,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 745,
+    "title": "Game of Thrones S03E08",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 3,
+    "episode": 8,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S03E08.jcf",
+    "cue_count": 13,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 746,
+    "title": "Game of Thrones S04E01",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 1,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E01.jcf",
+    "cue_count": 7,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 747,
+    "title": "Game of Thrones S04E04",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 4,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E04.jcf",
+    "cue_count": 2,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 748,
+    "title": "Game of Thrones S04E06",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 6,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E06.jcf",
+    "cue_count": 10,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 749,
+    "title": "Game of Thrones S04E07",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 7,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E07.jcf",
+    "cue_count": 13,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 750,
+    "title": "Game of Thrones S04E08",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 8,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E08.jcf",
+    "cue_count": 8,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 751,
+    "title": "Game of Thrones S04E10",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 4,
+    "episode": 10,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S04E10.jcf",
+    "cue_count": 1,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 752,
+    "title": "Game of Thrones S05E01",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 5,
+    "episode": 1,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S05E01.jcf",
+    "cue_count": 8,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 753,
+    "title": "Game of Thrones S05E03",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 5,
+    "episode": 3,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S05E03.jcf",
+    "cue_count": 10,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 754,
+    "title": "Game of Thrones S05E05",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 5,
+    "episode": 5,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S05E05.jcf",
+    "cue_count": 1,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 755,
+    "title": "Game of Thrones S05E06",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 5,
+    "episode": 6,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S05E06.jcf",
+    "cue_count": 1,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 756,
+    "title": "Game of Thrones S05E07",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 5,
+    "episode": 7,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S05E07.jcf",
+    "cue_count": 13,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 757,
+    "title": "Game of Thrones S06E07",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 6,
+    "episode": 7,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S06E07.jcf",
+    "cue_count": 11,
+    "categories": [
+      "SexAndNudity.FullNudity"
+    ],
+    "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+  },
+  {
+    "id": 758,
+    "title": "Game of Thrones S07E07",
+    "year": 2011,
+    "imdb_id": null,
+    "media_type": "show",
+    "series_name": "Game of Thrones",
+    "season": 7,
+    "episode": 7,
+    "jcf_path": "jcf_database/shows/Game of Thrones/S07E07.jcf",
+    "cue_count": 1,
+    "categories": [
+      "SexAndNudity.FullNudity"
     ],
     "source": "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
   },

@@ -405,7 +405,7 @@ def build_from_game_of_thrones(conn: sqlite3.Connection) -> int:
                 safe_ranges.append((s_ms, e_ms))
 
         skip_cues = rj.invert_safe_ranges(
-            safe_ranges, category="Violence.Graphic", channel="video", action="skip"
+            safe_ranges, category="SexAndNudity.FullNudity", channel="video", action="skip"
         )
         if not skip_cues:
             continue

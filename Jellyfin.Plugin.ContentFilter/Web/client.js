@@ -826,12 +826,19 @@
 
                 '  <div>',
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Custom Offset (seconds, e.g. +3.5 or -2.4):</label>',
-                '    <div style="display:flex; gap:8px;">',
+'  <div style="display:flex; gap:8px;">',
                 '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Apply Shift</button>',
                 '    </div>',
                 '  </div>',
-
+                '',
+                '  <div style="margin-top:4px;">',
+                '    <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">',
+                '      <input type="checkbox" id="cfCheckShiftSubtitles" checked style="cursor:pointer;">',
+                '      <span>Also shift sidecar subtitles (.srt) and sync timing</span>',
+                '    </label>',
+                '  </div>',
+                '',
                 '  <div id="cfShiftStatusMsg" style="font-size:12px; color:#10b981; font-weight:600; min-height:16px;"></div>',
                 '</div>',
 
@@ -1337,21 +1344,38 @@
             }
 
             var targetChannel = (shiftChannelSelect ? shiftChannelSelect.value : 'all') || 'all';
+            var syncSubsCheck = modal.querySelector('#cfCheckShiftSubtitles');
+            var syncSubs = !!(syncSubsCheck && syncSubsCheck.checked);
 
             applyShiftBtn.disabled = true;
             applyShiftBtn.textContent = 'Shifting ' + targetChannel + '...';
 
-            var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/offset');
             var token = client.accessToken ? client.accessToken() : '';
+            var shiftPromise;
 
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Emby-Token': token
-                },
-                body: JSON.stringify({ offsetSeconds: sec, channel: targetChannel })
-            }).then(function (res) {
+            if (syncSubs && targetChannel === 'all') {
+                var url = client.getUrl('ContentFilter/subtitles/' + activeItemId + '/shift');
+                shiftPromise = fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': token
+                    },
+                    body: JSON.stringify({ offsetSeconds: sec })
+                });
+            } else {
+                var url = client.getUrl('ContentFilter/filters/' + activeItemId + '/segments/offset');
+                shiftPromise = fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': token
+                    },
+                    body: JSON.stringify({ offsetSeconds: sec, channel: targetChannel })
+                });
+            }
+
+            shiftPromise.then(function (res) {
                 applyShiftBtn.disabled = false;
                 applyShiftBtn.textContent = '⚡ Apply Shift';
 
@@ -1365,7 +1389,7 @@
                 var count = data.shiftedCues !== undefined ? data.shiftedCues : (data.totalCues || 0);
 
                 shiftStatus.style.color = '#10b981';
-                shiftStatus.textContent = '✅ Shifted ' + count + ' ' + channelLabel + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's!';
+                shiftStatus.textContent = '✅ Shifted ' + count + ' ' + channelLabel + ' cues by ' + (sec > 0 ? '+' : '') + sec + 's!' + (syncSubs ? ' (Subtitles synced)' : '');
 
                 fetchItemFilter(activeItemId).then(function (refreshed) {
                     if (refreshed) activeFilter = refreshed;

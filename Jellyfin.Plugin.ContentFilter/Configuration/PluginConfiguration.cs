@@ -112,4 +112,30 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the default action applied to subtitle word matches ("mute" or "skip").
     /// </summary>
     public string SubtitleWordAction { get; set; } = "mute";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether automated subtitle downloading from remote providers is enabled.
+    /// Acts as a kill-switch: when disabled, the sync service will only process local or embedded subtitles without fetching remote files.
+    /// </summary>
+    public bool AutoDownloadSubtitles { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the target language for subtitle downloading (ISO 639-1 or ISO 639-2, or "default" to use Jellyfin server preferred language).
+    /// </summary>
+    public string SubtitleDownloadLanguage { get; set; } = "default";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to overwrite existing clean subtitle files during sync runs.
+    /// </summary>
+    public bool OverwriteExistingCleanSubtitles { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to auto-generate mute cues from detected profanity words in subtitles.
+    /// </summary>
+    public bool AutoMuteProfanityFromSubtitles { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to set generated clean subtitles as the default track.
+    /// </summary>
+    public bool SetSubtitlesAsDefault { get; set; } = true;
 }

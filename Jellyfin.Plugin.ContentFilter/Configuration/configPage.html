@@ -1635,6 +1635,48 @@
                                     <button id="studioBlanketAllBtn" class="cf-btn cf-btn-sm cf-btn-warning" type="button" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; font-weight:700;">⚡ Blanket Filter All</button>
                                 </div>
 
+                                <!-- Subtitle Timing & Edition Override Panel -->
+                                <div id="studioSubOverridePanel" style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+                                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <span style="font-weight:700; font-size:13px; color:var(--cf-text-main);">⏱️ Subtitle Timing & Edition Override</span>
+                                            <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cf-text-muted); cursor:pointer; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:6px; border:1px solid var(--cf-border);">
+                                                <input id="studioSubLockCheckbox" type="checkbox" style="cursor:pointer;">
+                                                <span title="When locked, automated sync will never overwrite this item's subtitle or timing">🔒 Lock Subtitle (Protect from Auto-Sync)</span>
+                                            </label>
+                                            <span id="studioSubLockBadge" class="cf-pill cf-pill-gray" style="display:none; font-size:11px;">🔒 Locked</span>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button id="studioSearchRemoteSubsBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.4); color:#38bdf8; font-weight:600;">
+                                                🌐 Search Remote Subtitles...
+                                            </button>
+                                            <button id="studioUploadSrtBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(255, 255, 255, 0.08); border:1px solid var(--cf-border); color:var(--cf-text-main);">
+                                                📤 Upload Custom .srt
+                                            </button>
+                                            <input id="studioUploadSrtInput" type="file" accept=".srt" style="display:none;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Time Shift Row -->
+                                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px;">
+                                        <span style="font-weight:600; color:var(--cf-text-dim);">Time Offset:</span>
+                                        <div style="display:flex; gap:4px;">
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-5.0" type="button">-5s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-1.0" type="button">-1s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="-0.2" type="button">-0.2s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="0.2" type="button">+0.2s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="1.0" type="button">+1s</button>
+                                            <button class="cf-btn cf-btn-sm cf-btn-shift-nudge" data-nudge="5.0" type="button">+5s</button>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input id="studioSubOffsetInput" type="number" step="0.1" value="0.0" style="width:75px; background:var(--cf-bg-input); border:1px solid var(--cf-border); color:var(--cf-text); border-radius:6px; padding:4px 8px; font-size:12px;">
+                                            <span style="color:var(--cf-text-muted);">seconds</span>
+                                            <button id="studioApplyShiftBtn" class="cf-btn cf-btn-sm cf-btn-primary" type="button">⚡ Apply Shift & Sync Cues</button>
+                                        </div>
+                                        <span id="studioSubShiftStatus" style="font-size:11px; margin-left:auto; min-height:14px;"></span>
+                                    </div>
+                                </div>
+
                                 <div id="studioCleanSubStatusBanner" style="font-size:12px; padding:8px 12px; border-radius:8px; display:none; border:1px solid rgba(255,255,255,0.08);"></div>
                                 <div id="studioWordsStatus" style="font-size:12px; color:var(--cf-text-dim); min-height:16px;"></div>
 
@@ -1739,6 +1781,12 @@
                                 <label for="shiftOffsetSec">Offset (seconds, e.g. +2.5 or -1.2)</label>
                                 <input type="number" step="0.1" id="shiftOffsetSec" placeholder="0.0" value="0.0" required>
                             </div>
+                            <div class="cf-form-row" style="margin-top:6px;">
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:normal;">
+                                    <input type="checkbox" id="shiftSyncSubtitles" checked style="cursor:pointer;">
+                                    <span>Also shift sidecar subtitles (.srt) and sync timing</span>
+                                </label>
+                            </div>
                             <div id="shiftModalStatus" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
                             <div class="cf-modal-footer">
                                 <button id="cancelShiftModalBtn" class="cf-btn" type="button">Cancel</button>
@@ -1776,6 +1824,50 @@
                                 <button id="confirmDeleteSidecarsBtn" type="button" class="cf-btn" style="background:var(--cf-red); color:#fff; border-color:var(--cf-red);" disabled>
                                     🗑️ Permanently Delete Sidecars
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remote Subtitle Search Modal -->
+                    <div id="remoteSubModal" class="cf-modal-overlay" style="display:none;">
+                        <div class="cf-modal" style="max-width:760px; width:92%;">
+                            <div class="cf-modal-hdr">
+                                <h3 class="cf-modal-title">🌐 Search Remote Subtitles</h3>
+                                <button id="closeRemoteSubModalBtn" class="cf-del-btn" type="button">✕</button>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:12px; padding:4px 0;">
+                                <div style="font-size:12px; color:var(--cf-text-muted); line-height:1.4;">
+                                    Query installed Jellyfin subtitle providers (e.g. OpenSubtitles) to find subtitle editions that match this video release.
+                                </div>
+                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                    <label style="font-weight:600; font-size:12px; color:var(--cf-text-dim);">Language:</label>
+                                    <input id="remoteSubLangInput" type="text" value="eng" class="cf-field-input" style="width:90px; padding:6px 10px; font-size:12px;" placeholder="eng">
+                                    <button id="executeRemoteSearchBtn" class="cf-btn cf-btn-primary cf-btn-sm" type="button">🔍 Search Providers</button>
+                                    <span id="remoteSubSearchStatus" style="font-size:12px; color:var(--cf-text-dim);"></span>
+                                </div>
+                                <div class="cf-table-container" style="max-height:360px; overflow-y:auto; border:1px solid var(--cf-border); border-radius:8px;">
+                                    <table class="cf-table" style="font-size:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Release / Subtitle Name</th>
+                                                <th style="width:110px;">Provider</th>
+                                                <th style="width:70px;">Format</th>
+                                                <th style="width:90px;">Rating/DL</th>
+                                                <th style="width:130px; text-align:center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="remoteSubResultsTbody">
+                                            <tr>
+                                                <td colspan="5" style="text-align:center; color:var(--cf-text-dim); padding:28px;">
+                                                    Click "Search Providers" to find matching subtitles.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="cf-modal-footer" style="margin-top:14px;">
+                                <button id="closeRemoteSubModalBtn2" class="cf-btn" type="button">Close</button>
                             </div>
                         </div>
                     </div>
@@ -1883,6 +1975,81 @@
                             <input id="ScanAnalyzeAudio" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                             <span>Analyze Audio Transcript & Subtitle Streams</span>
                         </label>
+                    </div>
+
+                    <!-- Automated Subtitle Downloader & Cleaner -->
+                    <div class="cf-settings-card">
+                        <h3 class="cf-settings-card-title">💬 Automated Subtitle Downloader & Cleaner</h3>
+                        <div class="cf-settings-card-desc">
+                            Automatically search, download, clean, and set default subtitles across your media libraries.
+                        </div>
+
+                        <label class="cf-checkbox-row" style="margin-top:8px; margin-bottom:6px;">
+                            <input id="AutoDownloadSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                            <span style="font-weight:600;">Enable Automated Remote Subtitle Downloads</span>
+                        </label>
+                        <div class="cf-field-helper" style="margin-bottom:14px;">
+                            When enabled, queries configured Jellyfin subtitle providers (e.g. OpenSubtitles) for missing subtitles during automated sync. 
+                            When disabled, the automated sync will only clean and standardize existing local/embedded subtitles without querying remote providers.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:14px;">
+                            <div class="cf-field-group" style="margin-bottom:0;">
+                                <label class="cf-field-label" for="SubtitleDownloadLanguage">Target Subtitle Language</label>
+                                <input id="SubtitleDownloadLanguage" type="text" class="cf-field-input" placeholder="default (or eng, spa, fre)">
+                                <div class="cf-field-helper">Language code for downloads (leave as "default" to match Jellyfin server language).</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+                            <label class="cf-checkbox-row">
+                                <input id="SetSubtitlesAsDefault" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Set cleaned subtitles as default for all users</span>
+                            </label>
+                            <label class="cf-checkbox-row">
+                                <input id="AutoMuteProfanityFromSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Automatically generate audio mute cues for profanity found in subtitles</span>
+                            </label>
+                            <label class="cf-checkbox-row">
+                                <input id="OverwriteExistingCleanSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Force overwrite existing clean subtitles during automated runs (skips locked items)</span>
+                            </label>
+                        </div>
+
+                        <!-- On-Demand Sync Box -->
+                        <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-top:10px;">
+                            <div style="font-weight:600; font-size:0.95rem; margin-bottom:4px; color:var(--cf-text-main);">⚡ On-Demand Library Sync</div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-muted); margin-bottom:12px;">
+                                Kick off subtitle download and cleaning across all movies and TV shows now, or monitor scheduled daily runs.
+                            </div>
+
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
+                                <button id="runSubSyncBtn" class="cf-btn cf-btn-primary" type="button">
+                                    ▶️ Run Subtitle Sync Now
+                                </button>
+                                <button id="cancelSubSyncBtn" class="cf-btn" style="display:none; border-color:var(--cf-red); color:var(--cf-red);" type="button">
+                                    ⏹ Cancel Sync
+                                </button>
+                                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cf-text-muted); cursor:pointer;">
+                                    <input id="subSyncForceCheckbox" type="checkbox" style="cursor:pointer;">
+                                    <span>Force re-process all items (ignore existing)</span>
+                                </label>
+                            </div>
+
+                            <div id="subSyncProgressContainer" style="display:none; flex-direction:column; gap:8px;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                                    <span id="subSyncStatusText" style="font-weight:600; color:var(--cf-accent);">Syncing subtitles...</span>
+                                    <span id="subSyncPercentText" style="font-weight:700;">0%</span>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:8px; overflow:hidden;">
+                                    <div id="subSyncProgressBar" style="background:var(--cf-accent); height:100%; width:0%; transition:width 0.3s ease;"></div>
+                                </div>
+                                <div id="subSyncStatsText" style="font-size:11px; color:var(--cf-text-muted);">
+                                    Processed: 0 / 0 | Downloaded: 0 | Cleaned: 0 | Skipped: 0 | Errors: 0
+                                </div>
+                                <div id="subSyncLogs" style="font-size:11px; font-family:monospace; background:rgba(0,0,0,0.3); border-radius:4px; padding:6px 10px; max-height:80px; overflow-y:auto; color:var(--cf-text-dim);"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="cf-settings-card">
@@ -2177,6 +2344,11 @@
                 if (getEl('ScanAnalyzeAudio')) getEl('ScanAnalyzeAudio').checked = !!config.ScanAnalyzeAudio;
                 if (getEl('DebugScanMaxSeconds')) getEl('DebugScanMaxSeconds').value = config.DebugScanMaxSeconds ?? 0;
                 if (getEl('SaveSidecarsToDisk')) getEl('SaveSidecarsToDisk').checked = !!config.SaveSidecarsToDisk;
+                if (getEl('AutoDownloadSubtitles')) getEl('AutoDownloadSubtitles').checked = config.AutoDownloadSubtitles !== false;
+                if (getEl('SubtitleDownloadLanguage')) getEl('SubtitleDownloadLanguage').value = config.SubtitleDownloadLanguage || 'default';
+                if (getEl('OverwriteExistingCleanSubtitles')) getEl('OverwriteExistingCleanSubtitles').checked = !!config.OverwriteExistingCleanSubtitles;
+                if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
+                if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
 
                 var disabled = new Set(config.DisabledFilterItems || []);
 
@@ -2217,6 +2389,11 @@
                 if (getEl('ScanAnalyzeAudio')) config.ScanAnalyzeAudio = getEl('ScanAnalyzeAudio').checked;
                 if (getEl('DebugScanMaxSeconds')) config.DebugScanMaxSeconds = parseInt(getEl('DebugScanMaxSeconds').value || '0', 10);
                 if (getEl('SaveSidecarsToDisk')) config.SaveSidecarsToDisk = getEl('SaveSidecarsToDisk').checked;
+                if (getEl('AutoDownloadSubtitles')) config.AutoDownloadSubtitles = getEl('AutoDownloadSubtitles').checked;
+                if (getEl('SubtitleDownloadLanguage')) config.SubtitleDownloadLanguage = getEl('SubtitleDownloadLanguage').value || 'default';
+                if (getEl('OverwriteExistingCleanSubtitles')) config.OverwriteExistingCleanSubtitles = getEl('OverwriteExistingCleanSubtitles').checked;
+                if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
+                if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
 
                 var disabled = [];
                 FH.forEach(function(gDef) {
@@ -2717,6 +2894,7 @@
                 studioSubtitleWords = null;
                 loadFilterDetails(itemId);
                 refreshScanStatus(itemId);
+                loadStudioSubtitleOverride(itemId);
             }
 
             function loadFilterDetails(itemId) {
@@ -2940,6 +3118,7 @@
                 document.getElementById('itemTabWordsPane').style.display = 'flex';
                 loadStudioSubtitleWords(false);
                 checkStudioCleanSubStatus();
+                loadStudioSubtitleOverride(activeItemId);
             });
 
             document.getElementById('studioSubLangSelect').addEventListener('change', function() {
@@ -3011,6 +3190,470 @@
                     }
                 });
             });
+
+            // --- Subtitle Timing & Edition Override Logic ---
+            function loadStudioSubtitleOverride(itemId) {
+                if (!itemId) return;
+                var lockCb = document.getElementById('studioSubLockCheckbox');
+                var lockBadge = document.getElementById('studioSubLockBadge');
+                var offsetInput = document.getElementById('studioSubOffsetInput');
+                var shiftStatus = document.getElementById('studioSubShiftStatus');
+                if (shiftStatus) shiftStatus.textContent = '';
+
+                fetch(apiUrl('ContentFilter/subtitles/' + itemId + '/override'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) return null;
+                    return res.json();
+                }).then(function(info) {
+                    if (!info) return;
+                    if (lockCb) lockCb.checked = !!(info.isLocked || info.IsLocked);
+                    var isLocked = !!(info.isLocked || info.IsLocked);
+                    if (lockBadge) lockBadge.style.display = isLocked ? 'inline-block' : 'none';
+                    var off = info.offsetSeconds !== undefined ? info.offsetSeconds : (info.OffsetSeconds !== undefined ? info.OffsetSeconds : 0.0);
+                    if (offsetInput) offsetInput.value = off;
+                }).catch(function(err) {
+                    console.warn('Could not load subtitle override:', err);
+                });
+            }
+
+            var studioSubLockCheckbox = document.getElementById('studioSubLockCheckbox');
+            if (studioSubLockCheckbox) {
+                studioSubLockCheckbox.addEventListener('change', function() {
+                    if (!activeItemId) return;
+                    var locked = studioSubLockCheckbox.checked;
+                    var lockBadge = document.getElementById('studioSubLockBadge');
+                    fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/lock'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Emby-Token': ApiClient.accessToken()
+                        },
+                        body: JSON.stringify({ isLocked: locked })
+                    }).then(function(res) {
+                        if (!res.ok) throw new Error('Status ' + res.status);
+                        return res.json();
+                    }).then(function() {
+                        if (lockBadge) lockBadge.style.display = locked ? 'inline-block' : 'none';
+                        if (typeof showToast === 'function') {
+                            showToast(locked ? '🔒 Subtitle locked against auto-sync' : '🔓 Subtitle unlocked');
+                        }
+                    }).catch(function(err) {
+                        alert('Failed to update subtitle lock: ' + err.message);
+                    });
+                });
+            }
+
+            function applyStudioSubtitleShift(delta) {
+                if (!activeItemId) return;
+                var offsetInput = document.getElementById('studioSubOffsetInput');
+                var shiftStatus = document.getElementById('studioSubShiftStatus');
+                var applyBtn = document.getElementById('studioApplyShiftBtn');
+
+                var currentOffset = parseFloat(offsetInput.value) || 0;
+                var newOffset = delta !== undefined ? (currentOffset + delta) : currentOffset;
+                newOffset = Math.round(newOffset * 10) / 10;
+                offsetInput.value = newOffset;
+
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.textContent = '⏳ Shifting...';
+                }
+                if (shiftStatus) {
+                    shiftStatus.style.color = 'var(--cf-accent)';
+                    shiftStatus.textContent = 'Applying time offset and realigning cues...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/shift'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({ offsetSeconds: newOffset })
+                }).then(function(res) {
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '⚡ Apply Shift & Sync Cues';
+                    }
+                    if (!res.ok) throw new Error('Status ' + res.status);
+                    return res.json();
+                }).then(function() {
+                    if (shiftStatus) {
+                        shiftStatus.style.color = '#34d399';
+                        shiftStatus.textContent = '✅ Subtitle & cues shifted by ' + (newOffset > 0 ? '+' : '') + newOffset + 's!';
+                        setTimeout(function() { if (shiftStatus) shiftStatus.textContent = ''; }, 4000);
+                    }
+                    loadFilterDetails(activeItemId);
+                    loadStudioSubtitleWords(true);
+                    checkStudioCleanSubStatus();
+                    loadStudioSubtitleOverride(activeItemId);
+                }).catch(function(err) {
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '⚡ Apply Shift & Sync Cues';
+                    }
+                    if (shiftStatus) {
+                        shiftStatus.style.color = '#f87171';
+                        shiftStatus.textContent = 'Shift failed: ' + err.message;
+                    }
+                });
+            }
+
+            var studioApplyShiftBtn = document.getElementById('studioApplyShiftBtn');
+            if (studioApplyShiftBtn) {
+                studioApplyShiftBtn.addEventListener('click', function() {
+                    applyStudioSubtitleShift();
+                });
+            }
+
+            document.querySelectorAll('.cf-btn-shift-nudge').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var nudge = parseFloat(btn.getAttribute('data-nudge')) || 0;
+                    applyStudioSubtitleShift(nudge);
+                });
+            });
+
+            // Remote Subtitle Search Modal Logic
+            var remoteSubModal = document.getElementById('remoteSubModal');
+            var studioSearchRemoteSubsBtn = document.getElementById('studioSearchRemoteSubsBtn');
+            var closeRemoteSubModalBtn = document.getElementById('closeRemoteSubModalBtn');
+            var closeRemoteSubModalBtn2 = document.getElementById('closeRemoteSubModalBtn2');
+            var executeRemoteSearchBtn = document.getElementById('executeRemoteSearchBtn');
+            var remoteSubLangInput = document.getElementById('remoteSubLangInput');
+            var remoteSubSearchStatus = document.getElementById('remoteSubSearchStatus');
+            var remoteSubResultsTbody = document.getElementById('remoteSubResultsTbody');
+
+            function openRemoteSubModal() {
+                if (!activeItemId || !remoteSubModal) return;
+                if (remoteSubLangInput) remoteSubLangInput.value = studioSelectedLanguage || 'eng';
+                remoteSubModal.style.display = 'flex';
+                searchRemoteSubtitles();
+            }
+
+            function closeRemoteSubModal() {
+                if (remoteSubModal) remoteSubModal.style.display = 'none';
+            }
+
+            if (studioSearchRemoteSubsBtn) studioSearchRemoteSubsBtn.addEventListener('click', openRemoteSubModal);
+            if (closeRemoteSubModalBtn) closeRemoteSubModalBtn.addEventListener('click', closeRemoteSubModal);
+            if (closeRemoteSubModalBtn2) closeRemoteSubModalBtn2.addEventListener('click', closeRemoteSubModal);
+            if (executeRemoteSearchBtn) executeRemoteSearchBtn.addEventListener('click', searchRemoteSubtitles);
+
+            function searchRemoteSubtitles() {
+                if (!activeItemId) return;
+                var lang = (remoteSubLangInput ? remoteSubLangInput.value.trim() : '') || 'eng';
+                if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = 'Searching remote providers...';
+                if (remoteSubResultsTbody) {
+                    remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--cf-text-dim);">🔍 Searching providers for subtitles...</td></tr>';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/remote-search?language=' + encodeURIComponent(lang)), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) throw new Error('Status ' + res.status);
+                    return res.json();
+                }).then(function(results) {
+                    if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = results.length + ' candidates found.';
+                    renderRemoteSubResults(results);
+                }).catch(function(err) {
+                    if (remoteSubSearchStatus) remoteSubSearchStatus.textContent = 'Search failed: ' + err.message;
+                    if (remoteSubResultsTbody) {
+                        remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--cf-red);">Failed to query remote subtitle providers: ' + esc(err.message) + '</td></tr>';
+                    }
+                });
+            }
+
+            function renderRemoteSubResults(results) {
+                if (!remoteSubResultsTbody) return;
+                remoteSubResultsTbody.innerHTML = '';
+                if (!results || results.length === 0) {
+                    remoteSubResultsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:28px; color:var(--cf-text-dim);">No matching subtitles found from configured providers.</td></tr>';
+                    return;
+                }
+
+                results.forEach(function(sub) {
+                    var tr = document.createElement('tr');
+
+                    var nameTd = document.createElement('td');
+                    nameTd.style.fontWeight = '600';
+                    var hashBadge = sub.isHashMatch || sub.IsHashMatch ? ' <span class="cf-pill cf-pill-green" style="font-size:10px;">Hash Match</span>' : '';
+                    var hiBadge = sub.isHearingImpaired || sub.IsHearingImpaired ? ' <span class="cf-pill cf-pill-blue" style="font-size:10px;">CC</span>' : '';
+                    nameTd.innerHTML = esc(sub.name || sub.Name || 'Unnamed Release') + hashBadge + hiBadge;
+
+                    var provTd = document.createElement('td');
+                    provTd.textContent = sub.providerName || sub.ProviderName || 'Provider';
+
+                    var fmtTd = document.createElement('td');
+                    fmtTd.textContent = (sub.format || sub.Format || 'srt').toUpperCase();
+
+                    var rateTd = document.createElement('td');
+                    var dl = sub.downloadCount ?? sub.DownloadCount;
+                    var rating = sub.communityRating ?? sub.CommunityRating;
+                    var rateText = [];
+                    if (rating !== null && rating !== undefined) rateText.push('★ ' + rating);
+                    if (dl !== null && dl !== undefined) rateText.push('↓ ' + dl);
+                    rateTd.textContent = rateText.join(' ') || '-';
+
+                    var actTd = document.createElement('td');
+                    actTd.style.textAlign = 'center';
+                    var dlBtn = document.createElement('button');
+                    dlBtn.type = 'button';
+                    dlBtn.className = 'cf-btn cf-btn-sm cf-btn-primary';
+                    dlBtn.textContent = '⬇ Download';
+                    dlBtn.addEventListener('click', function() {
+                        dlBtn.disabled = true;
+                        dlBtn.textContent = '⏳ Downloading...';
+                        var subId = sub.id || sub.Id;
+                        fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/remote-download'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Emby-Token': ApiClient.accessToken()
+                            },
+                            body: JSON.stringify({ subtitleId: subId })
+                        }).then(function(res) {
+                            if (!res.ok) throw new Error('Status ' + res.status);
+                            return res.json();
+                        }).then(function() {
+                            closeRemoteSubModal();
+                            if (typeof showToast === 'function') showToast('Subtitle downloaded, cleaned, and set as default!');
+                            loadStudioSubtitleWords(true);
+                            checkStudioCleanSubStatus();
+                            loadStudioSubtitleOverride(activeItemId);
+                        }).catch(function(err) {
+                            dlBtn.disabled = false;
+                            dlBtn.textContent = '⬇ Download';
+                            alert('Download failed: ' + err.message);
+                        });
+                    });
+                    actTd.appendChild(dlBtn);
+
+                    tr.appendChild(nameTd);
+                    tr.appendChild(provTd);
+                    tr.appendChild(fmtTd);
+                    tr.appendChild(rateTd);
+                    tr.appendChild(actTd);
+                    remoteSubResultsTbody.appendChild(tr);
+                });
+            }
+
+            // Custom SRT Upload Logic
+            var studioUploadSrtBtn = document.getElementById('studioUploadSrtBtn');
+            var studioUploadSrtInput = document.getElementById('studioUploadSrtInput');
+            if (studioUploadSrtBtn && studioUploadSrtInput) {
+                studioUploadSrtBtn.addEventListener('click', function() {
+                    studioUploadSrtInput.click();
+                });
+
+                studioUploadSrtInput.addEventListener('change', function(e) {
+                    var file = e.target.files && e.target.files[0];
+                    if (!file || !activeItemId) return;
+
+                    var reader = new FileReader();
+                    reader.onload = function(evt) {
+                        var text = evt.target.result;
+                        if (!text) return;
+
+                        studioUploadSrtBtn.disabled = true;
+                        studioUploadSrtBtn.textContent = '⏳ Uploading...';
+
+                        fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/upload'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'text/plain; charset=utf-8',
+                                'X-Emby-Token': ApiClient.accessToken()
+                            },
+                            body: text
+                        }).then(function(res) {
+                            studioUploadSrtBtn.disabled = false;
+                            studioUploadSrtBtn.textContent = '📤 Upload Custom .srt';
+                            if (!res.ok) throw new Error('Status ' + res.status);
+                            return res.json();
+                        }).then(function() {
+                            if (typeof showToast === 'function') showToast('Custom subtitle uploaded, cleaned, and locked!');
+                            loadStudioSubtitleWords(true);
+                            checkStudioCleanSubStatus();
+                            loadStudioSubtitleOverride(activeItemId);
+                        }).catch(function(err) {
+                            studioUploadSrtBtn.disabled = false;
+                            studioUploadSrtBtn.textContent = '📤 Upload Custom .srt';
+                            alert('Upload failed: ' + err.message);
+                        });
+                    };
+                    reader.readAsText(file);
+                    studioUploadSrtInput.value = '';
+                });
+            }
+
+            // --- Automated Subtitle Library Sync Controller ---
+            var subSyncPollTimer = null;
+
+            function startSubtitleSync() {
+                var forceAll = !!(document.getElementById('subSyncForceCheckbox') && document.getElementById('subSyncForceCheckbox').checked);
+                var langInput = document.getElementById('SubtitleDownloadLanguage');
+                var lang = (langInput ? langInput.value.trim() : '') || 'default';
+
+                var runBtn = document.getElementById('runSubSyncBtn');
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                var progContainer = document.getElementById('subSyncProgressContainer');
+
+                if (runBtn) {
+                    runBtn.disabled = true;
+                    runBtn.textContent = '⏳ Starting...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/start'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({ forceAll: forceAll, language: lang })
+                }).then(function(res) {
+                    if (!res.ok && res.status !== 409) throw new Error('Server returned ' + res.status);
+                    return res.json();
+                }).then(function(status) {
+                    if (runBtn) {
+                        runBtn.disabled = true;
+                        runBtn.textContent = '▶️ Subtitle Sync Active';
+                    }
+                    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                    if (progContainer) progContainer.style.display = 'flex';
+                    updateSubtitleSyncUI(status);
+                    pollSubtitleSyncStatus();
+                }).catch(function(err) {
+                    if (runBtn) {
+                        runBtn.disabled = false;
+                        runBtn.textContent = '▶️ Run Subtitle Sync Now';
+                    }
+                    alert('Could not start subtitle sync: ' + err.message);
+                });
+            }
+
+            function cancelSubtitleSync() {
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                if (cancelBtn) {
+                    cancelBtn.disabled = true;
+                    cancelBtn.textContent = '⏳ Cancelling...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/cancel'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function() {
+                    // next poll will report state Cancelled
+                }).catch(function(err) {
+                    console.warn('Cancel failed:', err);
+                });
+            }
+
+            function pollSubtitleSyncStatus() {
+                if (subSyncPollTimer) clearTimeout(subSyncPollTimer);
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/status'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    if (!res.ok) return null;
+                    return res.json();
+                }).then(function(status) {
+                    if (!status) return;
+                    updateSubtitleSyncUI(status);
+
+                    var state = (status.state || status.State || '').toLowerCase();
+                    var isRunning = status.isRunning || status.IsRunning || state === 'running';
+
+                    if (isRunning) {
+                        var runBtn = document.getElementById('runSubSyncBtn');
+                        var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                        if (runBtn) {
+                            runBtn.disabled = true;
+                            runBtn.textContent = '▶️ Subtitle Sync Active';
+                        }
+                        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                        subSyncPollTimer = setTimeout(pollSubtitleSyncStatus, 1000);
+                    } else {
+                        onSubtitleSyncFinished(status);
+                    }
+                }).catch(function(err) {
+                    console.warn('Failed to poll subtitle sync status', err);
+                });
+            }
+
+            function updateSubtitleSyncUI(status) {
+                if (!status) return;
+                var progContainer = document.getElementById('subSyncProgressContainer');
+                var statusText = document.getElementById('subSyncStatusText');
+                var percentText = document.getElementById('subSyncPercentText');
+                var progBar = document.getElementById('subSyncProgressBar');
+                var statsText = document.getElementById('subSyncStatsText');
+                var logsEl = document.getElementById('subSyncLogs');
+
+                if (progContainer) progContainer.style.display = 'flex';
+
+                var pct = Math.round(status.progressPercentage ?? status.ProgressPercentage ?? 0);
+                var itemName = status.currentItemName || status.CurrentItemName || '';
+                var processed = status.processedItems ?? status.ProcessedItems ?? 0;
+                var total = status.totalItems ?? status.TotalItems ?? 0;
+                var dl = status.subtitlesDownloaded ?? status.SubtitlesDownloaded ?? 0;
+                var cleaned = status.subtitlesCleaned ?? status.SubtitlesCleaned ?? 0;
+                var skipped = status.subtitlesSkipped ?? status.SubtitlesSkipped ?? 0;
+                var errors = status.errorCount ?? status.ErrorCount ?? 0;
+                var state = (status.state || status.State || 'Idle');
+
+                if (progBar) progBar.style.width = pct + '%';
+                if (percentText) percentText.textContent = pct + '%';
+
+                if (statusText) {
+                    if (state === 'Running') {
+                        statusText.textContent = itemName ? ('Processing: ' + itemName + ' (' + processed + '/' + total + ')') : 'Scanning libraries...';
+                        statusText.style.color = 'var(--cf-accent)';
+                    } else if (state === 'Completed') {
+                        statusText.textContent = '✅ Subtitle sync completed!';
+                        statusText.style.color = '#34d399';
+                    } else if (state === 'Cancelled') {
+                        statusText.textContent = '⏹ Subtitle sync cancelled';
+                        statusText.style.color = 'var(--cf-text-muted)';
+                    } else if (state === 'Error') {
+                        statusText.textContent = '❌ Subtitle sync encountered errors';
+                        statusText.style.color = '#f87171';
+                    }
+                }
+
+                if (statsText) {
+                    statsText.textContent = 'Processed: ' + processed + ' / ' + total +
+                        ' | Downloaded: ' + dl +
+                        ' | Cleaned: ' + cleaned +
+                        ' | Skipped: ' + skipped +
+                        ' | Errors: ' + errors;
+                }
+
+                if (logsEl) {
+                    var logs = status.recentLogs || status.RecentLogs || [];
+                    logsEl.innerHTML = logs.map(function(l) { return esc(l); }).join('<br>');
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+            }
+
+            function onSubtitleSyncFinished(status) {
+                var runBtn = document.getElementById('runSubSyncBtn');
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                if (runBtn) {
+                    runBtn.disabled = false;
+                    runBtn.textContent = '▶️ Run Subtitle Sync Now';
+                }
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.style.display = 'none';
+                    cancelBtn.textContent = '⏹ Cancel Sync';
+                }
+            }
+
+            var runSubSyncBtn = document.getElementById('runSubSyncBtn');
+            if (runSubSyncBtn) runSubSyncBtn.addEventListener('click', startSubtitleSync);
+
+            var cancelSubSyncBtn = document.getElementById('cancelSubSyncBtn');
+            if (cancelSubSyncBtn) cancelSubSyncBtn.addEventListener('click', cancelSubtitleSync);
 
 
             document.getElementById('studioSearchWordsInput').addEventListener('input', function() {
@@ -3424,23 +4067,38 @@
                 }
 
                 var channel = document.getElementById('shiftTargetChannel').value || 'all';
+                var syncSubs = !!(document.getElementById('shiftSyncSubtitles') && document.getElementById('shiftSyncSubtitles').checked);
 
                 applyShiftModalBtn.disabled = true;
                 applyShiftModalBtn.textContent = 'Shifting ' + channel + '...';
                 shiftStatusEl.style.color = 'var(--cf-text-dim)';
                 shiftStatusEl.textContent = 'Applying shift...';
 
-                fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/offset'), {
-                    method: 'POST',
-                    headers: {
-                        'X-Emby-Token': ApiClient.accessToken(),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        offsetSeconds: offset,
-                        channel: channel
-                    })
-                }).then(function(res) {
+                var shiftPromise;
+                if (syncSubs && channel === 'all') {
+                    shiftPromise = fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/shift'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ offsetSeconds: offset })
+                    });
+                } else {
+                    shiftPromise = fetch(apiUrl('ContentFilter/filters/' + activeItemId + '/segments/offset'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            offsetSeconds: offset,
+                            channel: channel
+                        })
+                    });
+                }
+
+                shiftPromise.then(function(res) {
                     applyShiftModalBtn.disabled = false;
                     applyShiftModalBtn.textContent = '⚡ Apply Shift';
                     if (res.ok) {
@@ -3452,8 +4110,11 @@
                     var count = data.shiftedCues !== undefined ? data.shiftedCues : (data.totalCues || 0);
                     var chanDesc = data.channel === 'video' ? 'video' : (data.channel === 'audio' ? 'audio' : 'all');
                     shiftStatusEl.style.color = '#10b981';
-                    shiftStatusEl.textContent = '✅ Shifted ' + count + ' ' + chanDesc + ' cues by ' + (offset > 0 ? '+' : '') + offset + 's!';
+                    shiftStatusEl.textContent = '✅ Shifted ' + count + ' ' + chanDesc + ' cues by ' + (offset > 0 ? '+' : '') + offset + 's!' + (syncSubs ? ' (Subtitles synchronized)' : '');
                     loadFilterDetails(activeItemId);
+                    loadStudioSubtitleWords(true);
+                    checkStudioCleanSubStatus();
+                    loadStudioSubtitleOverride(activeItemId);
                     setTimeout(function() {
                         closeShiftModal();
                     }, 800);
@@ -3915,6 +4576,7 @@
                 }
 
                 loadShows();
+                pollSubtitleSyncStatus();
 
                 // Dynamically sync version tag with running plugin version
                 fetch(apiUrl('Plugins'), {

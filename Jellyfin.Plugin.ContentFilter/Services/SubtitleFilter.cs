@@ -111,21 +111,95 @@ public class SubtitleFilter
     }
 
     /// <summary>
-    /// Determines whether an adjacent sidecar filtered SRT exists for an item.
+    /// Gets the standard Jellyfin default sidecar SRT path adjacent to the media file on disk.
+    /// Example: /data/shows/GOT_S01E01.mkv -> /data/shows/GOT_S01E01.en.default.srt
+    /// </summary>
+    /// <param name="item">The media item.</param>
+    /// <param name="language">The subtitle language code.</param>
+    /// <returns>The default sidecar path, or <see langword="null"/> if not resolvable.</returns>
+    public static string? GetSidecarDefaultSrtPath(BaseItem? item, string language = "en")
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Path))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(item.Path);
+        var stem = Path.GetFileNameWithoutExtension(item.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem))
+        {
+            return null;
+        }
+
+        var langCode = ToTwoLetterLanguage(language);
+        return Path.Combine(dir, $"{stem}.{langCode}.default.srt");
+    }
+
+    /// <summary>
+    /// Determines whether an adjacent sidecar filtered or default SRT exists for an item.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <param name="language">The subtitle language code.</param>
-    /// <returns><see langword="true"/> when the sidecar exists; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> when either sidecar exists; otherwise <see langword="false"/>.</returns>
     public bool HasSidecarFilteredSrt(Guid itemId, string language = "en")
     {
         var item = _libraryManager.GetItemById(itemId);
-        var path = GetSidecarFilteredSrtPath(item, language);
-        return path is not null && File.Exists(path);
+        var defaultPath = GetSidecarDefaultSrtPath(item, language);
+        var filteredPath = GetSidecarFilteredSrtPath(item, language);
+        return (defaultPath is not null && File.Exists(defaultPath)) ||
+               (filteredPath is not null && File.Exists(filteredPath));
+    }
+
+    /// <summary>
+    /// Shifts all timestamps in an SRT subtitle content string by a given offset in seconds.
+    /// </summary>
+    /// <param name="srtContent">The source SRT subtitle content.</param>
+    /// <param name="offsetSeconds">The offset in seconds (can be positive or negative).</param>
+    /// <returns>The adjusted SRT content.</returns>
+    public static string ShiftSrtTimecodes(string srtContent, double offsetSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(srtContent) || Math.Abs(offsetSeconds) < 0.0001)
+        {
+            return srtContent;
+        }
+
+        var offset = TimeSpan.FromSeconds(offsetSeconds);
+        var blocks = SplitSrtBlocks(srtContent);
+        var shiftedBlocks = new List<string>(blocks.Count);
+        int newIndex = 1;
+
+        foreach (var block in blocks)
+        {
+            var parsed = ParseSrtBlock(block);
+            if (parsed is null)
+            {
+                continue;
+            }
+
+            var (_, start, end, text) = parsed.Value;
+            var newStart = start + offset;
+            var newEnd = end + offset;
+
+            if (newEnd <= TimeSpan.Zero)
+            {
+                continue; // Cue shifted entirely before start of video
+            }
+
+            if (newStart < TimeSpan.Zero)
+            {
+                newStart = TimeSpan.Zero;
+            }
+
+            var rebuilt = $"{newIndex++}{Environment.NewLine}{FormatSrtTimecode(newStart)} --> {FormatSrtTimecode(newEnd)}{Environment.NewLine}{text}";
+            shiftedBlocks.Add(rebuilt);
+        }
+
+        return string.Join($"{Environment.NewLine}{Environment.NewLine}", shiftedBlocks);
     }
 
     /// <summary>
     /// Regenerates filtered subtitle output for an item in a given language.
-    /// Writes to both the plugin cache and adjacent media sidecar (.en.filtered.srt) if possible.
+    /// Writes to both the plugin cache and adjacent media sidecars (.default.srt and .filtered.srt) if possible.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     /// <param name="filter">The active filter (optional, loaded from store if null).</param>
@@ -152,6 +226,14 @@ public class SubtitleFilter
             return null;
         }
 
+        // Apply item time shift offset if configured in SQLite repository
+        var repo = _serviceProvider.GetService<SqliteFilterRepository>();
+        var overrideInfo = repo?.GetSubtitleOverride(itemId);
+        if (overrideInfo != null && Math.Abs(overrideInfo.OffsetSeconds) > 0.0001)
+        {
+            srtContent = ShiftSrtTimecodes(srtContent, overrideInfo.OffsetSeconds);
+        }
+
         var filteredOutput = ApplyWordBlanking(srtContent, filter);
 
         // 1. Save to plugin data folder cache
@@ -159,26 +241,45 @@ public class SubtitleFilter
         var pluginCachePath = GetFilteredSrtPath(itemId);
         await File.WriteAllTextAsync(pluginCachePath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
-        // 2. Save to adjacent sidecar if media directory is accessible
-        var sidecarPath = GetSidecarFilteredSrtPath(item, language);
-        if (sidecarPath is not null)
+        // 2. Save to adjacent sidecars if media directory is accessible
+        var defaultPath = GetSidecarDefaultSrtPath(item, language);
+        var filteredPath = GetSidecarFilteredSrtPath(item, language);
+        if (defaultPath is not null)
         {
             try
             {
-                var dir = Path.GetDirectoryName(sidecarPath);
+                var dir = Path.GetDirectoryName(defaultPath);
                 if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
                 {
-                    await File.WriteAllTextAsync(sidecarPath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-                    _logger.LogInformation("Saved filtered subtitle sidecar to {Path}", sidecarPath);
+                    // Write both .default.srt (Jellyfin standard for default subtitle) and .filtered.srt
+                    await File.WriteAllTextAsync(defaultPath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    if (filteredPath is not null)
+                    {
+                        await File.WriteAllTextAsync(filteredPath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    _logger.LogInformation("Saved clean subtitle sidecars to {Path}", defaultPath);
 
                     // Trigger Jellyfin item refresh so it immediately registers the external track
                     RefreshItemSubtitles(item);
-                    return sidecarPath;
+
+                    // Set default subtitle stream for active server users if enabled
+                    var config = Plugin.Instance?.Configuration;
+                    if (config == null || config.SetSubtitlesAsDefault)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(1200, CancellationToken.None).ConfigureAwait(false);
+                            SetDefaultSubtitleForUsers(item, defaultPath);
+                        });
+                    }
+
+                    return defaultPath;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write sidecar subtitle to {Path}; plugin cache remains available.", sidecarPath);
+                _logger.LogWarning(ex, "Failed to write sidecar subtitle to {Path}; plugin cache remains available.", defaultPath);
             }
         }
 
@@ -198,10 +299,71 @@ public class SubtitleFilter
     }
 
     /// <summary>
+    /// Sets the clean default subtitle track as the active selection for all Jellyfin users for an item.
+    /// </summary>
+    /// <param name="item">The media item.</param>
+    /// <param name="sidecarPath">The written subtitle file path.</param>
+    public void SetDefaultSubtitleForUsers(BaseItem item, string? sidecarPath)
+    {
+        if (item is not Video video)
+        {
+            return;
+        }
+
+        try
+        {
+            var userDataManager = _serviceProvider.GetService<IUserDataManager>();
+            var userManager = _serviceProvider.GetService<IUserManager>();
+            if (userDataManager is null || userManager is null)
+            {
+                return;
+            }
+
+            var streams = video.GetMediaStreams();
+            var cleanStream = streams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle &&
+                s.IsExternal &&
+                !string.IsNullOrWhiteSpace(s.Path) &&
+                (s.Path.EndsWith(".default.srt", StringComparison.OrdinalIgnoreCase) ||
+                 s.Path.EndsWith(".filtered.srt", StringComparison.OrdinalIgnoreCase)));
+
+            if (cleanStream == null && sidecarPath != null)
+            {
+                cleanStream = streams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle &&
+                    s.IsExternal &&
+                    string.Equals(s.Path, sidecarPath, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (cleanStream != null)
+            {
+                foreach (var user in userManager.GetUsers())
+                {
+                    try
+                    {
+                        var data = userDataManager.GetUserData(user, video);
+                        if (data != null && data.SubtitleStreamIndex != cleanStream.Index)
+                        {
+                            data.SubtitleStreamIndex = cleanStream.Index;
+                            userDataManager.SaveUserData(user, video, data, UserDataSaveReason.UpdateUserData, CancellationToken.None);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to set default subtitle stream for user {UserName} on item {ItemId}", user.Username, video.Id);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error setting user default subtitle selections for item {ItemId}", item.Id);
+        }
+    }
+
+    /// <summary>
     /// Refreshes item metadata in Jellyfin to pick up newly written or removed sidecar subtitle files.
     /// </summary>
     /// <param name="item">The media item to refresh.</param>
-    private void RefreshItemSubtitles(BaseItem item)
+    public void RefreshItemSubtitles(BaseItem item)
     {
         try
         {
@@ -234,7 +396,7 @@ public class SubtitleFilter
     }
 
     /// <summary>
-    /// Deletes the generated filtered subtitle for an item (both plugin cache and sidecar).
+    /// Deletes the generated filtered subtitle for an item (both plugin cache and sidecars).
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
     public void DeleteFilteredSubtitle(Guid itemId)
@@ -254,17 +416,31 @@ public class SubtitleFilter
         var item = _libraryManager.GetItemById(itemId);
         if (item is not null)
         {
-            var sidecar = GetSidecarFilteredSrtPath(item);
-            if (sidecar is not null && File.Exists(sidecar))
+            var sidecars = new[]
             {
-                try
+                GetSidecarDefaultSrtPath(item),
+                GetSidecarFilteredSrtPath(item)
+            };
+
+            bool anyDeleted = false;
+            foreach (var sidecar in sidecars)
+            {
+                if (sidecar is not null && File.Exists(sidecar))
                 {
-                    File.Delete(sidecar);
-                    RefreshItemSubtitles(item);
+                    try
+                    {
+                        File.Delete(sidecar);
+                        anyDeleted = true;
+                    }
+                    catch
+                    {
+                    }
                 }
-                catch
-                {
-                }
+            }
+
+            if (anyDeleted)
+            {
+                RefreshItemSubtitles(item);
             }
         }
     }

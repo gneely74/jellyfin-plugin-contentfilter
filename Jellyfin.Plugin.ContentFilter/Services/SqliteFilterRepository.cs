@@ -85,8 +85,17 @@ public sealed class SqliteFilterRepository : IDisposable
                         FOREIGN KEY (item_id) REFERENCES filters(item_id) ON DELETE CASCADE
                     );
 
+                    CREATE TABLE IF NOT EXISTS item_subtitle_overrides (
+                        item_id TEXT PRIMARY KEY,
+                        offset_ms INTEGER NOT NULL DEFAULT 0,
+                        is_locked INTEGER NOT NULL DEFAULT 0,
+                        selected_source TEXT,
+                        updated_at TEXT NOT NULL
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_cues_item_id ON cues(item_id);
                     CREATE INDEX IF NOT EXISTS idx_cues_category ON cues(category);
+                    CREATE INDEX IF NOT EXISTS idx_subtitle_overrides_locked ON item_subtitle_overrides(is_locked);
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -349,6 +358,145 @@ public sealed class SqliteFilterRepository : IDisposable
         var totalCues = Convert.ToInt32(cmdCues.ExecuteScalar(), CultureInfo.InvariantCulture);
 
         return (totalFilters, totalCues);
+    }
+
+    /// <summary>
+    /// Gets the subtitle override settings for a media item, if any.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The override settings, or <see langword="null"/> if none exist.</returns>
+    public SubtitleOverrideInfo? GetSubtitleOverride(Guid itemId)
+    {
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT offset_ms, is_locked, selected_source, updated_at FROM item_subtitle_overrides WHERE item_id = @itemId;";
+        cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var offsetMs = reader.GetInt32(0);
+        var isLocked = reader.GetInt32(1) == 1;
+        var source = reader.IsDBNull(2) ? null : reader.GetString(2);
+        var updatedAtStr = reader.GetString(3);
+        DateTime.TryParse(updatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var updatedAt);
+
+        return new SubtitleOverrideInfo
+        {
+            ItemId = itemId,
+            OffsetMs = offsetMs,
+            OffsetSeconds = offsetMs / 1000.0,
+            IsLocked = isLocked,
+            SelectedSource = source,
+            UpdatedAt = updatedAt
+        };
+    }
+
+    /// <summary>
+    /// Sets or updates subtitle override settings for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="offsetMs">The time offset in milliseconds.</param>
+    /// <param name="isLocked">Whether the subtitle is locked from automated sync.</param>
+    /// <param name="selectedSource">Optional source or edition description.</param>
+    public void SetSubtitleOverride(Guid itemId, int offsetMs, bool isLocked, string? selectedSource)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_subtitle_overrides (item_id, offset_ms, is_locked, selected_source, updated_at)
+                VALUES (@itemId, @offsetMs, @isLocked, @selectedSource, @updatedAt)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    offset_ms = @offsetMs,
+                    is_locked = @isLocked,
+                    selected_source = COALESCE(@selectedSource, item_subtitle_overrides.selected_source),
+                    updated_at = @updatedAt;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@offsetMs", offsetMs);
+            cmd.Parameters.AddWithValue("@isLocked", isLocked ? 1 : 0);
+            cmd.Parameters.AddWithValue("@selectedSource", (object?)selectedSource ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Sets or updates the subtitle time offset for an item, preserving its lock status.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="offsetMs">The time offset in milliseconds.</param>
+    public void SetSubtitleOffset(Guid itemId, int offsetMs)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_subtitle_overrides (item_id, offset_ms, is_locked, updated_at)
+                VALUES (@itemId, @offsetMs, 0, @updatedAt)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    offset_ms = @offsetMs,
+                    updated_at = @updatedAt;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@offsetMs", offsetMs);
+            cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Sets or updates the subtitle lock status for an item, preserving its existing offset.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="isLocked">Whether the item should be locked.</param>
+    public void SetSubtitleLock(Guid itemId, bool isLocked)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_subtitle_overrides (item_id, offset_ms, is_locked, updated_at)
+                VALUES (@itemId, 0, @isLocked, @updatedAt)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    is_locked = @isLocked,
+                    updated_at = @updatedAt;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@isLocked", isLocked ? 1 : 0);
+            cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Returns all item IDs that have been explicitly locked from automated subtitle overwrites.
+    /// </summary>
+    /// <returns>A hash set of locked item GUIDs.</returns>
+    public HashSet<Guid> GetAllLockedItemIds()
+    {
+        var result = new HashSet<Guid>();
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT item_id FROM item_subtitle_overrides WHERE is_locked = 1;";
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            if (Guid.TryParse(reader.GetString(0), out var id))
+            {
+                result.Add(id);
+            }
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>

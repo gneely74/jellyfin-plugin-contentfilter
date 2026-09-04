@@ -80,7 +80,7 @@ def test_build_jcf_valid():
     content = build_jcf("S01E01", ranges, "Game of Thrones S01E01", "2011")
     assert content.startswith("WEBVTT JCF\n\nNOTE\nTITLE Game of Thrones S01E01\nYEAR 2011")
     assert "00:10:00.000 --> 00:15:00.000" in content
-    assert "category: Violence.Graphic" in content
+    assert "category: SexAndNudity.FullNudity" in content
     assert "channel: video" in content
     assert "action: skip" in content
 

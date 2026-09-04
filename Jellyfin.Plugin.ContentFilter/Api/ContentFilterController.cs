@@ -22,6 +22,8 @@ public class ContentFilterController : ControllerBase
     private readonly FilterStore _filterStore;
     private readonly SubtitleFilter _subtitleFilter;
     private readonly SubtitleWordScanner _subtitleWordScanner;
+    private readonly SubtitleSyncService _subtitleSyncService;
+    private readonly SqliteFilterRepository _sqliteRepository;
     private readonly ILibraryManager _libraryManager;
 
     /// <summary>
@@ -30,16 +32,22 @@ public class ContentFilterController : ControllerBase
     /// <param name="filterStore">The filter store service.</param>
     /// <param name="subtitleFilter">The subtitle filter service.</param>
     /// <param name="subtitleWordScanner">The subtitle word scanner service.</param>
+    /// <param name="subtitleSyncService">The subtitle sync service.</param>
+    /// <param name="sqliteRepository">The SQLite repository.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
     public ContentFilterController(
         FilterStore filterStore,
         SubtitleFilter subtitleFilter,
         SubtitleWordScanner subtitleWordScanner,
+        SubtitleSyncService subtitleSyncService,
+        SqliteFilterRepository sqliteRepository,
         ILibraryManager libraryManager)
     {
         _filterStore = filterStore;
         _subtitleFilter = subtitleFilter;
         _subtitleWordScanner = subtitleWordScanner;
+        _subtitleSyncService = subtitleSyncService;
+        _sqliteRepository = sqliteRepository;
         _libraryManager = libraryManager;
     }
 
@@ -1335,6 +1343,194 @@ public class ContentFilterController : ControllerBase
         }
 
         return Ok(Plugin.Instance?.Configuration.BlanketFilterWords ?? []);
+    }
+
+    /// <summary>
+    /// Starts the library-wide automated subtitle download and clean sync job.
+    /// </summary>
+    [HttpPost("subtitles/sync/start")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult<SubtitleSyncStatus> StartSubtitleSync([FromBody] StartSubtitleSyncRequest? request)
+    {
+        var started = _subtitleSyncService.StartSync(
+            request?.ForceAll ?? false,
+            request?.Language);
+
+        if (!started)
+        {
+            return Conflict(_subtitleSyncService.Status);
+        }
+
+        return Ok(_subtitleSyncService.Status);
+    }
+
+    /// <summary>
+    /// Gets the current status of the library-wide automated subtitle sync.
+    /// </summary>
+    [HttpGet("subtitles/sync/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SubtitleSyncStatus> GetSubtitleSyncStatus()
+    {
+        return Ok(_subtitleSyncService.Status);
+    }
+
+    /// <summary>
+    /// Cancels any running library-wide automated subtitle sync.
+    /// </summary>
+    [HttpPost("subtitles/sync/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult CancelSubtitleSync()
+    {
+        _subtitleSyncService.CancelSync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Searches remote subtitle providers for an item and returns matching releases.
+    /// </summary>
+    [HttpGet("subtitles/{itemId:guid}/remote-search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<RemoteSubtitleDto>>> SearchRemoteSubtitles(
+        Guid itemId,
+        [FromQuery] string? language,
+        CancellationToken cancellationToken)
+    {
+        var results = await _subtitleSyncService.SearchRemoteSubtitlesAsync(itemId, language, cancellationToken).ConfigureAwait(false);
+        return Ok(results);
+    }
+
+    /// <summary>
+    /// Downloads a specific remote subtitle candidate, cleans it, sets it as default, and locks the item.
+    /// </summary>
+    [HttpPost("subtitles/{itemId:guid}/remote-download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DownloadRemoteSubtitle(
+        Guid itemId,
+        [FromBody] RemoteSubtitleDownloadRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.SubtitleId))
+        {
+            return BadRequest("SubtitleId is required.");
+        }
+
+        var success = await _subtitleSyncService.DownloadRemoteSubtitleAsync(itemId, request.SubtitleId, cancellationToken).ConfigureAwait(false);
+        if (!success)
+        {
+            return BadRequest("Failed to download or clean the selected subtitle.");
+        }
+
+        return Ok(new { success = true, itemId, subtitleId = request.SubtitleId });
+    }
+
+    /// <summary>
+    /// Shifts an item's subtitles and cues by a given offset in seconds.
+    /// </summary>
+    [HttpPost("subtitles/{itemId:guid}/shift")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ShiftSubtitle(
+        Guid itemId,
+        [FromBody] SubtitleShiftRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        var success = await _subtitleSyncService.ApplySubtitleOffsetAsync(itemId, request.OffsetSeconds, cancellationToken).ConfigureAwait(false);
+        return Ok(new
+        {
+            success,
+            itemId,
+            offsetSeconds = request.OffsetSeconds,
+            overrideInfo = _sqliteRepository.GetSubtitleOverride(itemId)
+        });
+    }
+
+    /// <summary>
+    /// Toggles or sets the subtitle lock for an item so automated sync will not overwrite it.
+    /// </summary>
+    [HttpPost("subtitles/{itemId:guid}/lock")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult SetSubtitleLock(
+        Guid itemId,
+        [FromBody] SubtitleLockRequest? request)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        _sqliteRepository.SetSubtitleLock(itemId, request.IsLocked);
+        return Ok(new
+        {
+            success = true,
+            itemId,
+            isLocked = request.IsLocked,
+            overrideInfo = _sqliteRepository.GetSubtitleOverride(itemId)
+        });
+    }
+
+    /// <summary>
+    /// Gets the subtitle override and lock status for an item.
+    /// </summary>
+    [HttpGet("subtitles/{itemId:guid}/override")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SubtitleOverrideInfo> GetSubtitleOverride(Guid itemId)
+    {
+        var info = _sqliteRepository.GetSubtitleOverride(itemId) ?? new SubtitleOverrideInfo
+        {
+            ItemId = itemId,
+            OffsetMs = 0,
+            OffsetSeconds = 0,
+            IsLocked = false,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        return Ok(info);
+    }
+
+    /// <summary>
+    /// Uploads a custom SRT subtitle file for an item, cleans it, sets it as default, and locks the item.
+    /// </summary>
+    [HttpPost("subtitles/{itemId:guid}/upload")]
+    [Consumes("multipart/form-data", "text/plain", "application/octet-stream")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadSubtitle(
+        Guid itemId,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        string srtContent;
+        if (file is not null && file.Length > 0)
+        {
+            await using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            srtContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else if (Request.ContentLength is > 0)
+        {
+            using var reader = new StreamReader(Request.Body);
+            srtContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            return BadRequest("A subtitle file or content is required.");
+        }
+
+        var success = await _subtitleSyncService.SaveCustomSubtitleAsync(itemId, srtContent, cancellationToken).ConfigureAwait(false);
+        if (!success)
+        {
+            return BadRequest("Failed to process and save custom subtitle file.");
+        }
+
+        return Ok(new { success = true, itemId });
     }
 }
 
