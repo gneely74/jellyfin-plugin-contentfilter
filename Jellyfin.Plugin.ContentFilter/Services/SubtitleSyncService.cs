@@ -391,10 +391,7 @@ public class SubtitleSyncService
     private async Task EnsureItemHasWordFilterAsync(Guid itemId, string language, CancellationToken ct)
     {
         var filter = _filterStore.GetFilter(itemId);
-        if (filter != null && filter.Cues.Count > 0)
-        {
-            return;
-        }
+        var existingCues = filter?.Cues ?? [];
 
         var scan = await _subtitleWordScanner.ScanWordsAsync(itemId, language, ct).ConfigureAwait(false);
         if (scan.Words.Count == 0)
@@ -411,11 +408,23 @@ public class SubtitleSyncService
         {
             foreach (var occ in group.Occurrences)
             {
+                var occStart = TimeSpan.FromSeconds(occ.StartSeconds);
+                var occEnd = TimeSpan.FromSeconds(occ.EndSeconds);
+
+                // Skip if this occurrence is already covered by an existing mute or skip cue
+                if (existingCues.Any(c =>
+                    (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
+                     c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
+                    occStart < c.End && occEnd > c.Start))
+                {
+                    continue;
+                }
+
                 var wordLabel = !string.IsNullOrWhiteSpace(occ.MatchedWord) ? occ.MatchedWord : group.Word;
                 cuesToAdd.Add(new FilterCue
                 {
-                    Start = TimeSpan.FromSeconds(occ.StartSeconds),
-                    End = TimeSpan.FromSeconds(occ.EndSeconds),
+                    Start = occStart,
+                    End = occEnd,
                     Category = group.Category,
                     Channel = channel,
                     Action = action,
