@@ -604,7 +604,9 @@
                 'z-index: 2147483647',
                 'width: 580px',
                 'max-width: 95vw',
-                'max-height: 85vh',
+                'height: 600px',
+                'max-height: calc(100vh - 60px)',
+                'min-height: 380px',
                 'overflow: hidden',
                 'background: rgba(15, 23, 42, 0.97)',
                 'color: #f8fafc',
@@ -628,17 +630,18 @@
                 cfScrollStyle = document.createElement('style');
                 cfScrollStyle.id = 'cfScrollStyle';
                 cfScrollStyle.textContent = [
-                    '#cfEditorModal *::-webkit-scrollbar { width: 6px; height: 6px; }',
+                    '#cfEditorModal *::-webkit-scrollbar { width: 8px; height: 8px; }',
                     '#cfEditorModal *::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 4px; }',
-                    '#cfEditorModal *::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }',
-                    '#cfEditorModal *::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.8); }'
+                    '#cfEditorModal *::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.5); border-radius: 4px; }',
+                    '#cfEditorModal *::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.9); }',
+                    '#cfEditorModal * { scrollbar-width: thin; scrollbar-color: rgba(56, 189, 248, 0.5) rgba(15, 23, 42, 0.6); }'
                 ].join('\n');
                 document.head.appendChild(cfScrollStyle);
             }
 
             editorModal.innerHTML = [
                 // Draggable Header
-                '<div id="cfEditorHeader" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px; cursor:grab; user-select:none;">',
+                '<div id="cfEditorHeader" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px; cursor:grab; user-select:none; flex-shrink:0;">',
                 '  <div style="display:flex; align-items:center; gap:10px;">',
                 '    <span style="font-size:22px;">🛡️</span>',
                 '    <div>',
@@ -653,7 +656,7 @@
                 '</div>',
 
                 // Live Timecode Bar & Frame Nudge
-                '<div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">',
+                '<div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">',
                 '  <div>',
                 '    <div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Playback Timecode</div>',
                 '    <div id="cfLiveTimecode" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:20px; font-weight:700; color:#38bdf8; margin-top:2px;">00:00:00.000</div>',
@@ -668,7 +671,7 @@
                 '</div>',
 
                 // Navigation Tabs
-                '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; flex-wrap:wrap;">',
+                '<div style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; flex-wrap:wrap; flex-shrink:0;">',
                 '  <button id="cfTabBtnAdd" style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.4); padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">➕ Set Cue Point</button>',
                 '  <button id="cfTabBtnShift" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">⏱️ Shift Cues</button>',
                 '  <button id="cfTabBtnWords" style="background:transparent; color:#94a3b8; border:1px solid transparent; padding:7px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px;">💬 Subtitle Words (<span id="cfTabWordsCount">0</span>)</button>',
@@ -677,7 +680,7 @@
                 '</div>',
 
                 // Tab 1: Set / Add / Edit Cue View
-                '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
+                '<div id="cfTabPaneAdd" style="display:flex; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding-right:4px;">',
                 '  <!-- Edit Banner (hidden unless editing) -->',
                 '  <div id="cfEditBanner" style="display:none; justify-content:space-between; align-items:center; background:rgba(234, 179, 8, 0.15); border:1px solid rgba(234, 179, 8, 0.4); border-radius:8px; padding:8px 12px; color:#fef08a; font-size:12px;">',
                 '    <div style="display:flex; align-items:center; gap:8px;">',
@@ -817,7 +820,7 @@
                 '</div>',
 
                 // Tab 2: Shift All Cues View
-                '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
+                '<div id="cfTabPaneShift" style="display:none; flex-direction:column; gap:14px; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding-right:4px;">',
                 '  <div style="background:rgba(30, 41, 59, 0.5); border:1px solid rgba(56, 189, 248, 0.2); border-radius:10px; padding:12px; color:#cbd5e1; font-size:12px; line-height:1.5;">',
                 '    💡 <strong>Shift Cues:</strong> If the cues are off by a fixed amount because your video file has an extra logo or different cut, shift cues earlier or later. You can shift video and audio cues together or separately.',
                 '  </div>',
@@ -830,7 +833,7 @@
                 '      <option value="audio">🔊 Audio Cues Only (Mutes & Dialogue)</option>',
                 '    </select>',
                 '  </div>',
-
+                '',
                 '  <div>',
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:8px;">Quick Shift Presets:</label>',
                 '    <div style="display:flex; flex-wrap:wrap; gap:6px;">',
@@ -846,10 +849,10 @@
                 '      <button class="cf-shift-preset" data-sec="10" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">+10s</button>',
                 '    </div>',
                 '  </div>',
-
+                '',
                 '  <div>',
                 '    <label style="font-weight:600; color:#cbd5e1; display:block; margin-bottom:6px;">Custom Offset (seconds, e.g. +3.5 or -2.4):</label>',
-'  <div style="display:flex; gap:8px;">',
+                '    <div style="display:flex; gap:8px;">',
                 '      <input id="cfInputShiftSec" type="number" step="0.1" value="0.0" style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:8px 12px; border-radius:8px; font-size:14px; user-select:text;">',
                 '      <button id="cfBtnApplyShift" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">⚡ Apply Shift</button>',
                 '    </div>',
@@ -864,10 +867,10 @@
                 '',
                 '  <div id="cfShiftStatusMsg" style="font-size:12px; color:#10b981; font-weight:600; min-height:16px;"></div>',
                 '</div>',
-
+                '',
                 // Tab 3: Subtitle Words View
-                '<div id="cfTabPaneWords" style="display:none; flex-direction:column; gap:12px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
-                '  <div style="background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">',
+                '<div id="cfTabPaneWords" style="display:none; flex-direction:column; gap:12px; flex:1; min-height:0; overflow:hidden;">',
+                '  <div style="flex-shrink:0; background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">',
                 '    <div style="display:flex; align-items:center; gap:8px;">',
                 '      <label style="font-weight:600; color:#cbd5e1; font-size:12px;">Language:</label>',
                 '      <select id="cfSelectSubLanguage" style="background:rgba(15, 23, 42, 0.9); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; padding:5px 8px; border-radius:6px; font-size:12px; max-width:210px;">',
@@ -879,27 +882,27 @@
                 '      <button id="cfBtnGenCleanSubs" title="Generate clean .srt sidecar with profanity masked leaving first letter" style="background:rgba(16, 185, 129, 0.2); border:1px solid rgba(16, 185, 129, 0.5); color:#6ee7b7; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:4px;">📄 Generate Clean Subtitles (.srt)</button>',
                 '    </div>',
                 '  </div>',
-                '  <div id="cfCleanSubStatusBanner" style="font-size:11px; padding:8px 12px; border-radius:8px; display:none;"></div>',
-                '  <div style="display:flex; gap:8px; align-items:center;">',
+                '  <div id="cfCleanSubStatusBanner" style="flex-shrink:0; font-size:11px; padding:8px 12px; border-radius:8px; display:none;"></div>',
+                '  <div style="flex-shrink:0; display:flex; gap:8px; align-items:center;">',
                 '    <input id="cfInputSearchWords" type="text" placeholder="Search detected words (e.g. bastard, profanity)..." style="flex:1; background:rgba(30, 41, 59, 0.9); border:1px solid rgba(255,255,255,0.15); color:#f8fafc; padding:7px 10px; border-radius:8px; font-size:12px; user-select:text;">',
                 '    <button id="cfBtnBlanketVisibleWords" title="Blanket filter all currently visible words" style="background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.5); color:#fef08a; padding:7px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px; white-space:nowrap;">⚡ Blanket All</button>',
                 '  </div>',
-                '  <div id="cfWordsStatusMsg" style="font-size:11px; color:#94a3b8; min-height:16px;"></div>',
-                '  <div id="cfWordsListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
+                '  <div id="cfWordsStatusMsg" style="flex-shrink:0; font-size:11px; color:#94a3b8; min-height:16px;"></div>',
+                '  <div id="cfWordsListContainer" style="flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
                 '    <div style="text-align:center; color:#94a3b8; padding:24px;">Click "Scan Subtitles" to detect filterable words.</div>',
                 '  </div>',
                 '</div>',
-
+                '',
                 // Tab 4: Active Cues List View
-                '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px; flex:1; min-height:0; overflow-y:auto; padding-right:4px;">',
-                '  <div id="cfCuesListContainer" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
+                '<div id="cfTabPaneList" style="display:none; flex-direction:column; gap:10px; flex:1; min-height:0; overflow:hidden;">',
+                '  <div id="cfCuesListContainer" style="flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:8px; padding-right:4px;">',
                 '    <div style="text-align:center; color:#94a3b8; padding:20px;">No cues loaded</div>',
                 '  </div>',
                 '</div>',
                 '',
                 // Tab 5: Rules & Category Overrides View
                 '<div id="cfTabPaneRules" style="display:none; flex-direction:column; gap:12px; flex:1; min-height:0; overflow:hidden;">',
-                '  <div style="background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">',
+                '  <div style="flex-shrink:0; background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">',
                 '    <div>',
                 '      <div style="font-weight:700; color:#38bdf8; font-size:13px;" id="cfPlayerRulesSource">Rules: Global Defaults</div>',
                 '      <div style="font-size:11px; color:#94a3b8;" id="cfPlayerRulesDesc">Filters active globally are applied to this media.</div>',
@@ -909,12 +912,12 @@
                 '      <button id="cfPlayerResetRulesBtn" style="background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:11px;">↺ Revert</button>',
                 '    </div>',
                 '  </div>',
-                '  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">',
+                '  <label style="flex-shrink:0; display:flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">',
                 '    <input type="checkbox" id="cfPlayerCustomRulesToggle" style="cursor:pointer; width:15px; height:15px;">',
                 '    <span style="font-weight:600; color:#f8fafc; font-size:12px;">Override rules for this specific show / movie</span>',
                 '  </label>',
-                '  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; flex:1; min-height:160px; max-height:48vh; overflow-y:auto; padding-right:6px;"></div>',
-                '  <div id="cfPlayerRulesStatus" style="font-size:11px; color:#4ade80;"></div>',
+                '  <div id="cfPlayerRulesList" style="display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding-right:6px;"></div>',
+                '  <div id="cfPlayerRulesStatus" style="flex-shrink:0; font-size:11px; color:#4ade80;"></div>',
                 '</div>'
             ].join('\n');
 
@@ -1001,6 +1004,17 @@
 
         var closeBtn = modal.querySelector('#cfModalCloseBtn');
         closeBtn.addEventListener('click', closeEditorModal);
+
+        ['wheel', 'mousewheel', 'DOMMouseScroll'].forEach(function (evType) {
+            modal.addEventListener(evType, handleModalWheel, { capture: true, passive: false });
+            modal.addEventListener(evType, handleModalWheel, { capture: false, passive: false });
+        });
+
+        modal.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'PageUp' || e.key === 'PageDown' || e.key === 'Home' || e.key === 'End' || e.key === ' ') {
+                e.stopPropagation();
+            }
+        });
 
         // Frame controls
         modal.querySelector('#cfFrameBack1').addEventListener('click', function () {
@@ -2130,15 +2144,15 @@
             });
 
             html += [
-                '<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; overflow:hidden;">',
+                '<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; overflow:hidden; flex-shrink:0;">',
                 '  <div class="cf-grp-header" data-grp-target="' + groupId + '" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(30,41,59,0.5); cursor:pointer; user-select:none;">',
                 '    <div style="font-weight:700; color:#38bdf8; font-size:12px; display:flex; align-items:center; gap:6px;">',
-                '      <span class="cf-grp-arrow" style="font-size:10px; transition:transform 0.2s;">▼</span>',
+                '      <span class="cf-grp-arrow" style="font-size:10px; transition:transform 0.2s;">▶</span>',
                 '      <span>' + grp.icon + ' ' + grp.group + '</span>',
                 '    </div>',
                 '    <div style="font-size:11px; color:#94a3b8;">' + activeCount + ' of ' + grp.cats.length + ' filtered</div>',
                 '  </div>',
-                '  <div id="' + groupId + '" style="display:flex; flex-direction:column; gap:4px; padding:8px 10px;">',
+                '  <div id="' + groupId + '" style="display:none; flex-direction:column; gap:4px; padding:8px 10px;">',
                 itemsHtml,
                 '  </div>',
                 '</div>'
@@ -2251,6 +2265,18 @@
         var modal = ensureEditorModal();
         modal.style.display = 'flex';
 
+        // Ensure modal does not roll off edges if screen was resized or dragged previously
+        if (modal.style.transform === 'none') {
+            var rect = modal.getBoundingClientRect();
+            var maxLeft = window.innerWidth - modal.offsetWidth - 10;
+            var maxTop = window.innerHeight - modal.offsetHeight - 10;
+            if (rect.top > maxTop || rect.top < 10 || rect.left > maxLeft || rect.left < 10) {
+                modal.style.top = '50%';
+                modal.style.left = '50%';
+                modal.style.transform = 'translate(-50%, -50%)';
+            }
+        }
+
         var titleEl = modal.querySelector('#cfModalItemTitle');
         if (titleEl) {
             var t = (activeFilter && activeFilter.title) || '';
@@ -2320,6 +2346,54 @@
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    // Stop wheel events originating inside modal from leaking to Jellyfin's volume listener and perform container scrolling
+    function handleModalWheel(e) {
+        var modal = editorModal || document.getElementById('cfEditorModal');
+        if (!modal || modal.style.display === 'none') return;
+
+        var path = (e.composedPath && e.composedPath()) || [];
+        var isInside = modal.contains(e.target) || path.indexOf(modal) !== -1;
+        if (!isInside) return;
+
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+        var scrollable = null;
+        var curr = e.target;
+        while (curr && curr !== modal && curr !== document.body) {
+            if (curr.scrollHeight > curr.clientHeight && curr.clientHeight > 0) {
+                var overflowY = window.getComputedStyle(curr).overflowY;
+                if (overflowY === 'auto' || overflowY === 'scroll') {
+                    scrollable = curr;
+                    break;
+                }
+            }
+            curr = curr.parentElement;
+        }
+
+        if (!scrollable) {
+            var activeRules = modal.querySelector('#cfPlayerRulesList');
+            if (activeRules && activeRules.offsetParent !== null && activeRules.scrollHeight > activeRules.clientHeight) {
+                scrollable = activeRules;
+            } else {
+                var candidate = modal.querySelector('#cfWordsListContainer, #cfCuesListContainer, #cfTabPaneAdd, #cfTabPaneShift');
+                if (candidate && candidate.offsetParent !== null && candidate.scrollHeight > candidate.clientHeight) {
+                    scrollable = candidate;
+                }
+            }
+        }
+
+        if (scrollable) {
+            scrollable.scrollTop += e.deltaY;
+            if (e.deltaX && scrollable.scrollWidth > scrollable.clientWidth) {
+                scrollable.scrollLeft += e.deltaX;
+            }
+            if (e.cancelable) e.preventDefault();
+        }
+    }
+    window.addEventListener('wheel', handleModalWheel, { capture: true, passive: false });
+    document.addEventListener('wheel', handleModalWheel, { capture: true, passive: false });
 
     window.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
