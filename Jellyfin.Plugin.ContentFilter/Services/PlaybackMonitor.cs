@@ -181,10 +181,18 @@ public class PlaybackMonitor : IHostedService
                         (position >= c.Start - TimeSpan.FromSeconds(1) && position < c.End))
             .ToArray();
 
-        // Only video/both-channel skip cues trigger a seek; audio-channel skips are treated as mutes
+        var config = Plugin.Instance?.Configuration;
+        var fallbackToSkip = config?.FallbackToSkipOnUnmutableClients ?? true;
+        var canMute = CanSessionMute(session);
+
+        // Video/both-channel skip cues trigger a seek; audio mute/skip cues also trigger seek if client cannot mute
         var seekCue = activeCues
-            .Where(c => string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase))
-            .Where(c => !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase))
+            .Where(c =>
+                (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)) ||
+                (!canMute && fallbackToSkip &&
+                 (string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
+                  string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase))))
             .OrderByDescending(c => c.End)
             .FirstOrDefault();
 
@@ -208,9 +216,12 @@ public class PlaybackMonitor : IHostedService
             if (isNewTarget || shouldRetry)
             {
                 var attempt = isNewTarget ? 1 : state.SeekRetryCount + 1;
+                var reason = !canMute && fallbackToSkip && (seekCue.Channel.Equals("audio", StringComparison.OrdinalIgnoreCase) || seekCue.Action.Equals("mute", StringComparison.OrdinalIgnoreCase))
+                    ? " [client cannot mute, fallback to seek]"
+                    : string.Empty;
                 _logger.LogInformation(
-                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: seeking past {Category} cue ({Channel}) to {End:mm\\:ss} (attempt {Attempt})",
-                    sessionId, session.UserName, session.DeviceName, position, seekCue.Category, seekCue.Channel, seekCue.End, attempt);
+                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: seeking past {Category} cue ({Channel}) to {End:mm\\:ss}{Reason} (attempt {Attempt})",
+                    sessionId, session.UserName, session.DeviceName, position, seekCue.Category, seekCue.Channel, seekCue.End, reason, attempt);
 
                 var sent = await SendPlaystateToSessionOrGroupAsync(session, new PlaystateRequest
                 {
@@ -265,8 +276,8 @@ public class PlaybackMonitor : IHostedService
             }
         }
 
-        // Mute when: explicit mute-action cue, OR audio-channel skip cue.
-        var shouldMute = activeCues.Any(c =>
+        // Mute when: client can mute AND (explicit mute-action cue, OR audio-channel skip cue).
+        var shouldMute = canMute && activeCues.Any(c =>
             string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
             (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
              string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)));
@@ -289,12 +300,36 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    private static bool CanSessionMute(SessionInfo session)
+    {
+        // Swiftfin (iOS / tvOS) explicitly ignores all remote Mute and Volume commands
+        if (!string.IsNullOrEmpty(session.Client) &&
+            session.Client.Contains("Swiftfin", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // If client capabilities declare supported commands, verify Mute is supported
+        if (session.Capabilities?.SupportedCommands != null &&
+            session.Capabilities.SupportedCommands.Count > 0 &&
+            !session.Capabilities.SupportedCommands.Contains(GeneralCommandType.Mute))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private HashSet<string> GetTargetSessionIds(SessionInfo session)
     {
         var targets = new HashSet<string>(StringComparer.Ordinal);
-        if (session.SessionControllers.Count > 0)
+        if (!string.IsNullOrWhiteSpace(session.Id))
         {
             targets.Add(session.Id);
+        }
+
+        if (session.SessionControllers.Count > 0)
+        {
             return targets;
         }
 
@@ -326,16 +361,6 @@ public class PlaybackMonitor : IHostedService
                     targets.Add(candidate.Id);
                 }
             }
-
-            if (targets.Count > 0)
-            {
-                return targets;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.Id))
-        {
-            targets.Add(session.Id);
         }
 
         return targets;
@@ -347,12 +372,6 @@ public class PlaybackMonitor : IHostedService
         var anySent = false;
         foreach (var targetId in targetSessionIds)
         {
-            var targetSession = _sessionManager.Sessions.FirstOrDefault(s => string.Equals(s.Id, targetId, StringComparison.Ordinal));
-            if (targetSession is not null && targetSession.SessionControllers.Count == 0)
-            {
-                continue;
-            }
-
             var sent = await SendPlaystateAsync(targetId, request, ct).ConfigureAwait(false);
             if (sent)
             {
@@ -387,7 +406,7 @@ public class PlaybackMonitor : IHostedService
         try
         {
             var session = _sessionManager.Sessions.FirstOrDefault(s => string.Equals(s.Id, sessionId, StringComparison.Ordinal));
-            if (session is null || session.SessionControllers.Count == 0)
+            if (session is null)
             {
                 return false;
             }

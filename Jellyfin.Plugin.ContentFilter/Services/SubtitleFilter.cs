@@ -503,17 +503,24 @@ public class SubtitleFilter
             return text;
         }
 
+        var sortedPhrases = phrases
+            .Where(static p => !string.IsNullOrWhiteSpace(p))
+            .Select(static p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(static p => p.Length);
+
         var output = text;
-        foreach (var phrase in phrases)
+        foreach (var phrase in sortedPhrases)
         {
-            if (string.IsNullOrWhiteSpace(phrase))
+            var pattern = FilterDictionary.BuildWordPattern(phrase);
+            if (string.IsNullOrEmpty(pattern))
             {
                 continue;
             }
 
             output = Regex.Replace(
                 output,
-                $@"\b{Regex.Escape(phrase.Trim())}\b",
+                pattern,
                 match => MaskLeavingFirstLetter(match.Value),
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }

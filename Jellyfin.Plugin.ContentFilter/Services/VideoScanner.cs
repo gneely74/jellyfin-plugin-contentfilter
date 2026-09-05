@@ -631,7 +631,7 @@ public class VideoScanner : IHostedService
                     }
 
                     // Find each occurrence with whole word boundary matching
-                    var regex = new Regex($@"\b{Regex.Escape(phrase)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                    var regex = new Regex(FilterDictionary.BuildWordPattern(phrase), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                     var matches = regex.Matches(text);
                     foreach (Match match in matches)
                     {
@@ -718,7 +718,7 @@ public class VideoScanner : IHostedService
         {
             content = Regex.Replace(
                 content,
-                @"\b" + Regex.Escape(phrase) + @"\b",
+                FilterDictionary.BuildWordPattern(phrase),
                 m => BleepText(m.Value),
                 RegexOptions.IgnoreCase);
         }

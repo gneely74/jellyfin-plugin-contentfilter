@@ -64,6 +64,9 @@ public class SubtitleWordOccurrence
 
     /// <summary>Gets or sets a value indicating whether this occurrence is currently filtered.</summary>
     public bool IsFiltered { get; set; }
+
+    /// <summary>Gets or sets the exact matched word in dialogue (e.g. "bastards" when term is "bastard").</summary>
+    public string MatchedWord { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -350,7 +353,7 @@ public class SubtitleWordScanner
                 if (string.IsNullOrWhiteSpace(term)) continue;
                 if (!wordsToScan.ContainsKey(term))
                 {
-                    var pattern = new Regex($@"\b{Regex.Escape(term)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                    var pattern = new Regex(FilterDictionary.BuildWordPattern(term), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                     wordsToScan[term] = (category, pattern);
                 }
             }
@@ -361,10 +364,14 @@ public class SubtitleWordScanner
         {
             if (!wordsToScan.ContainsKey(w))
             {
-                var pattern = new Regex($@"\b{Regex.Escape(w)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                var pattern = new Regex(FilterDictionary.BuildWordPattern(w), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                 wordsToScan[w] = ("Custom.BlanketWord", pattern);
             }
         }
+
+        var orderedWordsToScan = wordsToScan
+            .OrderByDescending(kvp => kvp.Key.Length)
+            .ToList();
 
         var wordGroupMap = new Dictionary<string, SubtitleWordGroup>(StringComparer.OrdinalIgnoreCase);
         var blocks = SplitSrtBlocks(srt);
@@ -380,25 +387,39 @@ public class SubtitleWordScanner
             var cleanDialogue = HtmlTagRegex.Replace(dialogueText, string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(cleanDialogue)) continue;
 
-            foreach (var (term, (category, regex)) in wordsToScan)
+            // Track matched character spans in this block to avoid overlapping duplicate cues
+            var matchedSpans = new List<(int Start, int End)>();
+
+            foreach (var (term, (category, regex)) in orderedWordsToScan)
             {
                 var matches = regex.Matches(cleanDialogue);
                 if (matches.Count == 0) continue;
 
-                if (!wordGroupMap.TryGetValue(term, out var group))
-                {
-                    group = new SubtitleWordGroup
-                    {
-                        Word = term,
-                        Category = category,
-                        IsGlobalBlanket = globalBlanketWords.Contains(term),
-                        Occurrences = []
-                    };
-                    wordGroupMap[term] = group;
-                }
-
                 foreach (Match m in matches)
                 {
+                    var mStart = m.Index;
+                    var mEnd = m.Index + m.Length;
+
+                    // Skip if this character range overlaps with an already matched longer term
+                    if (matchedSpans.Any(span => mStart < span.End && mEnd > span.Start))
+                    {
+                        continue;
+                    }
+
+                    matchedSpans.Add((mStart, mEnd));
+
+                    if (!wordGroupMap.TryGetValue(term, out var group))
+                    {
+                        group = new SubtitleWordGroup
+                        {
+                            Word = term,
+                            Category = category,
+                            IsGlobalBlanket = globalBlanketWords.Contains(term),
+                            Occurrences = []
+                        };
+                        wordGroupMap[term] = group;
+                    }
+
                     occCounter++;
                     var blockDur = (end - start).TotalSeconds;
                     var ratio = cleanDialogue.Length <= 1 ? 0.0 : (double)m.Index / cleanDialogue.Length;
@@ -424,7 +445,8 @@ public class SubtitleWordScanner
                         Text = cleanDialogue,
                         CueStart = FormatTimecode(muteStart),
                         CueEnd = FormatTimecode(muteEnd),
-                        IsFiltered = isFiltered
+                        IsFiltered = isFiltered,
+                        MatchedWord = m.Value
                     };
 
                     group.Occurrences.Add(occ);

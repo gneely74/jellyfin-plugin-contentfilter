@@ -411,6 +411,7 @@ public class SubtitleSyncService
         {
             foreach (var occ in group.Occurrences)
             {
+                var wordLabel = !string.IsNullOrWhiteSpace(occ.MatchedWord) ? occ.MatchedWord : group.Word;
                 cuesToAdd.Add(new FilterCue
                 {
                     Start = TimeSpan.FromSeconds(occ.StartSeconds),
@@ -418,7 +419,7 @@ public class SubtitleSyncService
                     Category = group.Category,
                     Channel = channel,
                     Action = action,
-                    Description = $"Spoken: \"{group.Word}\""
+                    Description = $"Spoken: \"{wordLabel}\""
                 });
             }
         }

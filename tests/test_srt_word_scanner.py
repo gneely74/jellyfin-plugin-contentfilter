@@ -19,12 +19,31 @@ def parse_srt_block(block_text):
     return {"start": start, "end": end, "dialogue": dialogue}
 
 
+def build_word_pattern(term: str) -> str:
+    if not term or not term.strip():
+        return ""
+    term = term.strip()
+    if " " in term:
+        return rf"\b{re.escape(term)}\b"
+    escaped = re.escape(term)
+    if len(term) > 2 and term.lower().endswith("y") and term[-2].lower() not in "aeiou":
+        stem = re.escape(term[:-1])
+        return rf"\b(?:{stem}ies|{escaped})\b"
+    if term.lower().endswith("ss"):
+        return rf"\b(?:{escaped}es|{escaped})\b"
+    if term.lower().endswith("s"):
+        return rf"\b{escaped}\b"
+    if any(term.lower().endswith(suffix) for suffix in ("sh", "ch", "x", "z")):
+        return rf"\b(?:{escaped}es|{escaped})\b"
+    return rf"\b(?:{escaped}s|{escaped})\b"
+
+
 def detect_words(dialogue, target_words):
     found = []
     for word in target_words:
-        pattern = re.compile(rf"\b{re.escape(word)}\b", re.IGNORECASE)
+        pattern = re.compile(build_word_pattern(word), re.IGNORECASE)
         for match in pattern.finditer(dialogue):
-            found.append((word, match.start(), match.end()))
+            found.append((word, match.start(), match.end(), match.group(0)))
     return found
 
 
@@ -69,3 +88,18 @@ def test_detect_multiple_words_case_insensitive():
     assert "hell" in found_words
     assert "god damn" in found_words
     assert "shit" in found_words
+
+
+def test_detect_plurals_common_swear_words():
+    text = "Those bastards and bitches are complete assholes! Don't be an ass or touch those asses."
+    targets = ["bastard", "bitch", "asshole", "ass"]
+    matches = detect_words(text, targets)
+    matched_tokens = [m[3].lower() for m in matches]
+    assert "bastards" in matched_tokens
+    assert "bitches" in matched_tokens
+    assert "assholes" in matched_tokens
+    assert "ass" in matched_tokens
+    assert "asses" in matched_tokens
+    # Ensure unrelated word boundaries aren't matched
+    assert "assessment" not in matched_tokens
+    assert "bastardized" not in matched_tokens

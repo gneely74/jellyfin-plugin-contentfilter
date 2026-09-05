@@ -2051,6 +2051,10 @@
                                 <span>Automatically generate audio mute cues for profanity found in subtitles</span>
                             </label>
                             <label class="cf-checkbox-row">
+                                <input id="FallbackToSkipOnUnmutableClients" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Skip past profanity cues on players without volume mute control (e.g. Apple TV / Swiftfin)</span>
+                            </label>
+                            <label class="cf-checkbox-row">
                                 <input id="OverwriteExistingCleanSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                                 <span>Force overwrite existing clean subtitles during automated runs (skips locked items)</span>
                             </label>
@@ -2625,6 +2629,7 @@
                 if (getEl('OverwriteExistingCleanSubtitles')) getEl('OverwriteExistingCleanSubtitles').checked = !!config.OverwriteExistingCleanSubtitles;
                 if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
                 if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
+                if (getEl('FallbackToSkipOnUnmutableClients')) getEl('FallbackToSkipOnUnmutableClients').checked = config.FallbackToSkipOnUnmutableClients !== false;
 
                 populateTree(getEl('filterHierarchyContainer'), config.DisabledCategories, config.DisabledFilterItems, config);
             }
@@ -2646,6 +2651,7 @@
                 if (getEl('OverwriteExistingCleanSubtitles')) config.OverwriteExistingCleanSubtitles = getEl('OverwriteExistingCleanSubtitles').checked;
                 if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
                 if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
+                if (getEl('FallbackToSkipOnUnmutableClients')) config.FallbackToSkipOnUnmutableClients = getEl('FallbackToSkipOnUnmutableClients').checked;
 
                 var data = collectTree(getEl('filterHierarchyContainer'));
                 config.DisabledCategories = data.disabledCategories;

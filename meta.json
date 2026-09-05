@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Fix mouse wheel volume hijacking in video player, isolate modal wheel and key events, keep modal clamped within viewport, and default Rules accordion groups to collapsed.",
+  "changelog": "Recognize common swear word plurals and compounds (bastards, bitches, assholes, etc.) across subtitle scanning and censorship, and implement seamless seek fallback for Apple TV/Swiftfin and native unmutable players.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -8,6 +8,6 @@
   "overview": "Scan and filter objectionable content using a local LLM",
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-09-04T00:00:00Z",
-  "version": "1.0.31.0"
+  "timestamp": "2026-09-05T00:00:00Z",
+  "version": "1.0.32.0"
 }

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Jellyfin.Plugin.ContentFilter.Models;
 
 /// <summary>
@@ -6,6 +8,60 @@ namespace Jellyfin.Plugin.ContentFilter.Models;
 public static class FilterDictionary
 {
     /// <summary>
+    /// Builds a regular expression pattern that matches a word or phrase, including common English plural variants (e.g. "bastard" -> "bastards", "bitch" -> "bitches", "asshole" -> "assholes").
+    /// </summary>
+    /// <param name="term">The word or phrase.</param>
+    /// <returns>A regex pattern string with whole-word boundary assertions.</returns>
+    public static string BuildWordPattern(string term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+        {
+            return string.Empty;
+        }
+
+        term = term.Trim();
+        if (term.Contains(' '))
+        {
+            return $@"\b{Regex.Escape(term)}\b";
+        }
+
+        var escaped = Regex.Escape(term);
+
+        // Words ending in consonant + y: pussy -> pussies | pussy
+        if (term.Length > 2 &&
+            term.EndsWith("y", StringComparison.OrdinalIgnoreCase) &&
+            !"aeiouAEIOU".Contains(term[^2]))
+        {
+            var stem = Regex.Escape(term[..^1]);
+            return $@"\b(?:{stem}ies|{escaped})\b";
+        }
+
+        // Sibilant endings ending in ss (ass, piss, jackass) -> asses, pisses
+        if (term.EndsWith("ss", StringComparison.OrdinalIgnoreCase))
+        {
+            return $@"\b(?:{escaped}es|{escaped})\b";
+        }
+
+        // Words ending in already plural s (bastards, bitches, tits) -> match as-is
+        if (term.EndsWith("s", StringComparison.OrdinalIgnoreCase))
+        {
+            return $@"\b{escaped}\b";
+        }
+
+        // Words ending in sh, ch, x, z (bitch -> bitches)
+        if (term.EndsWith("sh", StringComparison.OrdinalIgnoreCase) ||
+            term.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
+            term.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
+            term.EndsWith("z", StringComparison.OrdinalIgnoreCase))
+        {
+            return $@"\b(?:{escaped}es|{escaped})\b";
+        }
+
+        // Standard words (bastard, asshole, cunt, prick, douche, etc.) -> bastard, bastards
+        return $@"\b(?:{escaped}s|{escaped})\b";
+    }
+
+    /// <summary>
     /// Gets the full set of filter categories and their terms or descriptions.
     /// </summary>
     public static IReadOnlyDictionary<string, string[]> Categories { get; } = new Dictionary<string, string[]>
@@ -13,9 +69,13 @@ public static class FilterDictionary
         // --- 1. LANGUAGE & PROFANITY (subtitle word match) ---
         ["Language.GeneralProfanity"] =
         [
-            "arse", "ass", "bastard", "bitch", "bloody", "bollocks", "bugger",
-            "crap", "cunt", "damn", "douche", "fuck", "fucking",
-            "fucker", "hell", "piss", "screw", "shit",
+            "arse", "arses", "ass", "asses", "asshole", "assholes", "bastard", "bastards",
+            "bitch", "bitches", "bloody", "bollocks", "bugger", "buggers", "bullshit", "bullshits",
+            "crap", "craps", "cunt", "cunts", "damn", "damns", "dick", "dicks", "dickhead", "dickheads",
+            "dipshit", "dipshits", "douche", "douches", "douchebag", "douchebags", "fuck", "fucks",
+            "fucking", "fucker", "fuckers", "hell", "horseshit", "jackass", "jackasses",
+            "motherfucker", "motherfuckers", "motherfucking", "piss", "pisses", "prick", "pricks",
+            "screw", "screws", "shit", "shits", "wank", "wanks", "wanker", "wankers",
         ],
 
         ["Language.Blasphemy"] =
@@ -25,24 +85,28 @@ public static class FilterDictionary
 
         ["Language.RacialAndBigotedSlurs"] =
         [
-            "chink", "cracker", "fag", "heeb", "jap", "jiz", "kike", "kraut", "nigger",
-            "pollack", "wetback", "wop",
+            "chink", "chinks", "cracker", "crackers", "fag", "fags", "heeb", "heebs",
+            "jap", "japs", "jiz", "kike", "kikes", "kraut", "krauts", "nigger", "niggers",
+            "pollack", "pollacks", "wetback", "wetbacks", "wop", "wops",
         ],
 
         ["Language.ChildishLanguage"] =
         [
-            "bum", "butt", "dumb", "fart", "poop", "stupid",
+            "bum", "bums", "butt", "butts", "dumb", "fart", "farts", "poop", "poops", "stupid",
         ],
 
         // --- 2. SEXUAL REFERENCES (subtitle word match + Ollama visual) ---
         ["SexualReferences.ExplicitWords"] =
         [
-            "anus", "balls", "beastial", "blowjob", "clit", "cock", "condom", "cum",
-            "cunillingus", "dick", "dildo", "dink", "douche", "ejaculate", "fag",
-            "fellatio", "gangbang", "hard on", "horniest", "hump", "jerk", "kooch",
-            "masturbate", "nuts", "orgasm", "picker", "penis", "porn", "prick",
-            "piss", "pussy", "queer", "rimjob", "scrotum", "sex", "skeet", "slut",
-            "testicle", "tits", "twat", "vagina", "wank", "whore",
+            "anus", "anuses", "balls", "beastial", "blowjob", "blowjobs", "clit", "clits",
+            "cock", "cocks", "condom", "condoms", "cum", "cums", "cunillingus", "dick", "dicks",
+            "dildo", "dildos", "dink", "dinks", "douche", "douches", "ejaculate", "ejaculates",
+            "fag", "fags", "fellatio", "gangbang", "gangbangs", "hard on", "horniest", "hump", "humps",
+            "jerk", "jerks", "kooch", "masturbate", "nuts", "orgasm", "orgasms", "picker",
+            "penis", "penises", "porn", "prick", "pricks", "piss", "pussy", "pussies",
+            "queer", "queers", "rimjob", "rimjobs", "scrotum", "sex", "skeet", "slut", "sluts",
+            "testicle", "testicles", "tits", "twat", "twats", "vagina", "vaginas", "wank", "wanks",
+            "whore", "whores",
         ],
 
         ["SexualReferences.ContextualDialogue"] =
