@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.ContentFilter.Configuration;
 using Jellyfin.Plugin.ContentFilter.Models;
 using MediaBrowser.Controller.Entities;
@@ -203,14 +204,10 @@ public class FilterRuleService
     {
         var category = cue.Category;
 
-        // Specific item disabled check
-        if (!string.IsNullOrEmpty(cue.Description))
+        // Specific item disabled check (supports inflections and Spoken: "word" formatting)
+        if (IsFilterItemDisabled(category, cue.Description, itemOverride.DisabledFilterItems))
         {
-            var itemKey = $"{category}:{cue.Description}";
-            if (itemOverride.DisabledFilterItems.Any(d => string.Equals(d, itemKey, StringComparison.OrdinalIgnoreCase)))
-            {
-                return false;
-            }
+            return false;
         }
 
         // Category explicitly disabled in item override
@@ -268,17 +265,82 @@ public class FilterRuleService
             return false;
         }
 
-        // Check specific item term disabled list
-        if (!string.IsNullOrEmpty(cue.Description) && config.DisabledFilterItems != null)
+        // Check specific item term disabled list (supports inflections and Spoken: "word" formatting)
+        if (IsFilterItemDisabled(category, cue.Description, config.DisabledFilterItems))
         {
-            var itemKey = $"{category}:{cue.Description}";
-            if (config.DisabledFilterItems.Any(d => string.Equals(d, itemKey, StringComparison.OrdinalIgnoreCase)))
-            {
-                return false;
-            }
+            return false;
         }
 
         return true;
+    }
+
+    private static bool IsFilterItemDisabled(string category, string? description, IEnumerable<string>? disabledFilterItems)
+    {
+        if (string.IsNullOrEmpty(description) || disabledFilterItems is null)
+        {
+            return false;
+        }
+
+        var prefix = category + ":";
+        var disabledTerms = disabledFilterItems
+            .Where(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(d => d[prefix.Length..].Trim())
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        if (disabledTerms.Count == 0)
+        {
+            return false;
+        }
+
+        // Direct exact match with description (for visual/scene cues like "Opening Credits")
+        if (disabledTerms.Any(t => string.Equals(t, description, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        // Extract spoken word from "Spoken: \"bastards\"" or "Spoken: bastards"
+        var word = ExtractSpokenWord(description);
+        if (!string.IsNullOrEmpty(word))
+        {
+            foreach (var term in disabledTerms)
+            {
+                if (string.Equals(term, word, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // Check plural/variation pattern (e.g. disabled term "bastard" covers "bastards")
+                var pattern = FilterDictionary.BuildWordPattern(term);
+                if (!string.IsNullOrEmpty(pattern) && Regex.IsMatch(word, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static string ExtractSpokenWord(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return string.Empty;
+        }
+
+        var m = Regex.Match(description, "\"([^\"]+)\"");
+        if (m.Success)
+        {
+            return m.Groups[1].Value.Trim();
+        }
+
+        if (description.StartsWith("Spoken:", StringComparison.OrdinalIgnoreCase))
+        {
+            return description["Spoken:".Length..].Trim();
+        }
+
+        return description.Trim();
     }
 
     private static bool IsCategoryDisabled(string category, IEnumerable<string>? disabledList)
