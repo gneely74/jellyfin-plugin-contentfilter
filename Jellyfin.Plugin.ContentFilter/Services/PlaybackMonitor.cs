@@ -302,13 +302,6 @@ public class PlaybackMonitor : IHostedService
 
     private static bool CanSessionMute(SessionInfo session)
     {
-        // Swiftfin (iOS / tvOS) explicitly ignores all remote Mute and Volume commands
-        if (!string.IsNullOrEmpty(session.Client) &&
-            session.Client.Contains("Swiftfin", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
         // If client capabilities declare supported commands, verify Mute is supported
         if (session.Capabilities?.SupportedCommands != null &&
             session.Capabilities.SupportedCommands.Count > 0 &&
