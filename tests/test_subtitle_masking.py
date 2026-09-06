@@ -1,10 +1,17 @@
 import re
-import pytest
+
 
 def mask_leaving_first_letter(word: str) -> str:
     if not word:
         return word
-    return re.sub(r"\b\w+", lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1) if len(m.group(0)) > 1 else m.group(0), word)
+    return re.sub(
+        r"\b\w+",
+        lambda m: (
+            m.group(0)[0] + "*" * (len(m.group(0)) - 1) if len(m.group(0)) > 1 else m.group(0)
+        ),
+        word,
+    )
+
 
 def build_word_pattern(term: str) -> str:
     if not term or not term.strip():
@@ -24,6 +31,7 @@ def build_word_pattern(term: str) -> str:
         return rf"\b(?:{escaped}es|{escaped})\b"
     return rf"\b(?:{escaped}s|{escaped})\b"
 
+
 def redact_phrases(text: str, phrases: list[str]) -> str:
     if not text:
         return text
@@ -34,8 +42,11 @@ def redact_phrases(text: str, phrases: list[str]) -> str:
         pattern = build_word_pattern(p)
         if not pattern:
             continue
-        output = re.sub(pattern, lambda m: mask_leaving_first_letter(m.group(0)), output, flags=re.IGNORECASE)
+        output = re.sub(
+            pattern, lambda m: mask_leaving_first_letter(m.group(0)), output, flags=re.IGNORECASE
+        )
     return output
+
 
 def test_mask_leaving_first_letter():
     assert mask_leaving_first_letter("bastard") == "b******"
@@ -51,14 +62,17 @@ def test_mask_leaving_first_letter():
     assert mask_leaving_first_letter("a") == "a"
     assert mask_leaving_first_letter("") == ""
 
+
 def test_mask_phrase():
     assert mask_leaving_first_letter("son of a bitch") == "s** o* a b****"
+
 
 def test_redact_phrases_in_dialogue():
     dialogue = "Look at that bastard over there! Damn right, he is a bloody fool."
     phrases = ["bastard", "damn", "bloody"]
     redacted = redact_phrases(dialogue, phrases)
     assert redacted == "Look at that b****** over there! D*** right, he is a b***** fool."
+
 
 def test_redact_plurals_in_dialogue():
     dialogue = "Those bastards and bitches are complete assholes!"
@@ -67,11 +81,13 @@ def test_redact_plurals_in_dialogue():
     redacted = redact_phrases(dialogue, phrases)
     assert redacted == "Those b******* and b****** are complete a*******!"
 
+
 def test_redact_phrases_punctuation_and_casing():
     dialogue = "Bastard! You bloody idiot... DAMN IT!"
     phrases = ["bastard", "bloody", "damn"]
     redacted = redact_phrases(dialogue, phrases)
     assert redacted == "B******! You b***** idiot... D*** IT!"
+
 
 def test_redact_srt_block():
     srt_block = """1

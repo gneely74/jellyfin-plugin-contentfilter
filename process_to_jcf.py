@@ -10,15 +10,11 @@ ready for use with the Jellyfin Content Filter plugin.
 from __future__ import annotations
 
 import argparse
-import html
 import json
-import os
 import re
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
 
 DEFAULT_INPUT_FILE = "thetimestampdudes_posts/posts_clean.json"
 DEFAULT_OUTPUT_DIR = "jcf_thetimestampdudes"
@@ -129,7 +125,22 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
     combined = f"{raw_cat} {desc}".lower()
 
     # 1. Profanity / Language / Inappropriate Talk
-    if any(k in combined for k in ["profanity", "language", "swear", "curse", "f-word", "slur", "blasphem", "crude language", "inappropriate talk", "inappropriate comment", "offensive"]):
+    if any(
+        k in combined
+        for k in [
+            "profanity",
+            "language",
+            "swear",
+            "curse",
+            "f-word",
+            "slur",
+            "blasphem",
+            "crude language",
+            "inappropriate talk",
+            "inappropriate comment",
+            "offensive",
+        ]
+    ):
         if any(k in combined for k in ["slur", "racial", "racist", "bigot"]):
             return "Language.RacialAndBigotedSlurs", "audio", "mute"
         if any(k in combined for k in ["god", "jesus", "christ", "lord", "blasphem"]):
@@ -139,64 +150,188 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
         return "Language.GeneralProfanity", "audio", "mute"
 
     # 2. Gestures
-    if any(k in combined for k in ["middle finger", "flipping off", "vulgar gesture", "obscene gesture"]):
+    if any(
+        k in combined
+        for k in ["middle finger", "flipping off", "vulgar gesture", "obscene gesture"]
+    ):
         return "SexualReferences.Visuals", "video", "skip"
 
     # 3. Sexual Dialogue / Innuendo
-    if any(k in combined for k in ["sexual dialogue", "sexual conversation", "sexual remark", "sexual comment", "innuendo", "dirty talk", "prostitution talk"]):
+    if any(
+        k in combined
+        for k in [
+            "sexual dialogue",
+            "sexual conversation",
+            "sexual remark",
+            "sexual comment",
+            "innuendo",
+            "dirty talk",
+            "prostitution talk",
+        ]
+    ):
         return "SexualReferences.ContextualDialogue", "video", "skip"
 
     # 4. Sex & Nudity
     # 4a. Sexual Assault / Rape
-    if any(k in combined for k in ["sexual assault", "rape", "molest", "non-consensual", "groping", "forces herself", "forces himself"]):
+    if any(
+        k in combined
+        for k in [
+            "sexual assault",
+            "rape",
+            "molest",
+            "non-consensual",
+            "groping",
+            "forces herself",
+            "forces himself",
+        ]
+    ):
         return "SexAndNudity.SexualAssault", "video", "skip"
 
     # 4b. Graphic Sex / Intercourse / Explicit / Erotic / Masturbation
-    if any(k in combined for k in [
-        "intercourse", "sex scene", "explicit sex", "oral sex", "blowjob", "handjob",
-        "masturbat", "orgasm", "penetrat", "erotic", "sex with nudity"
-    ]) or (re.search(r"\bsex\b", combined) and any(k in combined for k in ["explicit", "scene", "act", "bed", "having"])):
+    if any(
+        k in combined
+        for k in [
+            "intercourse",
+            "sex scene",
+            "explicit sex",
+            "oral sex",
+            "blowjob",
+            "handjob",
+            "masturbat",
+            "orgasm",
+            "penetrat",
+            "erotic",
+            "sex with nudity",
+        ]
+    ) or (
+        re.search(r"\bsex\b", combined)
+        and any(k in combined for k in ["explicit", "scene", "act", "bed", "having"])
+    ):
         return "SexAndNudity.Graphic", "video", "skip"
 
     # 4c. Implied Sex / Bedroom / Suggestive Activity (without explicit intercourse or intimacy)
-    if any(k in combined for k in [
-        "implied sex", "fooling in bed", "sex without nudity", "sensual", "bedroom scene",
-        "suggestive dancing", "adult scene", "touchy feely"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "implied sex",
+            "fooling in bed",
+            "sex without nudity",
+            "sensual",
+            "bedroom scene",
+            "suggestive dancing",
+            "adult scene",
+            "touchy feely",
+        ]
+    ):
         return "SexAndNudity.ImpliedSex", "video", "skip"
 
     # 4d. Physical Intimacy (Kissing / Making out / Caress)
-    if any(k in combined for k in ["kissing", "kiss", "make out", "making out", "caress", "passionate kiss"]):
+    if any(
+        k in combined
+        for k in ["kissing", "kiss", "make out", "making out", "caress", "passionate kiss"]
+    ):
         return "SexAndNudity.PhysicalIntimacy", "video", "skip"
 
     # 4e. Full Nudity
-    if any(k in combined for k in [
-        "full nudity", "frontal nudity", "naked", "completely naked", "unclad", "bare breasts",
-        "topless female", "topless woman", "topless", "bare backside", "bare butt", "buttocks", "abrupt nudity",
-        "boob", "breast", "penis"
-    ]) or (any(k in combined for k in ["nudity", "nude"]) and not any(k in combined for k in [
-        "underwear", "lingerie", "bra", "panties", "boxer", "boxers", "shirtless", "cleavage",
-        "swimwear", "bikini", "swimsuit", "crop top", "revealing"
-    ])):
+    if any(
+        k in combined
+        for k in [
+            "full nudity",
+            "frontal nudity",
+            "naked",
+            "completely naked",
+            "unclad",
+            "bare breasts",
+            "topless female",
+            "topless woman",
+            "topless",
+            "bare backside",
+            "bare butt",
+            "buttocks",
+            "abrupt nudity",
+            "boob",
+            "breast",
+            "penis",
+        ]
+    ) or (
+        any(k in combined for k in ["nudity", "nude"])
+        and not any(
+            k in combined
+            for k in [
+                "underwear",
+                "lingerie",
+                "bra",
+                "panties",
+                "boxer",
+                "boxers",
+                "shirtless",
+                "cleavage",
+                "swimwear",
+                "bikini",
+                "swimsuit",
+                "crop top",
+                "revealing",
+            ]
+        )
+    ):
         return "SexAndNudity.FullNudity", "video", "skip"
 
     # 4f. Partial Nudity / Revealing Clothing / Lingerie / Underwear / Swimwear
-    if any(k in combined for k in [
-        "nudity", "nude", "underwear", "lingerie", "bra", "panties", "boxer", "boxers", "no shirt", "shirtless",
-        "revealing", "cleavage", "immodest", "bikini", "swimsuit", "swimwear", "shower",
-        "undressing", "undress", "strip", "stripping", "scantily", "crop top", "suggestive"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "nudity",
+            "nude",
+            "underwear",
+            "lingerie",
+            "bra",
+            "panties",
+            "boxer",
+            "boxers",
+            "no shirt",
+            "shirtless",
+            "revealing",
+            "cleavage",
+            "immodest",
+            "bikini",
+            "swimsuit",
+            "swimwear",
+            "shower",
+            "undressing",
+            "undress",
+            "strip",
+            "stripping",
+            "scantily",
+            "crop top",
+            "suggestive",
+        ]
+    ):
         if any(k in combined for k in ["bikini", "swimsuit", "swimwear", "beach"]):
             return "SexAndNudity.Mild", "video", "skip"
         return "SexAndNudity.PartialNudity", "video", "skip"
 
     # 5. Violence & Horror
     # 5a. Gore / Dismemberment / Organs / Decapitation
-    if any(k in combined for k in [
-        "gore", "decapitat", "dismember", "severed", "head rolling", "headless", "mutilat",
-        "entrails", "organs", "bloody corpses", "bloody shoot", "cut out eye", "cuts out eye",
-        "mangled", "intestine"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "gore",
+            "decapitat",
+            "dismember",
+            "severed",
+            "head rolling",
+            "headless",
+            "mutilat",
+            "entrails",
+            "organs",
+            "bloody corpses",
+            "bloody shoot",
+            "cut out eye",
+            "cuts out eye",
+            "mangled",
+            "intestine",
+        ]
+    ):
         return "Violence.Gore", "video", "skip"
 
     # 5b. Jump Scares
@@ -204,51 +339,170 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
         return "Violence.JumpScares", "video", "skip"
 
     # 5c. Disturbing / Psychological Horror / Corpses / Suicide
-    if any(k in combined for k in [
-        "disturbing", "corpse", "dead body", "skeletal", "suicide", "torture", "scary",
-        "creepy", "fear", "unsettling", "psychological", "hanging"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "disturbing",
+            "corpse",
+            "dead body",
+            "skeletal",
+            "suicide",
+            "torture",
+            "scary",
+            "creepy",
+            "fear",
+            "unsettling",
+            "psychological",
+            "hanging",
+        ]
+    ):
         return "Violence.Disturbing", "video", "skip"
 
     # 5d. Graphic Violence / Severe / Fatal
-    if any(k in combined for k in [
-        "graphic violence", "fatal", "stabbed in eye", "torture death", "slashes his cheeks",
-        "brutal", "visceral", "kill", "murder", "behead", "close range"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "graphic violence",
+            "fatal",
+            "stabbed in eye",
+            "torture death",
+            "slashes his cheeks",
+            "brutal",
+            "visceral",
+            "kill",
+            "murder",
+            "behead",
+            "close range",
+        ]
+    ):
         return "Violence.Graphic", "video", "skip"
 
     # 5e. Mild Violence
-    if any(k in combined for k in [
-        "slap", "slapping", "comic", "playful", "wrestling", "punch", "punches", "hit with melon",
-        "shoving", "bloodless", "fistfight"
-    ]) and not any(k in combined for k in ["blood", "bloody", "stab", "shot", "gun", "knife", "wound"]):
+    if any(
+        k in combined
+        for k in [
+            "slap",
+            "slapping",
+            "comic",
+            "playful",
+            "wrestling",
+            "punch",
+            "punches",
+            "hit with melon",
+            "shoving",
+            "bloodless",
+            "fistfight",
+        ]
+    ) and not any(
+        k in combined for k in ["blood", "bloody", "stab", "shot", "gun", "knife", "wound"]
+    ):
         return "Violence.Mild", "video", "skip"
 
     # 5f. Moderate Violence / General Combat / Shootouts / Fights
-    if any(k in combined for k in [
-        "violence", "bloody", "blood", "stab", "shooting", "shoot", "shot", "gunfight", "knife",
-        "sword", "fight", "wound", "attack", "bullet", "explosion", "choke", "car flips", "wreck",
-        "beat", "gun", "assault"
-    ]):
+    if any(
+        k in combined
+        for k in [
+            "violence",
+            "bloody",
+            "blood",
+            "stab",
+            "shooting",
+            "shoot",
+            "shot",
+            "gunfight",
+            "knife",
+            "sword",
+            "fight",
+            "wound",
+            "attack",
+            "bullet",
+            "explosion",
+            "choke",
+            "car flips",
+            "wreck",
+            "beat",
+            "gun",
+            "assault",
+        ]
+    ):
         return "Violence.Moderate", "video", "skip"
 
     # 6. Substance Use
-    if any(k in combined for k in ["substance", "drug", "alcohol", "smoke", "smoking", "drink", "drunk"]):
-        if any(k in combined for k in [
-            "illegal drug", "narcotic", "marijuana", "weed", "cocaine", "heroin", "meth",
-            "pills", "high", "overdose", "snort", "injection", "drugs"
-        ]):
+    if any(
+        k in combined
+        for k in ["substance", "drug", "alcohol", "smoke", "smoking", "drink", "drunk"]
+    ):
+        if any(
+            k in combined
+            for k in [
+                "illegal drug",
+                "narcotic",
+                "marijuana",
+                "weed",
+                "cocaine",
+                "heroin",
+                "meth",
+                "pills",
+                "high",
+                "overdose",
+                "snort",
+                "injection",
+                "drugs",
+            ]
+        ):
             return "Substances.IllegalDrugs", "video", "skip"
-        if any(k in combined for k in ["tobacco", "smoke", "smoking", "cigarette", "cigar", "vape", "vaping"]):
+        if any(
+            k in combined
+            for k in ["tobacco", "smoke", "smoking", "cigarette", "cigar", "vape", "vaping"]
+        ):
             return "Substances.Tobacco", "video", "skip"
-        if any(k in combined for k in ["alcohol", "drink", "drinking", "drunk", "beer", "wine", "liquor", "sake", "bar"]):
+        if any(
+            k in combined
+            for k in [
+                "alcohol",
+                "drink",
+                "drinking",
+                "drunk",
+                "beer",
+                "wine",
+                "liquor",
+                "sake",
+                "bar",
+            ]
+        ):
             return "Substances.Alcohol", "video", "skip"
         return "Substances.Alcohol", "video", "skip"
 
     # 7. Medical & Biological
-    if any(k in combined for k in ["seizure", "strobe", "flashing", "epilepsy", "medical", "hospital", "surgery", "procedure", "needle", "doctor"]):
+    if any(
+        k in combined
+        for k in [
+            "seizure",
+            "strobe",
+            "flashing",
+            "epilepsy",
+            "medical",
+            "hospital",
+            "surgery",
+            "procedure",
+            "needle",
+            "doctor",
+        ]
+    ):
         return "Medical.Events", "both", "skip"
-    if any(k in combined for k in ["vomit", "barf", "puke", "throw up", "barfing", "bodily function", "flatulence", "toilet"]):
+    if any(
+        k in combined
+        for k in [
+            "vomit",
+            "barf",
+            "puke",
+            "throw up",
+            "barfing",
+            "bodily function",
+            "flatulence",
+            "toilet",
+        ]
+    ):
         return "Medical.BodilyFunctions", "both", "skip"
 
     # 8. Structural Timestamps
@@ -283,10 +537,29 @@ def is_header_line(line: str) -> bool:
 
     lower = line.lower()
     cat_keywords = [
-        "nudity", "violence", "suggestive", "gore", "profanity", "alcohol",
-        "blood", "kiss", "underwear", "shirt", "curse", "sex", "rude",
-        "seizure", "drug", "smoking", "revealing", "talk", "warning",
-        "disturbing", "scary", "jumpscare", "gross"
+        "nudity",
+        "violence",
+        "suggestive",
+        "gore",
+        "profanity",
+        "alcohol",
+        "blood",
+        "kiss",
+        "underwear",
+        "shirt",
+        "curse",
+        "sex",
+        "rude",
+        "seizure",
+        "drug",
+        "smoking",
+        "revealing",
+        "talk",
+        "warning",
+        "disturbing",
+        "scary",
+        "jumpscare",
+        "gross",
     ]
     return any(k in lower for k in cat_keywords)
 
@@ -303,7 +576,12 @@ def parse_post_into_cues(plain_text: str) -> List[Cue]:
             continue
 
         # Skip headers / introductory metadata lines
-        if line.startswith("#") or line.startswith("-") or line.startswith("http") or line.startswith("If you have any questions"):
+        if (
+            line.startswith("#")
+            or line.startswith("-")
+            or line.startswith("http")
+            or line.startswith("If you have any questions")
+        ):
             continue
 
         # Check if line is a category header
@@ -383,7 +661,9 @@ def parse_post_into_cues(plain_text: str) -> List[Cue]:
                 st_sec = parse_time_to_seconds(ts_raw)
                 if st_sec is not None:
                     et_sec = st_sec + 8  # Default 8s duration for point events
-                    desc = (clean_l[: s_match.start()] + " " + clean_l[s_match.end() :]).strip(" -:–—()")
+                    desc = (clean_l[: s_match.start()] + " " + clean_l[s_match.end() :]).strip(
+                        " -:–—()"
+                    )
                     desc = re.sub(r"\s+", " ", desc).strip()
                     if not desc:
                         desc = f"Scene flagged under {current_cat}"
@@ -421,7 +701,11 @@ def merge_cues(cues: List[Cue], max_gap_seconds: int = 1) -> List[Cue]:
 
         prev = merged[-1]
         # Check if cues overlap or are immediately adjacent with compatible action
-        if cue.category == prev.category and cue.action == prev.action and cue.channel == prev.channel:
+        if (
+            cue.category == prev.category
+            and cue.action == prev.action
+            and cue.channel == prev.channel
+        ):
             if cue.start_seconds <= prev.end_seconds + max_gap_seconds:
                 # Extend end time and append description if distinct
                 new_end = max(prev.end_seconds, cue.end_seconds)
@@ -493,9 +777,17 @@ def process_lord_of_the_rings_trilogy(
 ) -> List[Tuple[str, int]]:
     """Handle The Lord of the Rings multi-movie trilogy post by generating 3 discrete JCF files."""
     films = [
-        ("The Lord of the Rings: The Fellowship of the Ring", 2001, ["fellowship of the ring", "fellowship"]),
+        (
+            "The Lord of the Rings: The Fellowship of the Ring",
+            2001,
+            ["fellowship of the ring", "fellowship"],
+        ),
         ("The Lord of the Rings: The Two Towers", 2002, ["the two towers", "two towers"]),
-        ("The Lord of the Rings: The Return of the King", 2003, ["the return of the king", "return of the king"]),
+        (
+            "The Lord of the Rings: The Return of the King",
+            2003,
+            ["the return of the king", "return of the king"],
+        ),
     ]
 
     results = []

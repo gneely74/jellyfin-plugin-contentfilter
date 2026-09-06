@@ -17,9 +17,9 @@ import re
 import sys
 import time
 import urllib.parse
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 try:
     import requests
@@ -174,7 +174,9 @@ class BuyMeACoffeeClient:
                 if p.get("project_update_locked_for", 0) > 0 and p.get("is_post_unlocked"):
                     return True
             # If all were locked_for == 0, check user session cookie
-            if self.session.cookies.get("bmc_api_production_session") or self.session.cookies.get("buymeacoffee_session"):
+            if self.session.cookies.get("bmc_api_production_session") or self.session.cookies.get(
+                "buymeacoffee_session"
+            ):
                 return True
             return False
         except Exception:
@@ -195,7 +197,10 @@ class BuyMeACoffeeClient:
             from selenium.webdriver.support import expected_conditions as EC
             from selenium.webdriver.support.ui import WebDriverWait
         except ImportError:
-            print("[!] Selenium is required for browser login. Run: pip install selenium", file=sys.stderr)
+            print(
+                "[!] Selenium is required for browser login. Run: pip install selenium",
+                file=sys.stderr,
+            )
             return False
 
         options = Options()
@@ -239,7 +244,9 @@ class BuyMeACoffeeClient:
             time.sleep(4)
 
             # Check if OTP code requested
-            otp_inputs = driver.find_elements(By.CSS_SELECTOR, "input[placeholder*='code' i], input#otp")
+            otp_inputs = driver.find_elements(
+                By.CSS_SELECTOR, "input[placeholder*='code' i], input#otp"
+            )
             if otp_inputs:
                 otp_elem = otp_inputs[0]
                 print("\n" + "=" * 50)
@@ -255,9 +262,11 @@ class BuyMeACoffeeClient:
 
             # Wait for studio or home navigation
             WebDriverWait(driver, 20).until(
-                lambda d: "buymeacoffee.com/home" in d.current_url
-                or "buymeacoffee.com/dashboard" in d.current_url
-                or "thetimestampdudes" in d.current_url
+                lambda d: (
+                    "buymeacoffee.com/home" in d.current_url
+                    or "buymeacoffee.com/dashboard" in d.current_url
+                    or "thetimestampdudes" in d.current_url
+                )
             )
 
             # Navigate to creator page to ensure domain cookies are fully populated
@@ -448,7 +457,7 @@ class BuyMeACoffeeClient:
             md_path = md_dir / f"{base_fname}.md"
 
             # In case of duplicates, append post id
-            if md_path.exists() and not str(pid) in md_path.stem:
+            if md_path.exists() and str(pid) not in md_path.stem:
                 md_path = md_dir / f"{base_fname}_{pid}.md"
 
             md_content = [
@@ -616,9 +625,16 @@ def main():
         else:
             print("[!] Existing session expired or not authenticated. Re-authenticating...")
 
-        email = args.email or os.environ.get("BMC_EMAIL") or input("Buy Me a Coffee Email: ").strip()
+        email = (
+            args.email or os.environ.get("BMC_EMAIL") or input("Buy Me a Coffee Email: ").strip()
+        )
         import getpass
-        password = args.password or os.environ.get("BMC_PASSWORD") or getpass.getpass("Buy Me a Coffee Password: ")
+
+        password = (
+            args.password
+            or os.environ.get("BMC_PASSWORD")
+            or getpass.getpass("Buy Me a Coffee Password: ")
+        )
 
         ok = client.login_browser(
             email=email,
@@ -626,7 +642,10 @@ def main():
             headless=not args.no_headless,
         )
         if not ok or not client.is_authenticated():
-            print("[!] Authentication failed. Please check credentials or try with --no-headless.", file=sys.stderr)
+            print(
+                "[!] Authentication failed. Please check credentials or try with --no-headless.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     # Fetch and export

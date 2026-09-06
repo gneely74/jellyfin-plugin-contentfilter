@@ -18,7 +18,6 @@ Examples:
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -241,7 +240,9 @@ def process_file(
 
     new_content, shifted, total = shift_jcf(content, offset_seconds, channel)
     sign = "+" if offset_seconds > 0 else ""
-    print(f"{file_path.name}: Shifted {shifted}/{total} cues by {sign}{offset_seconds}s (channel={channel})")
+    print(
+        f"{file_path.name}: Shifted {shifted}/{total} cues by {sign}{offset_seconds}s (channel={channel})"
+    )
 
     if output_path:
         output_path.write_text(new_content, encoding="utf-8")
@@ -254,9 +255,16 @@ def process_file(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Shift cue points in JCF files by time offset and channel filter.")
+    parser = argparse.ArgumentParser(
+        description="Shift cue points in JCF files by time offset and channel filter."
+    )
     parser.add_argument("target", help="Path to a .jcf file or directory containing .jcf files")
-    parser.add_argument("--offset", type=float, required=True, help="Offset in seconds (positive or negative, e.g. +2.5 or -1.0)")
+    parser.add_argument(
+        "--offset",
+        type=float,
+        required=True,
+        help="Offset in seconds (positive or negative, e.g. +2.5 or -1.0)",
+    )
     parser.add_argument(
         "--channel",
         choices=["all", "video", "audio"],
@@ -264,7 +272,13 @@ def main() -> int:
         help="Target channel: 'all' (default), 'video' (visual skips), or 'audio' (mutes/dialogue)",
     )
     parser.add_argument("--inplace", "-i", action="store_true", help="Modify files in-place")
-    parser.add_argument("--output", "-o", type=Path, default=None, help="Output file path (only valid when target is a single file)")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=None,
+        help="Output file path (only valid when target is a single file)",
+    )
 
     args = parser.parse_args()
     target_path = Path(args.target)
