@@ -13,7 +13,6 @@ from process_to_jcf import (
     parse_post_into_cues,
     parse_time_to_seconds,
     process_lord_of_the_rings_trilogy,
-    sanitize_filename,
 )
 
 

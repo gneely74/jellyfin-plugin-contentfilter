@@ -1,6 +1,5 @@
 """Unit tests for got_to_jcf."""
 
-import os
 import pytest
 from got_to_jcf import build_jcf, fmt_ts, invert_ranges, main, parse_range
 

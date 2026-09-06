@@ -182,26 +182,9 @@ class BuyMeACoffeeClient:
         except Exception:
             return False
 
-    def login_browser(
-        self,
-        email: str,
-        password: str,
-        headless: bool = True,
-    ) -> bool:
-        """Automate browser login via Selenium to obtain session cookies and solve 2FA."""
-        try:
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.common.by import By
-            from selenium.webdriver.common.keys import Keys
-            from selenium.webdriver.support import expected_conditions as EC
-            from selenium.webdriver.support.ui import WebDriverWait
-        except ImportError:
-            print(
-                "[!] Selenium is required for browser login. Run: pip install selenium",
-                file=sys.stderr,
-            )
-            return False
+    def _create_chrome_driver(self, headless: bool):
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
 
         options = Options()
         if headless:
@@ -214,53 +197,67 @@ class BuyMeACoffeeClient:
             "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         )
-
         print(f"[*] Launching Chrome ({'headless' if headless else 'visible'})...")
-        driver = webdriver.Chrome(options=options)
+        return webdriver.Chrome(options=options)
+
+    def _submit_credentials_and_otp(self, driver, email: str, password: str) -> None:
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.common.keys import Keys
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
+
+        print(f"[*] Navigating to {BASE_WEB_URL}/login ...")
+        driver.get(f"{BASE_WEB_URL}/login")
+
+        email_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.ID, "user_email"))
+        )
+        email_input.clear()
+        email_input.send_keys(email)
+        email_input.send_keys(Keys.RETURN)
+        time.sleep(2)
+
+        pw_input = WebDriverWait(driver, 15).until(
+            EC.visibility_of_element_located((By.ID, "password"))
+        )
+        pw_input.clear()
+        pw_input.send_keys(password)
+        pw_input.send_keys(Keys.RETURN)
+
+        print("[*] Credentials submitted. Checking for 2FA verification...")
+        time.sleep(4)
+        otp_inputs = driver.find_elements(
+            By.CSS_SELECTOR, "input[placeholder*='code' i], input#otp"
+        )
+        if otp_inputs:
+            print("\n" + "=" * 50)
+            print(f"[!] Buy Me a Coffee sent a login verification code to {email}.")
+            otp_code = input(">> Please enter the temporary login code: ").strip()
+            print("=" * 50 + "\n")
+            otp_inputs[0].clear()
+            otp_inputs[0].send_keys(otp_code)
+            otp_inputs[0].send_keys(Keys.RETURN)
+            time.sleep(5)
+
+    def login_browser(
+        self,
+        email: str,
+        password: str,
+        headless: bool = True,
+    ) -> bool:
+        """Automate browser login via Selenium to obtain session cookies and solve 2FA."""
         try:
-            print(f"[*] Navigating to {BASE_WEB_URL}/login ...")
-            driver.get(f"{BASE_WEB_URL}/login")
-
-            # Step 1: Submit email
-            email_input = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.ID, "user_email"))
+            from selenium.webdriver.support.ui import WebDriverWait
+        except ImportError:
+            print(
+                "[!] Selenium is required for browser login. Run: pip install selenium",
+                file=sys.stderr,
             )
-            email_input.clear()
-            email_input.send_keys(email)
-            email_input.send_keys(Keys.RETURN)
+            return False
 
-            time.sleep(2)
-
-            # Step 2: Submit password
-            pw_input = WebDriverWait(driver, 15).until(
-                EC.visibility_of_element_located((By.ID, "password"))
-            )
-            pw_input.clear()
-            pw_input.send_keys(password)
-            pw_input.send_keys(Keys.RETURN)
-
-            # Wait for either redirect or OTP input
-            print("[*] Credentials submitted. Checking for 2FA verification...")
-            time.sleep(4)
-
-            # Check if OTP code requested
-            otp_inputs = driver.find_elements(
-                By.CSS_SELECTOR, "input[placeholder*='code' i], input#otp"
-            )
-            if otp_inputs:
-                otp_elem = otp_inputs[0]
-                print("\n" + "=" * 50)
-                print(f"[!] Buy Me a Coffee sent a login verification code to {email}.")
-                otp_code = input(">> Please enter the temporary login code: ").strip()
-                print("=" * 50 + "\n")
-                otp_elem.clear()
-                otp_elem.send_keys(otp_code)
-                otp_elem.send_keys(Keys.RETURN)
-
-                # Wait for login completion
-                time.sleep(5)
-
-            # Wait for studio or home navigation
+        driver = self._create_chrome_driver(headless)
+        try:
+            self._submit_credentials_and_otp(driver, email, password)
             WebDriverWait(driver, 20).until(
                 lambda d: (
                     "buymeacoffee.com/home" in d.current_url
@@ -268,8 +265,6 @@ class BuyMeACoffeeClient:
                     or "thetimestampdudes" in d.current_url
                 )
             )
-
-            # Navigate to creator page to ensure domain cookies are fully populated
             driver.get(f"{BASE_WEB_URL}/{self.creator}/posts")
             time.sleep(3)
 
@@ -277,7 +272,6 @@ class BuyMeACoffeeClient:
             self.save_session(cookies)
             self.load_session()
             return True
-
         except Exception as e:
             print(f"[!] Browser login error: {e}", file=sys.stderr)
             return False
@@ -297,15 +291,8 @@ class BuyMeACoffeeClient:
             print(f"[!] Warning: Could not fetch categories: {e}")
         return []
 
-    def fetch_all_posts(self) -> List[Dict[str, Any]]:
-        """Fetch all posts from the creator's API with pagination and tag cross-referencing."""
-        all_posts: Dict[int, Dict[str, Any]] = {}
+    def _fetch_main_feed(self, all_posts: Dict[int, Dict[str, Any]], per_page: int) -> None:
         page = 1
-        per_page = 20
-
-        print(f"[*] Downloading posts for creator '{self.creator}'...")
-
-        # 1. Main posts feed pagination
         while True:
             url = f"{BASE_APP_URL}/api/v1/posts/creator/{self.creator}?per_page={per_page}&page={page}"
             resp = self.session.get(url, timeout=15)
@@ -326,7 +313,6 @@ class BuyMeACoffeeClient:
             meta = data.get("meta", {})
             last_page = meta.get("last_page", page)
             total = meta.get("total", len(all_posts))
-
             print(f"    Page {page}/{last_page} fetched ({len(all_posts)}/{total} posts)")
 
             if page >= last_page:
@@ -334,48 +320,56 @@ class BuyMeACoffeeClient:
             page += 1
             time.sleep(0.2)
 
-        # 2. Category tags cross-referencing to ensure 100% complete coverage
+    def _fetch_category_feed(self, all_posts: Dict[int, Dict[str, Any]], per_page: int) -> None:
         categories = self.fetch_categories()
-        if categories:
-            print(f"[*] Cross-checking {len(categories)} category tags...")
-            new_found = 0
-            for cat in categories:
-                tid = cat.get("tag_id")
-                tag_name = cat.get("tag", str(tid))
-                if not tid:
-                    continue
+        if not categories:
+            return
+        print(f"[*] Cross-checking {len(categories)} category tags...")
+        new_found = 0
+        for cat in categories:
+            tid = cat.get("tag_id")
+            if not tid:
+                continue
 
-                cat_page = 1
-                while True:
-                    cat_url = (
-                        f"{BASE_APP_URL}/api/v1/posts/creator/{self.creator}"
-                        f"?category_id={tid}&per_page={per_page}&page={cat_page}"
-                    )
-                    r = self.session.get(cat_url, timeout=15)
-                    if r.status_code != 200:
-                        break
-                    cdata = r.json()
-                    citems = cdata.get("data", [])
-                    if not citems:
-                        break
+            cat_page = 1
+            while True:
+                cat_url = (
+                    f"{BASE_APP_URL}/api/v1/posts/creator/{self.creator}"
+                    f"?category_id={tid}&per_page={per_page}&page={cat_page}"
+                )
+                r = self.session.get(cat_url, timeout=15)
+                if r.status_code != 200:
+                    break
+                cdata = r.json()
+                citems = cdata.get("data", [])
+                if not citems:
+                    break
 
-                    for item in citems:
-                        pid = item.get("project_update_id")
-                        if pid and pid not in all_posts:
-                            all_posts[pid] = item
-                            new_found += 1
+                for item in citems:
+                    pid = item.get("project_update_id")
+                    if pid and pid not in all_posts:
+                        all_posts[pid] = item
+                        new_found += 1
 
-                    clast = cdata.get("meta", {}).get("last_page", 1)
-                    if cat_page >= clast:
-                        break
-                    cat_page += 1
-                    time.sleep(0.1)
+                clast = cdata.get("meta", {}).get("last_page", 1)
+                if cat_page >= clast:
+                    break
+                cat_page += 1
+                time.sleep(0.1)
 
-            if new_found > 0:
-                print(f"    Found {new_found} additional posts across categories!")
+        if new_found > 0:
+            print(f"    Found {new_found} additional posts across categories!")
+
+    def fetch_all_posts(self) -> List[Dict[str, Any]]:
+        """Fetch all posts from the creator's API with pagination and tag cross-referencing."""
+        all_posts: Dict[int, Dict[str, Any]] = {}
+        per_page = 20
+
+        print(f"[*] Downloading posts for creator '{self.creator}'...")
+        self._fetch_main_feed(all_posts, per_page)
+        self._fetch_category_feed(all_posts, per_page)
 
         posts_list = list(all_posts.values())
-        # Sort newest first by project_update_published_on or id
         posts_list.sort(
             key=lambda p: (
                 p.get("project_update_published_on") or p.get("project_update_created_on") or "",
@@ -383,9 +377,87 @@ class BuyMeACoffeeClient:
             ),
             reverse=True,
         )
-
         print(f"[✓] Retrieved a total of {len(posts_list)} unique posts.")
         return posts_list
+
+    def _parse_post_media_info(self, raw_title: str) -> tuple[str, int | None]:
+        m = TITLE_REGEX.match(raw_title)
+        if m:
+            media_title = m.group(1).strip()
+            year = int(m.group(2)) if m.group(2) else None
+            return media_title, year
+        return raw_title, None
+
+    def _build_clean_post_item(self, post: Dict[str, Any]) -> tuple[CleanPost, str, int | None]:
+        pid = post.get("project_update_id", 0)
+        raw_title = post.get("project_update_heading") or f"Post-{pid}"
+        slug = post.get("project_update_slug") or ""
+        pub_on = (
+            post.get("project_update_published_on")
+            or post.get("project_update_created_on")
+            or ""
+        )
+        is_unlocked = bool(post.get("is_post_unlocked"))
+        is_pinned = bool(post.get("project_update_is_pinned"))
+        raw_desc = post.get("project_update_description") or ""
+        plain_text = clean_html_to_text(raw_desc)
+
+        tags_raw = post.get("tags") or []
+        tags: List[str] = []
+        if isinstance(tags_raw, list):
+            for t in tags_raw:
+                val = t.get("tag") if isinstance(t, dict) else t
+                if val is not None and str(val).strip():
+                    tags.append(str(val).strip())
+
+        media_title, year = self._parse_post_media_info(raw_title)
+        clean_item = CleanPost(
+            id=pid,
+            title=raw_title,
+            media_title=media_title,
+            year=year,
+            slug=slug,
+            published_on=pub_on,
+            is_unlocked=is_unlocked,
+            is_pinned=is_pinned,
+            tags=tags,
+            plain_text=plain_text,
+            raw_html=raw_desc,
+            char_count=len(plain_text),
+        )
+        return clean_item, media_title, year
+
+    def _write_single_markdown_file(
+        self, md_dir: Path, clean_item: CleanPost, media_title: str, year: int | None
+    ) -> None:
+        base_fname = (
+            f"{sanitize_filename(media_title)} ({year})"
+            if year
+            else sanitize_filename(media_title)
+        )
+        md_path = md_dir / f"{base_fname}.md"
+        if md_path.exists() and str(clean_item.id) not in md_path.stem:
+            md_path = md_dir / f"{base_fname}_{clean_item.id}.md"
+
+        md_content = [
+            f"# {clean_item.title}",
+            "",
+            f"- **Post ID**: `{clean_item.id}`",
+            f"- **Media Title**: {media_title}",
+            f"- **Year**: {year if year else 'Unknown'}",
+            f"- **Published Date**: {clean_item.published_on}",
+            f"- **Unlocked**: {'Yes' if clean_item.is_unlocked else 'No'}",
+            f"- **Tags**: {', '.join(clean_item.tags) if clean_item.tags else 'None'}",
+            f"- **BMC URL**: https://buymeacoffee.com/{self.creator}/{clean_item.slug}",
+            "",
+            "---",
+            "",
+            "## Timestamps & Content Descriptions",
+            "",
+            clean_item.plain_text if clean_item.plain_text else "*(No description or content locked)*",
+            "",
+        ]
+        md_path.write_text("\n".join(md_content), encoding="utf-8")
 
     def process_and_export(self, raw_posts: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Export raw JSON, clean JSON, individual Markdown files, and summary."""
@@ -398,99 +470,22 @@ class BuyMeACoffeeClient:
         unlocked_count = 0
 
         for post in raw_posts:
-            pid = post.get("project_update_id", 0)
-            raw_title = post.get("project_update_heading") or f"Post-{pid}"
-            slug = post.get("project_update_slug") or ""
-            pub_on = (
-                post.get("project_update_published_on")
-                or post.get("project_update_created_on")
-                or ""
-            )
-            is_unlocked = bool(post.get("is_post_unlocked"))
-            is_pinned = bool(post.get("project_update_is_pinned"))
-            raw_desc = post.get("project_update_description") or ""
-            plain_text = clean_html_to_text(raw_desc)
-
-            tags_raw = post.get("tags") or []
-            tags: List[str] = []
-            if isinstance(tags_raw, list):
-                for t in tags_raw:
-                    val = t.get("tag") if isinstance(t, dict) else t
-                    if val is not None and str(val).strip():
-                        tags.append(str(val).strip())
-
-            # Parse media title and year from heading
-            m = TITLE_REGEX.match(raw_title)
-            if m:
-                media_title = m.group(1).strip()
-                year = int(m.group(2)) if m.group(2) else None
-                if year is not None:
-                    movie_count += 1
-            else:
-                media_title = raw_title
-                year = None
-
-            if is_unlocked:
+            clean_item, media_title, year = self._build_clean_post_item(post)
+            if year is not None:
+                movie_count += 1
+            if clean_item.is_unlocked:
                 unlocked_count += 1
-
-            clean_item = CleanPost(
-                id=pid,
-                title=raw_title,
-                media_title=media_title,
-                year=year,
-                slug=slug,
-                published_on=pub_on,
-                is_unlocked=is_unlocked,
-                is_pinned=is_pinned,
-                tags=tags,
-                plain_text=plain_text,
-                raw_html=raw_desc,
-                char_count=len(plain_text),
-            )
             cleaned_posts.append(clean_item)
+            self._write_single_markdown_file(md_dir, clean_item, media_title, year)
 
-            # Write individual Markdown file
-            if year:
-                base_fname = f"{sanitize_filename(media_title)} ({year})"
-            else:
-                base_fname = sanitize_filename(media_title)
-            md_path = md_dir / f"{base_fname}.md"
-
-            # In case of duplicates, append post id
-            if md_path.exists() and str(pid) not in md_path.stem:
-                md_path = md_dir / f"{base_fname}_{pid}.md"
-
-            md_content = [
-                f"# {raw_title}",
-                "",
-                f"- **Post ID**: `{pid}`",
-                f"- **Media Title**: {media_title}",
-                f"- **Year**: {year if year else 'Unknown'}",
-                f"- **Published Date**: {pub_on}",
-                f"- **Unlocked**: {'Yes' if is_unlocked else 'No'}",
-                f"- **Tags**: {', '.join(tags) if tags else 'None'}",
-                f"- **BMC URL**: https://buymeacoffee.com/{self.creator}/{slug}",
-                "",
-                "---",
-                "",
-                "## Timestamps & Content Descriptions",
-                "",
-                plain_text if plain_text else "*(No description or content locked)*",
-                "",
-            ]
-            md_path.write_text("\n".join(md_content), encoding="utf-8")
-
-        # 1. Save raw JSON
         raw_json_path = self.output_dir / "posts_raw.json"
         with open(raw_json_path, "w", encoding="utf-8") as f:
             json.dump(raw_posts, f, indent=2, ensure_ascii=False)
 
-        # 2. Save clean JSON
         clean_json_path = self.output_dir / "posts_clean.json"
         with open(clean_json_path, "w", encoding="utf-8") as f:
             json.dump([asdict(cp) for cp in cleaned_posts], f, indent=2, ensure_ascii=False)
 
-        # 3. Save Summary
         summary = {
             "creator": self.creator,
             "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -508,16 +503,7 @@ class BuyMeACoffeeClient:
         with open(summary_path, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
 
-        print("\n" + "=" * 60)
-        print(f"[✓] Successfully downloaded and processed {len(raw_posts)} posts!")
-        print(f"    - Unlocked posts: {unlocked_count}/{len(raw_posts)}")
-        print(f"    - Parsed movie/show titles: {movie_count}")
-        print(f"    - Raw data: {raw_json_path}")
-        print(f"    - Clean JSON: {clean_json_path}")
-        print(f"    - Markdown files: {md_dir}/*.md")
-        print(f"    - Summary: {summary_path}")
-        print("=" * 60 + "\n")
-
+        print(f"\n[✓] Successfully downloaded and processed {len(raw_posts)} posts!\n")
         return summary
 
 
@@ -541,119 +527,78 @@ def load_dotenv(path: str | Path = ".env") -> None:
         pass
 
 
-def main():
-    load_dotenv(".env")
-
+def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Download all Buy Me a Coffee posts by thetimestampdudes for JCF creation."
     )
-    parser.add_argument(
-        "--config",
-        default=None,
-        help="Path to optional JSON or .env configuration file containing credentials",
-    )
-    parser.add_argument(
-        "--creator",
-        default=DEFAULT_CREATOR,
-        help=f"Creator slug on buymeacoffee.com (default: {DEFAULT_CREATOR})",
-    )
-    parser.add_argument(
-        "--session-file",
-        default=DEFAULT_SESSION_FILE,
-        help=f"Path to saved session cookies JSON (default: {DEFAULT_SESSION_FILE})",
-    )
-    parser.add_argument(
-        "--output-dir",
-        default=DEFAULT_OUTPUT_DIR,
-        help=f"Output directory for posts (default: {DEFAULT_OUTPUT_DIR})",
-    )
-    parser.add_argument(
-        "--login",
-        action="store_true",
-        help="Force browser login to refresh session cookies",
-    )
-    parser.add_argument(
-        "--email",
-        default=None,
-        help="BMC account email (or BMC_EMAIL env var)",
-    )
-    parser.add_argument(
-        "--password",
-        default=None,
-        help="BMC account password (or BMC_PASSWORD env var)",
-    )
-    parser.add_argument(
-        "--no-headless",
-        action="store_true",
-        help="Run browser visibly instead of headless",
-    )
+    parser.add_argument("--config", default=None, help="Path to optional config file")
+    parser.add_argument("--creator", default=DEFAULT_CREATOR, help="Creator slug")
+    parser.add_argument("--session-file", default=DEFAULT_SESSION_FILE, help="Path to session file")
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output directory")
+    parser.add_argument("--login", action="store_true", help="Force browser login")
+    parser.add_argument("--email", default=None, help="BMC account email")
+    parser.add_argument("--password", default=None, help="BMC account password")
+    parser.add_argument("--no-headless", action="store_true", help="Run browser visibly")
+    return parser
 
-    args = parser.parse_args()
 
-    if args.config:
-        cfg_path = Path(args.config)
-        if cfg_path.is_file():
-            if cfg_path.suffix.lower() == ".json":
-                try:
-                    with open(cfg_path, "r", encoding="utf-8") as f:
-                        cfg = json.load(f)
-                    if not args.email and "email" in cfg:
-                        args.email = cfg["email"]
-                    if not args.password and "password" in cfg:
-                        args.password = cfg["password"]
-                    if "creator" in cfg and args.creator == DEFAULT_CREATOR:
-                        args.creator = cfg["creator"]
-                except Exception as e:
-                    print(f"[!] Warning: Failed to parse config JSON: {e}", file=sys.stderr)
-            else:
-                load_dotenv(cfg_path)
+def _load_args_config(args: argparse.Namespace) -> None:
+    if not args.config:
+        return
+    cfg_path = Path(args.config)
+    if not cfg_path.is_file():
+        return
+    if cfg_path.suffix.lower() == ".json":
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            if not args.email and "email" in cfg:
+                args.email = cfg["email"]
+            if not args.password and "password" in cfg:
+                args.password = cfg["password"]
+            if "creator" in cfg and args.creator == DEFAULT_CREATOR:
+                args.creator = cfg["creator"]
+        except Exception as e:
+            print(f"[!] Warning: Failed to parse config JSON: {e}", file=sys.stderr)
+    else:
+        load_dotenv(cfg_path)
 
+
+def _handle_auth(client: BuyMeACoffeeClient, args: argparse.Namespace) -> None:
+    has_session = client.load_session()
+    is_authed = has_session and client.is_authenticated()
+    if is_authed and not args.login:
+        print(f"[✓] Active authenticated session found in '{args.session_file}'.")
+        return
+
+    email = args.email or os.environ.get("BMC_EMAIL") or input("Buy Me a Coffee Email: ").strip()
+    import getpass
+
+    password = (
+        args.password
+        or os.environ.get("BMC_PASSWORD")
+        or getpass.getpass("Buy Me a Coffee Password: ")
+    )
+    ok = client.login_browser(email=email, password=password, headless=not args.no_headless)
+    if not ok or not client.is_authenticated():
+        print("[!] Authentication failed.", file=sys.stderr)
+        sys.exit(1)
+
+
+def main() -> None:
+    load_dotenv(".env")
+    args = _build_arg_parser().parse_args()
+    _load_args_config(args)
     client = BuyMeACoffeeClient(
         creator=args.creator,
         session_file=args.session_file,
         output_dir=args.output_dir,
     )
-
-    has_session = client.load_session()
-    is_authed = has_session and client.is_authenticated()
-
-    if is_authed and not args.login:
-        print(f"[✓] Active authenticated session found in '{args.session_file}'.")
-    else:
-        if args.login or not has_session:
-            print("[*] No active session found or --login requested. Initiating login...")
-        else:
-            print("[!] Existing session expired or not authenticated. Re-authenticating...")
-
-        email = (
-            args.email or os.environ.get("BMC_EMAIL") or input("Buy Me a Coffee Email: ").strip()
-        )
-        import getpass
-
-        password = (
-            args.password
-            or os.environ.get("BMC_PASSWORD")
-            or getpass.getpass("Buy Me a Coffee Password: ")
-        )
-
-        ok = client.login_browser(
-            email=email,
-            password=password,
-            headless=not args.no_headless,
-        )
-        if not ok or not client.is_authenticated():
-            print(
-                "[!] Authentication failed. Please check credentials or try with --no-headless.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    # Fetch and export
+    _handle_auth(client, args)
     raw_posts = client.fetch_all_posts()
     if not raw_posts:
         print("[!] No posts could be retrieved.", file=sys.stderr)
         sys.exit(1)
-
     client.process_and_export(raw_posts)
 
 

@@ -13,9 +13,8 @@ import os
 import re
 import sqlite3
 import sys
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Enable running directly from tools/ or root
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -92,31 +91,31 @@ def init_sqlite(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
-def save_jcf_and_index(
-    conn: sqlite3.Connection,
+def _upsert_title(
+    cur: sqlite3.Cursor,
     jcf_doc: rj.JcfDocument,
     out_path: Path,
-    media_type: str = "movie",
-    series_name: Optional[str] = None,
-    season: Optional[int] = None,
-    episode: Optional[int] = None,
-) -> bool:
-    """Write .jcf file to disk and record into SQLite catalog."""
-    if not jcf_doc.cues:
-        return False
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    jcf_content = jcf_doc.to_jcf()
-    out_path.write_text(jcf_content, encoding="utf-8")
-
-    categories = sorted(list({cue.category for cue in jcf_doc.cues}))
-    cat_json = json.dumps(categories)
-    year_int = int(jcf_doc.year) if jcf_doc.year and jcf_doc.year.isdigit() else None
-
-    cur = conn.cursor()
-    # Upsert title
+    media_type: str,
+    series_name: Optional[str],
+    season: Optional[int],
+    episode: Optional[int],
+    year_int: Optional[int],
+    cat_json: str,
+) -> int:
     cur.execute("SELECT id FROM titles WHERE jcf_path = ?", (str(out_path),))
     row = cur.fetchone()
+    fields = (
+        jcf_doc.title,
+        year_int,
+        jcf_doc.imdb_id,
+        media_type,
+        series_name,
+        season,
+        episode,
+        len(jcf_doc.cues),
+        cat_json,
+        jcf_doc.source,
+    )
     if row:
         title_id = row[0]
         cur.execute(
@@ -126,47 +125,26 @@ def save_jcf_and_index(
                 season = ?, episode = ?, cue_count = ?, categories = ?, source = ?
             WHERE id = ?
             """,
-            (
-                jcf_doc.title,
-                year_int,
-                jcf_doc.imdb_id,
-                media_type,
-                series_name,
-                season,
-                episode,
-                len(jcf_doc.cues),
-                cat_json,
-                jcf_doc.source,
-                title_id,
-            ),
+            (*fields, title_id),
         )
         cur.execute("DELETE FROM cues WHERE title_id = ?", (title_id,))
-    else:
-        cur.execute(
-            """
-            INSERT INTO titles (
-                title, year, imdb_id, media_type, series_name, season, episode,
-                jcf_path, cue_count, categories, source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                jcf_doc.title,
-                year_int,
-                jcf_doc.imdb_id,
-                media_type,
-                series_name,
-                season,
-                episode,
-                str(out_path),
-                len(jcf_doc.cues),
-                cat_json,
-                jcf_doc.source,
-            ),
-        )
-        title_id = cur.lastrowid
+        return title_id
 
-    # Insert cues
-    for cue in jcf_doc.cues:
+    cur.execute(
+        """
+        INSERT INTO titles (
+            title, year, imdb_id, media_type, series_name, season, episode,
+            cue_count, categories, source, jcf_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (*fields, str(out_path)),
+    )
+    return cur.lastrowid
+
+
+
+def _insert_cues(cur: sqlite3.Cursor, title_id: int, cues: list) -> None:
+    for cue in cues:
         cur.execute(
             """
             INSERT INTO cues (
@@ -187,8 +165,67 @@ def save_jcf_and_index(
             ),
         )
 
+
+def save_jcf_and_index(
+    conn: sqlite3.Connection,
+    jcf_doc: rj.JcfDocument,
+    out_path: Path,
+    media_type: str = "movie",
+    series_name: Optional[str] = None,
+    season: Optional[int] = None,
+    episode: Optional[int] = None,
+) -> bool:
+    """Write .jcf file to disk and record into SQLite catalog."""
+    if not jcf_doc.cues:
+        return False
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(jcf_doc.to_jcf(), encoding="utf-8")
+
+    categories = sorted(list({cue.category for cue in jcf_doc.cues}))
+    cat_json = json.dumps(categories)
+    year_int = int(jcf_doc.year) if jcf_doc.year and str(jcf_doc.year).isdigit() else None
+
+    cur = conn.cursor()
+    title_id = _upsert_title(
+        cur, jcf_doc, out_path, media_type, series_name, season, episode, year_int, cat_json
+    )
+    _insert_cues(cur, title_id, jcf_doc.cues)
     conn.commit()
     return True
+
+
+def _parse_cleanstream_cues(raw_segments: list) -> List[rj.ParsedCue]:
+    cues: List[rj.ParsedCue] = []
+    for seg in raw_segments:
+        start_ms = seg.get("startMs", 0)
+        end_ms = seg.get("endMs", 0)
+        if end_ms <= start_ms:
+            continue
+
+        category_raw = seg.get("category", "")
+        subcategory_raw = seg.get("subcategory", "")
+        comment = seg.get("comment", "")
+        channel_raw = seg.get("channel", "video")
+
+        category, default_channel, action = rj.map_category_and_channel(
+            f"{category_raw} {subcategory_raw}", comment
+        )
+        channel = channel_raw if channel_raw in ["audio", "both", "video"] else default_channel
+
+        cues.append(
+            rj.ParsedCue(
+                start_ms=start_ms,
+                end_ms=end_ms,
+                start_str=rj.ms_to_timestamp(start_ms),
+                end_str=rj.ms_to_timestamp(end_ms),
+                category=category,
+                channel=channel,
+                action="skip",
+                description=comment if comment else None,
+            )
+        )
+    return cues
 
 
 def build_from_cleanstream(conn: sqlite3.Connection) -> int:
@@ -211,36 +248,7 @@ def build_from_cleanstream(conn: sqlite3.Connection) -> int:
         if not title or not raw_segments:
             continue
 
-        cues: List[rj.ParsedCue] = []
-        for seg in raw_segments:
-            start_ms = seg.get("startMs", 0)
-            end_ms = seg.get("endMs", 0)
-            if end_ms <= start_ms:
-                continue
-
-            category_raw = seg.get("category", "")
-            subcategory_raw = seg.get("subcategory", "")
-            comment = seg.get("comment", "")
-            channel_raw = seg.get("channel", "video")
-
-            category, default_channel, action = rj.map_category_and_channel(
-                f"{category_raw} {subcategory_raw}", comment
-            )
-            channel = channel_raw if channel_raw in ["audio", "both", "video"] else default_channel
-
-            cues.append(
-                rj.ParsedCue(
-                    start_ms=start_ms,
-                    end_ms=end_ms,
-                    start_str=rj.ms_to_timestamp(start_ms),
-                    end_str=rj.ms_to_timestamp(end_ms),
-                    category=category,
-                    channel=channel,
-                    action="skip",
-                    description=comment if comment else None,
-                )
-            )
-
+        cues = _parse_cleanstream_cues(raw_segments)
         merged_cues = rj.merge_cues(cues)
         if not merged_cues:
             continue
@@ -373,6 +381,22 @@ def build_from_curated_reddit(conn: sqlite3.Connection) -> int:
     return count
 
 
+def _parse_got_skip_cues(ranges_str: str) -> List[rj.ParsedCue]:
+    normalized = ranges_str.replace(",", "+")
+    ranges = [r.strip() for r in normalized.split("+") if r.strip()]
+    safe_ranges: List[Tuple[int, int]] = []
+    for r in ranges:
+        parts = r.split("-", 1)
+        if len(parts) == 2:
+            s_ms = rj.parse_timestamp_to_ms(parts[0])
+            e_ms = rj.parse_timestamp_to_ms(parts[1])
+            safe_ranges.append((s_ms, e_ms))
+
+    return rj.invert_safe_ranges(
+        safe_ranges, category="SexAndNudity.FullNudity", channel="video", action="skip"
+    )
+
+
 def build_from_game_of_thrones(conn: sqlite3.Connection) -> int:
     """Ingest Game of Thrones episode safe timecode gaps from got_to_jcf.py."""
     got_script = Path("got_to_jcf.py")
@@ -394,19 +418,7 @@ def build_from_game_of_thrones(conn: sqlite3.Connection) -> int:
         if not ranges_str.strip():
             continue
 
-        normalized = ranges_str.replace(",", "+")
-        ranges = [r.strip() for r in normalized.split("+") if r.strip()]
-        safe_ranges: List[Tuple[int, int]] = []
-        for r in ranges:
-            parts = r.split("-", 1)
-            if len(parts) == 2:
-                s_ms = rj.parse_timestamp_to_ms(parts[0])
-                e_ms = rj.parse_timestamp_to_ms(parts[1])
-                safe_ranges.append((s_ms, e_ms))
-
-        skip_cues = rj.invert_safe_ranges(
-            safe_ranges, category="SexAndNudity.FullNudity", channel="video", action="skip"
-        )
+        skip_cues = _parse_got_skip_cues(ranges_str)
         if not skip_cues:
             continue
 

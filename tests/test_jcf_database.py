@@ -2,11 +2,10 @@
 
 import json
 import sqlite3
-from pathlib import Path
 import pytest
 
 import tools.reddit_to_jcf as rj
-from tools.jcf_db import CATALOG_DB, CATALOG_JSON, DATABASE_DIR, MOVIES_DIR, SHOWS_DIR
+from tools.jcf_db import CATALOG_DB, CATALOG_JSON, MOVIES_DIR, SHOWS_DIR
 
 
 VALID_CATEGORIES = {

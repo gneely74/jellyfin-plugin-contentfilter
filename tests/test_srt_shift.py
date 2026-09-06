@@ -79,3 +79,15 @@ def test_srt_timecode_helpers():
     assert parse_srt_timecode_to_ms("00:00:01.500") == 1500
     assert format_ms_to_srt_timecode(63456) == "00:01:03,456"
     assert format_ms_to_srt_timecode(-50) == "00:00:00,000"
+
+
+def test_parse_srt_cues_basic():
+    cues = parse_srt_cues(SAMPLE_SRT)
+    assert len(cues) == 3
+    assert cues[0].index == 1
+    assert cues[0].start_ms == 70000
+    assert cues[0].end_ms == 74500
+    ok = cues[0].shift(1000)
+    assert ok is True
+    assert cues[0].start_ms == 71000
+    assert "00:01:11,000" in cues[0].serialize(1)

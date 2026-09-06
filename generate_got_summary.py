@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Generate a comprehensive Markdown summary of Game of Thrones content filter sources and cues."""
 
+from __future__ import annotations
+
 import re
 from pathlib import Path
+from typing import Any
 
 # Canonical episode names for Game of Thrones (Seasons 1-8)
 CANONICAL_EPISODES = {
@@ -115,7 +118,7 @@ def fmt_duration(sec: float) -> str:
     return f"{m}m {int(s):02d}s" if s == int(s) else f"{m}m {s:04.1f}s"
 
 
-def parse_jcf_file(path: Path):
+def parse_jcf_file(path: Path) -> tuple[dict[str, str] | None, list[dict[str, Any]]]:
     """Parse a JCF file returning header metadata and cue list."""
     if not path.exists():
         return None, []
@@ -158,10 +161,9 @@ def parse_jcf_file(path: Path):
     return header_meta, cues
 
 
-def main():
-    # Gather media files on disk
-    mkv_map = {}
-    jcf_map = {}
+def _gather_media_files() -> tuple[dict[str, Path], dict[str, Path]]:
+    mkv_map: dict[str, Path] = {}
+    jcf_map: dict[str, Path] = {}
     if MEDIA_DIR.exists():
         for s in MEDIA_DIR.iterdir():
             if not s.is_dir() or not s.name.startswith("Season"):
@@ -174,14 +176,16 @@ def main():
                         mkv_map[ep_id] = f
                     elif f.suffix == ".jcf" and not f.name.endswith("-orig.jcf"):
                         jcf_map[ep_id] = f
+    return mkv_map, jcf_map
 
-    # Load cues for all 25 active episodes
-    episodes_data = {}
+
+def _load_episodes_data(
+    mkv_map: dict[str, Path], jcf_map: dict[str, Path]
+) -> dict[str, Any]:
+    episodes_data: dict[str, Any] = {}
     for ep_id in sorted(CANONICAL_EPISODES.keys()):
         mkv_file = mkv_map.get(ep_id)
         jcf_file = jcf_map.get(ep_id)
-
-        # Read from deployed JCF if it exists, otherwise from jcf_output
         source_jcf = (
             jcf_file if jcf_file and jcf_file.exists() else (JCF_OUTPUT_DIR / f"{ep_id}.jcf")
         )
@@ -196,228 +200,168 @@ def main():
                     "source_path": source_jcf,
                     "is_deployed": bool(jcf_file and jcf_file.exists()),
                 }
+    return episodes_data
 
-    lines = []
-    lines.append("# Game of Thrones — Content Filter Sources & Cues Review Summary")
-    lines.append("")
-    lines.append(
-        "> **Document Purpose:** Complete audit and review guide of all content filter cues (nudity skips and profanity audio mutes) across *Game of Thrones*, detailing data sources, exact timestamps, skip durations, category tagging, and local media library deployment status."
-    )
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-    lines.append("## 1. Data Sources & Methodology")
-    lines.append("")
-    lines.append("### Primary Source: Reddit Blu-ray Nudity Timestamps")
-    lines.append("- **Author:** [u/Soundwave_47](https://www.reddit.com/user/Soundwave_47/)")
-    lines.append("- **Date Published:** August 30, 2022")
-    lines.append("- **Original Threads:**")
-    lines.append(
-        "  - `r/gameofthrones`: [Game of Thrones Nudity Timestamps](https://www.reddit.com/r/gameofthrones/comments/x1fom2/game_of_thrones_nudity_timestamps/)"
-    )
-    lines.append(
-        "  - `r/naath`: [Game of Thrones Nudity Timestamps](https://www.reddit.com/r/naath/comments/x1fq8p/game_of_thrones_nudity_timestamps/)"
-    )
-    lines.append("- **Baseline Video Edition:** Game of Thrones Official Blu-ray Box Set (1080p).")
-    lines.append(
-        "- **Editing Methodology:** The author used **MKVToolNix** split mode to specify clean intervals (*safe playback segments*) for a family rewatch. To produce standard Jellyfin Content Filter (`.jcf`) sidecars, our toolchain mathematically **inverted** the safe ranges to identify the gaps between consecutive clean segments. Those gaps represent the objectionable scenes that Jellyfin seeks past (`action: skip`, `channel: video`)."
-    )
-    lines.append(
-        "- **Scope & Tone:** The author flagged full nudity, graphic sexual violence, explicit brothel sequences, and overt sexual dialogue/innuendo."
-    )
-    lines.append(
-        "- **Numbering Resolution:** In the raw Reddit Markdown post, seasons were structured as 1–10 numbered lists where unedited episodes were denoted by solitary periods (`.`). Earlier ingestion scripts had stripped whitespace and periods without preserving index positions, which shifted timecodes onto preceding episodes. This was fully corrected in [`got_to_jcf.py`](file:///Users/gneely/git/jellyfin-plugin-contentfilter/got_to_jcf.py) across all 67 episodes."
-    )
-    lines.append("")
-    lines.append("### Secondary Source: Community Reviews & Known Omissions")
-    lines.append(
-        "- Community members reviewed the post and noted specific episodes left blank (`.`) by the author that nonetheless contain objectionable scenes:"
-    )
-    lines.append(
-        "  - **S01E02 (*The Kingsroad*):** Contains an explicit scene between Daenerys and Khal Drogo."
-    )
-    lines.append(
-        "  - **S01E07 (*You Win or You Die*):** Contains an explicit Littlefinger brothel exposition scene (Ros & Armeca)."
-    )
-    lines.append(
-        "  - **S02E01 (*The North Remembers*):** Contains an explicit scene near the conclusion."
-    )
-    lines.append(
-        '  - **Season 08:** Omitted entirely by the post author with the note *"it was pretty minor"*.'
-    )
-    lines.append("")
-    lines.append("### Tertiary Source: Subtitle Word Scanner (Spoken Profanity)")
-    lines.append(
-        '- **Episode S01E01 (*Winter Is Coming*):** In addition to visual nudity skips, S01E01 includes **10 audio mute cues** for coarse language (`Language.GeneralProfanity`, `action: mute`, `channel: audio`) covering spoken occurrences of *"damn"* (3 cues) and *"bastard"* (7 cues). These audio mutes were preserved and chronologically merged with the 11 nudity video skips for a total of 21 cues.'
-    )
-    lines.append("")
-    lines.append("### Local Media Library Integration")
-    lines.append("- **Media Root:** `/Volumes/data/shows/Game of Thrones/`")
-    lines.append(
-        "- **Naming Convention:** Jellyfin sidecar format `<VideoBaseName>.jcf` placed in the same season folder as the `.mkv` file."
-    )
-    lines.append(
-        "- **Current Coverage:** **23 episodes** have matching video files present on disk and have active sidecar files deployed. Two episodes with compiled cues (S03E08 and S05E03) are indexed in the plugin catalog, awaiting video file acquisition."
-    )
-    lines.append("")
-    lines.append("---")
-    lines.append("")
 
-    # High-level metrics
+def _build_intro_lines() -> list[str]:
+    return [
+        "# Game of Thrones — Content Filter Sources & Cues Review Summary",
+        "",
+        "> **Document Purpose:** Complete audit and review guide of all content filter cues (nudity skips and profanity audio mutes) across *Game of Thrones*, detailing data sources, exact timestamps, skip durations, category tagging, and local media library deployment status.",
+        "",
+        "---",
+        "",
+        "## 1. Data Sources & Methodology",
+        "",
+        "### Primary Source: Reddit Blu-ray Nudity Timestamps",
+        "- **Author:** [u/Soundwave_47](https://www.reddit.com/user/Soundwave_47/)",
+        "- **Date Published:** August 30, 2022",
+        "- **Original Threads:**",
+        "  - `r/gameofthrones`: [Game of Thrones Nudity Timestamps](https://www.reddit.com/r/gameofthrones/comments/x1fom2/game_of_thrones_nudity_timestamps/)",
+        "  - `r/naath`: [Game of Thrones Nudity Timestamps](https://www.reddit.com/r/naath/comments/x1fq8p/game_of_thrones_nudity_timestamps/)",
+        "- **Baseline Video Edition:** Game of Thrones Official Blu-ray Box Set (1080p).",
+        "- **Editing Methodology:** The author used **MKVToolNix** split mode to specify clean intervals (*safe playback segments*) for a family rewatch. To produce standard Jellyfin Content Filter (`.jcf`) sidecars, our toolchain mathematically **inverted** the safe ranges to identify the gaps between consecutive clean segments. Those gaps represent the objectionable scenes that Jellyfin seeks past (`action: skip`, `channel: video`).",
+        "- **Scope & Tone:** The author flagged full nudity, graphic sexual violence, explicit brothel sequences, and overt sexual dialogue/innuendo.",
+        "- **Numbering Resolution:** In the raw Reddit Markdown post, seasons were structured as 1–10 numbered lists where unedited episodes were denoted by solitary periods (`.`). Earlier ingestion scripts had stripped whitespace and periods without preserving index positions, which shifted timecodes onto preceding episodes. This was fully corrected in [`got_to_jcf.py`](file:///Users/gneely/git/jellyfin-plugin-contentfilter/got_to_jcf.py) across all 67 episodes.",
+        "",
+        "### Secondary Source: Community Reviews & Known Omissions",
+        "- Community members reviewed the post and noted specific episodes left blank (`.`) by the author that nonetheless contain objectionable scenes:",
+        "  - **S01E02 (*The Kingsroad*):** Contains an explicit scene between Daenerys and Khal Drogo.",
+        "  - **S01E07 (*You Win or You Die*):** Contains an explicit Littlefinger brothel exposition scene (Ros & Armeca).",
+        "  - **S02E01 (*The North Remembers*):** Contains an explicit scene near the conclusion.",
+        '  - **Season 08:** Omitted entirely by the post author with the note *"it was pretty minor"*.',
+        "",
+        "### Tertiary Source: Subtitle Word Scanner (Spoken Profanity)",
+        '- **Episode S01E01 (*Winter Is Coming*):** In addition to visual nudity skips, S01E01 includes **10 audio mute cues** for coarse language (`Language.GeneralProfanity`, `action: mute`, `channel: audio`) covering spoken occurrences of *"damn"* (3 cues) and *"bastard"* (7 cues). These audio mutes were preserved and chronologically merged with the 11 nudity video skips for a total of 21 cues.',
+        "",
+        "### Local Media Library Integration",
+        "- **Media Root:** `/Volumes/data/shows/Game of Thrones/`",
+        "- **Naming Convention:** Jellyfin sidecar format `<VideoBaseName>.jcf` placed in the same season folder as the `.mkv` file.",
+        "- **Current Coverage:** **23 episodes** have matching video files present on disk and have active sidecar files deployed. Two episodes with compiled cues (S03E08 and S05E03) are indexed in the plugin catalog, awaiting video file acquisition.",
+        "",
+        "---",
+        "",
+    ]
+
+
+def _build_season_breakdown_row(
+    s_num: int, episodes_data: dict[str, Any], mkv_map: dict[str, Path], jcf_map: dict[str, Path]
+) -> tuple[str, int, int, float]:
+    s_tag = f"S{s_num:02d}"
+    s_eps = [ep for ep_id, ep in episodes_data.items() if ep_id.startswith(s_tag)]
+    all_s_eps = [k for k in CANONICAL_EPISODES.keys() if k.startswith(s_tag)]
+    s_skips = sum(len([c for c in ep["cues"] if c["action"] == "skip"]) for ep in s_eps)
+    s_mutes = sum(len([c for c in ep["cues"] if c["action"] == "mute"]) for ep in s_eps)
+    s_dur = sum(sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "skip") for ep in s_eps)
+    mkv_count = len([k for k in all_s_eps if k in mkv_map])
+    jcf_count = len([k for k in all_s_eps if k in jcf_map])
+    if s_num == 8:
+        lib_status = f"{mkv_count} MKVs (No cues in post)"
+    elif len(s_eps) == jcf_count:
+        lib_status = f"✅ All {jcf_count} sidecars deployed"
+    else:
+        lib_status = f"⚠️ {jcf_count}/{len(s_eps)} deployed ({len(s_eps) - jcf_count} missing MKV)"
+    dur_str = fmt_duration(s_dur) if s_dur > 0 else "0s"
+    row = f"| **Season {s_num:02d}** | {len(all_s_eps)} | {len(s_eps)} | {s_skips} | {s_mutes} | {dur_str} | {lib_status} |"
+    return row, s_skips, s_mutes, s_dur
+
+
+def _build_metrics_lines(
+    episodes_data: dict[str, Any], mkv_map: dict[str, Path], jcf_map: dict[str, Path]
+) -> list[str]:
     total_eps = len(episodes_data)
-    total_skip_cues = sum(
-        len([c for c in ep["cues"] if c["action"] == "skip"]) for ep in episodes_data.values()
-    )
-    total_mute_cues = sum(
-        len([c for c in ep["cues"] if c["action"] == "mute"]) for ep in episodes_data.values()
-    )
+    total_skip_cues = sum(len([c for c in ep["cues"] if c["action"] == "skip"]) for ep in episodes_data.values())
+    total_mute_cues = sum(len([c for c in ep["cues"] if c["action"] == "mute"]) for ep in episodes_data.values())
     total_all_cues = total_skip_cues + total_mute_cues
-    total_skip_dur = sum(
-        sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "skip")
-        for ep in episodes_data.values()
-    )
-    total_mute_dur = sum(
-        sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "mute")
-        for ep in episodes_data.values()
-    )
+    total_skip_dur = sum(sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "skip") for ep in episodes_data.values())
+    total_mute_dur = sum(sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "mute") for ep in episodes_data.values())
 
-    lines.append("## 2. Global Catalog Summary")
-    lines.append("")
-    lines.append(f"- **Total Episodes Cataloged with Cues:** {total_eps} of 73 series episodes")
-    lines.append(
-        f"- **Total Filter Cues:** {total_all_cues} ({total_skip_cues} video skips, {total_mute_cues} audio mutes)"
-    )
-    lines.append(
-        f"- **Total Objectionable Video Skipped:** {fmt_duration(total_skip_dur)} ({total_skip_dur / 60:.1f} minutes)"
-    )
-    lines.append(f"- **Total Spoken Audio Muted:** {fmt_duration(total_mute_dur)}")
-    lines.append("- **Sidecars Deployed in Local Library:** 23 episodes (140 active cues on disk)")
-    lines.append("")
-    lines.append("### Season Breakdown")
-    lines.append("")
-    lines.append(
-        "| Season | Total Episodes | Filtered Episodes | Video Skips | Audio Mutes | Total Cut Time | Local Library Status |"
-    )
-    lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :--- |")
-
+    lines = [
+        "## 2. Global Catalog Summary",
+        "",
+        f"- **Total Episodes Cataloged with Cues:** {total_eps} of 73 series episodes",
+        f"- **Total Filter Cues:** {total_all_cues} ({total_skip_cues} video skips, {total_mute_cues} audio mutes)",
+        f"- **Total Objectionable Video Skipped:** {fmt_duration(total_skip_dur)} ({total_skip_dur / 60:.1f} minutes)",
+        f"- **Total Spoken Audio Muted:** {fmt_duration(total_mute_dur)}",
+        "- **Sidecars Deployed in Local Library:** 23 episodes (140 active cues on disk)",
+        "",
+        "### Season Breakdown",
+        "",
+        "| Season | Total Episodes | Filtered Episodes | Video Skips | Audio Mutes | Total Cut Time | Local Library Status |",
+        "| :--- | :---: | :---: | :---: | :---: | :---: | :--- |",
+    ]
     for s_num in range(1, 9):
-        s_tag = f"S{s_num:02d}"
-        s_eps = [ep for ep_id, ep in episodes_data.items() if ep_id.startswith(s_tag)]
-        all_s_eps = [k for k in CANONICAL_EPISODES.keys() if k.startswith(s_tag)]
-        s_skips = sum(len([c for c in ep["cues"] if c["action"] == "skip"]) for ep in s_eps)
-        s_mutes = sum(len([c for c in ep["cues"] if c["action"] == "mute"]) for ep in s_eps)
-        s_dur = sum(
-            sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "skip") for ep in s_eps
-        )
+        row, _, _, _ = _build_season_breakdown_row(s_num, episodes_data, mkv_map, jcf_map)
+        lines.append(row)
+    lines.extend([
+        f"| **Total** | **73** | **{total_eps}** | **{total_skip_cues}** | **{total_mute_cues}** | **{fmt_duration(total_skip_dur)}** | **23 deployed / 2 pending MKV** |",
+        "",
+        "---",
+        "",
+        "## 3. Detailed Episode-by-Episode Cues",
+        "",
+    ])
+    return lines
 
-        # Check library status
-        mkv_count = len([k for k in all_s_eps if k in mkv_map])
-        jcf_count = len([k for k in all_s_eps if k in jcf_map])
-        if s_num == 8:
-            lib_status = f"{mkv_count} MKVs (No cues in post)"
-        elif len(s_eps) == jcf_count:
-            lib_status = f"✅ All {jcf_count} sidecars deployed"
-        else:
-            lib_status = (
-                f"⚠️ {jcf_count}/{len(s_eps)} deployed ({len(s_eps) - jcf_count} missing MKV)"
-            )
 
-        dur_str = fmt_duration(s_dur) if s_dur > 0 else "0s"
-        lines.append(
-            f"| **Season {s_num:02d}** | {len(all_s_eps)} | {len(s_eps)} | {s_skips} | {s_mutes} | {dur_str} | {lib_status} |"
-        )
-
-    lines.append(
-        f"| **Total** | **73** | **{total_eps}** | **{total_skip_cues}** | **{total_mute_cues}** | **{fmt_duration(total_skip_dur)}** | **23 deployed / 2 pending MKV** |"
-    )
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-
-    # Detailed Breakdown
-    lines.append("## 3. Detailed Episode-by-Episode Cues")
-    lines.append("")
-
+def _build_episode_detail_lines(episodes_data: dict[str, Any]) -> list[str]:
+    lines = []
     current_season = None
     for ep_id, data in sorted(episodes_data.items()):
         s_num = int(ep_id[1:3])
         if s_num != current_season:
             current_season = s_num
-            lines.append(f"### Season {current_season:02d}")
-            lines.append("")
-
+            lines.extend([f"### Season {current_season:02d}", ""])
         cues = data["cues"]
         title = data["title"]
         skips = [c for c in cues if c["action"] == "skip"]
         mutes = [c for c in cues if c["action"] == "mute"]
         skip_dur = sum(c["duration_sec"] for c in skips)
         mute_dur = sum(c["duration_sec"] for c in mutes)
-
         deployed_badge = (
             "✅ Deployed on disk" if data["is_deployed"] else "⏳ Catalog only (MKV not in library)"
         )
         target_name = (
             data["mkv_file"].with_suffix(".jcf").name if data["mkv_file"] else f"{ep_id}.jcf"
         )
-
-        lines.append(f"#### {ep_id} — {title}")
-        lines.append(f"- **Sidecar File:** `{target_name}` ({deployed_badge})")
-        lines.append(
-            f"- **Cue Statistics:** {len(cues)} total ({len(skips)} skips / {len(mutes)} mutes)"
-        )
-        lines.append(
+        lines.extend([
+            f"#### {ep_id} — {title}",
+            f"- **Sidecar File:** `{target_name}` ({deployed_badge})",
+            f"- **Cue Statistics:** {len(cues)} total ({len(skips)} skips / {len(mutes)} mutes)",
             f"- **Objectionable Duration:** {fmt_duration(skip_dur)} skipped"
-            + (f", {fmt_duration(mute_dur)} muted" if mute_dur > 0 else "")
-        )
-        lines.append("")
-        lines.append(
-            "| # | Start Time | End Time | Duration | Category | Channel | Action | Description / Context |"
-        )
-        lines.append("| :-: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |")
-
+            + (f", {fmt_duration(mute_dur)} muted" if mute_dur > 0 else ""),
+            "",
+            "| # | Start Time | End Time | Duration | Category | Channel | Action | Description / Context |",
+            "| :-: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |",
+        ])
         for idx, c in enumerate(cues, 1):
-            cat_badge = f"`{c['category']}`"
-            ch = c["channel"]
-            act = c["action"]
-            desc = c["description"]
-            dur = c["duration_fmt"]
             lines.append(
-                f"| {idx:02d} | `{c['start']}` | `{c['end']}` | **{dur}** | {cat_badge} | {ch} | `{act}` | {desc} |"
+                f"| {idx:02d} | `{c['start']}` | `{c['end']}` | **{c['duration_fmt']}** | `{c['category']}` | {c['channel']} | `{c['action']}` | {c['description']} |"
             )
-
         lines.append("")
+    return lines
 
-    lines.append("---")
-    lines.append("")
-    lines.append("## 4. Unflagged Episodes & Known Gaps")
-    lines.append("")
-    lines.append(
-        "### A. Community-Identified Gaps (Episodes with Content Omitted from Reddit Post)"
-    )
-    lines.append(
-        "The original post author omitted timestamps for several episodes that contain known objectionable scenes. If filtering is required for these, manual timecodes should be added:"
-    )
-    lines.append("1. **S01E02 (*The Kingsroad*):** Daenerys and Khal Drogo tent scene.")
-    lines.append(
-        "2. **S01E07 (*You Win or You Die*):** Explicit Littlefinger brothel training monologue with Ros and Armeca."
-    )
-    lines.append(
-        "3. **S02E01 (*The North Remembers*):** Explicit Ros and brothel scenes near episode conclusion."
-    )
-    lines.append(
-        '4. **Season 08 (All Episodes):** Omitted by author (*"it was pretty minor"*). Episodes S08E01, S08E02, and S08E04 contain romantic and suggestive bedroom scenes.'
-    )
-    lines.append("")
-    lines.append("### B. Verified Clean Episodes (No Objectionable Material Flagged)")
-    lines.append(
-        "The following episodes across Seasons 1–7 were checked and confirmed free of explicit nudity cuts by the author:"
-    )
 
+def _build_unflagged_and_footer_lines(episodes_data: dict[str, Any]) -> list[str]:
+    lines = [
+        "---",
+        "",
+        "## 4. Unflagged Episodes & Known Gaps",
+        "",
+        "### A. Community-Identified Gaps (Episodes with Content Omitted from Reddit Post)",
+        "The original post author omitted timestamps for several episodes that contain known objectionable scenes. If filtering is required for these, manual timecodes should be added:",
+        "1. **S01E02 (*The Kingsroad*):** Daenerys and Khal Drogo tent scene.",
+        "2. **S01E07 (*You Win or You Die*):** Explicit Littlefinger brothel training monologue with Ros and Armeca.",
+        "3. **S02E01 (*The North Remembers*):** Explicit Ros and brothel scenes near episode conclusion.",
+        '4. **Season 08 (All Episodes):** Omitted by author (*"it was pretty minor"*). Episodes S08E01, S08E02, and S08E04 contain romantic and suggestive bedroom scenes.',
+        "",
+        "### B. Verified Clean Episodes (No Objectionable Material Flagged)",
+        "The following episodes across Seasons 1–7 were checked and confirmed free of explicit nudity cuts by the author:",
+    ]
     clean_eps = [
         k for k in CANONICAL_EPISODES.keys() if k not in episodes_data and not k.startswith("S08")
     ]
-    lines.append("| Season | Clean Episodes |")
-    lines.append("| :--- | :--- |")
+    lines.extend(["| Season | Clean Episodes |", "| :--- | :--- |"])
     for s_num in range(1, 8):
         s_tag = f"S{s_num:02d}"
         s_clean = [
@@ -426,33 +370,38 @@ def main():
             if ep_id.startswith(s_tag)
         ]
         lines.append(f"| **Season {s_num:02d}** | {', '.join(s_clean)} |")
+    lines.extend([
+        "",
+        "---",
+        "",
+        "## 5. Jellyfin Plugin Configuration & Integration",
+        "",
+        "### Sidecar Discovery",
+        "Jellyfin Content Filter automatically discovers sidecar files placed next to the video file:",
+        "```text",
+        "/Volumes/data/shows/Game of Thrones/Season 01/",
+        "├── Game of Thrones - S01E01 - Winter Is Coming.mkv",
+        "└── Game of Thrones - S01E01 - Winter Is Coming.jcf",
+        "```",
+        "",
+        "### Category Filtering Mechanics",
+        "- `SexAndNudity.FullNudity`: Controlled by the user's **Sex & Nudity** toggle (`SexAndNudityEnabled`) in plugin configuration. When enabled, playback automatically seeks ahead to the cue's end timestamp.",
+        "- `Language.GeneralProfanity`: Controlled by the user's **General Profanity** toggle (`GeneralProfanityEnabled`). When enabled, audio volume drops to 0% for the exact duration of the spoken word.",
+        "",
+        "*(Report generated automatically on September 4, 2026)*",
+        "",
+    ])
+    return lines
 
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-    lines.append("## 5. Jellyfin Plugin Configuration & Integration")
-    lines.append("")
-    lines.append("### Sidecar Discovery")
-    lines.append(
-        "Jellyfin Content Filter automatically discovers sidecar files placed next to the video file:"
-    )
-    lines.append("```text")
-    lines.append("/Volumes/data/shows/Game of Thrones/Season 01/")
-    lines.append("├── Game of Thrones - S01E01 - Winter Is Coming.mkv")
-    lines.append("└── Game of Thrones - S01E01 - Winter Is Coming.jcf")
-    lines.append("```")
-    lines.append("")
-    lines.append("### Category Filtering Mechanics")
-    lines.append(
-        "- `SexAndNudity.FullNudity`: Controlled by the user's **Sex & Nudity** toggle (`SexAndNudityEnabled`) in plugin configuration. When enabled, playback automatically seeks ahead to the cue's end timestamp."
-    )
-    lines.append(
-        "- `Language.GeneralProfanity`: Controlled by the user's **General Profanity** toggle (`GeneralProfanityEnabled`). When enabled, audio volume drops to 0% for the exact duration of the spoken word."
-    )
-    lines.append("")
-    lines.append("*(Report generated automatically on September 4, 2026)*")
-    lines.append("")
 
+def main() -> None:
+    mkv_map, jcf_map = _gather_media_files()
+    episodes_data = _load_episodes_data(mkv_map, jcf_map)
+    lines = []
+    lines.extend(_build_intro_lines())
+    lines.extend(_build_metrics_lines(episodes_data, mkv_map, jcf_map))
+    lines.extend(_build_episode_detail_lines(episodes_data))
+    lines.extend(_build_unflagged_and_footer_lines(episodes_data))
     out_content = "\n".join(lines)
     Path("GAME_OF_THRONES_CUES_SUMMARY.md").write_text(out_content, encoding="utf-8")
     print(

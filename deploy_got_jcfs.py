@@ -32,7 +32,7 @@ OBSOLETE_JCFS = [
 ]
 
 
-def parse_jcf_cues(content: str):
+def parse_jcf_cues(content: str) -> list[dict[str, str]]:
     """Parse cues from a JCF text content."""
     cues = []
     blocks = content.strip().split("\n\n")
@@ -60,7 +60,7 @@ def parse_jcf_cues(content: str):
     return cues
 
 
-def format_cues_jcf(title: str, year: str, source: str, cues: list) -> str:
+def format_cues_jcf(title: str, year: str, source: str, cues: list[dict[str, str]]) -> str:
     """Format a list of cue dictionaries into standard JCF WEBWTT format."""
     sorted_cues = sorted(cues, key=lambda c: c["start"])
     lines = [
@@ -83,16 +83,7 @@ def format_cues_jcf(title: str, year: str, source: str, cues: list) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def deploy(dry_run: bool = False):
-    print(f"Deploying Game of Thrones JCF files (dry_run={dry_run})...\n")
-
-    if not MEDIA_DIR.exists():
-        print(
-            f"Error: Media directory {MEDIA_DIR} does not exist or is not mounted.", file=sys.stderr
-        )
-        return False
-
-    # 1. Delete obsolete files
+def _delete_obsolete_jcfs(dry_run: bool) -> int:
     deleted_count = 0
     for obs in OBSOLETE_JCFS:
         if obs.exists():
@@ -102,84 +93,98 @@ def deploy(dry_run: bool = False):
             deleted_count += 1
         else:
             print(f"[ALREADY REMOVED] {obs.parent.name}/{obs.name}")
+    return deleted_count
 
-    # 2. Extract existing language cues from S01E01 if present
+
+def _extract_s01e01_lang_cues() -> list[dict[str, str]]:
     s01e01_orig = MEDIA_DIR / "Season 01" / "Game of Thrones - S01E01 - Winter Is Coming-orig.jcf"
     s01e01_curr = MEDIA_DIR / "Season 01" / "Game of Thrones - S01E01 - Winter Is Coming.jcf"
     s01_source_file = (
         s01e01_orig if s01e01_orig.exists() else (s01e01_curr if s01e01_curr.exists() else None)
     )
+    if not s01_source_file or not s01_source_file.exists():
+        return []
+    parsed = parse_jcf_cues(s01_source_file.read_text(encoding="utf-8"))
+    cues = [
+        c for c in parsed if c["category"].startswith("Language.") or c["channel"] == "audio"
+    ]
+    print(f"\nPreserving {len(cues)} language profanity cues from {s01_source_file.name}")
+    return cues
 
-    s01_lang_cues = []
-    if s01_source_file and s01_source_file.exists():
-        parsed = parse_jcf_cues(s01_source_file.read_text(encoding="utf-8"))
-        s01_lang_cues = [
-            c for c in parsed if c["category"].startswith("Language.") or c["channel"] == "audio"
-        ]
+
+def _process_mkv_cues(
+    ep_id: str, s01_lang_cues: list[dict[str, str]]
+) -> tuple[list[dict[str, str]], str]:
+    raw_ranges = got.EPISODES.get(ep_id, "").strip()
+    if not raw_ranges:
+        return [], ""
+    normalized = raw_ranges.replace(",", "+")
+    ranges = [r.strip() for r in normalized.split("+") if r.strip()]
+    flagged = [got.parse_range(r) for r in ranges]
+    gaps = got.invert_ranges(flagged)
+
+    cues = [
+        {
+            "start": start,
+            "end": end,
+            "category": "SexAndNudity.FullNudity",
+            "channel": "video",
+            "action": "skip",
+            "description": "Objectionable scene",
+        }
+        for start, end in gaps
+    ]
+    source_desc = "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
+    if ep_id == "S01E01" and s01_lang_cues:
+        cues.extend(s01_lang_cues)
+        source_desc = "Reddit r/naath & r/gameofthrones (nudity) + Subtitle scan (profanity)"
+    return cues, source_desc
+
+
+def _deploy_season_mkvs(
+    season_dir: Path, s01_lang_cues: list[dict[str, str]], dry_run: bool
+) -> tuple[int, int]:
+    mkvs = sorted([f for f in season_dir.iterdir() if f.suffix == ".mkv"])
+    written = 0
+    total_cues = 0
+    for mkv in mkvs:
+        m = re.search(r"S(\d{2})E(\d{2})", mkv.name, re.IGNORECASE)
+        if not m:
+            continue
+        ep_id = f"S{m.group(1).upper()}E{m.group(2).upper()}"
+        cues, source_desc = _process_mkv_cues(ep_id, s01_lang_cues)
+        if not cues:
+            continue
+        target_jcf = mkv.with_suffix(".jcf")
+        content = format_cues_jcf(mkv.stem, "2011", source_desc, cues)
+        status = "UPDATE" if target_jcf.exists() else "CREATE"
+        print(f"[{status}] {season_dir.name}/{target_jcf.name} ({len(cues)} cues)")
+        if not dry_run:
+            target_jcf.write_text(content, encoding="utf-8")
+        written += 1
+        total_cues += len(cues)
+    return written, total_cues
+
+
+def deploy(dry_run: bool = False) -> bool:
+    print(f"Deploying Game of Thrones JCF files (dry_run={dry_run})...\n")
+    if not MEDIA_DIR.exists():
         print(
-            f"\nPreserving {len(s01_lang_cues)} language profanity cues from {s01_source_file.name}"
+            f"Error: Media directory {MEDIA_DIR} does not exist or is not mounted.",
+            file=sys.stderr,
         )
+        return False
+    deleted_count = _delete_obsolete_jcfs(dry_run)
+    s01_lang_cues = _extract_s01e01_lang_cues()
 
-    # 3. Process each season directory
     written_count = 0
     total_cues = 0
-
     for season_dir in sorted(MEDIA_DIR.iterdir()):
         if not season_dir.is_dir() or not season_dir.name.startswith("Season"):
             continue
-
-        mkvs = sorted([f for f in season_dir.iterdir() if f.suffix == ".mkv"])
-        for mkv in mkvs:
-            m = re.search(r"S(\d{2})E(\d{2})", mkv.name, re.IGNORECASE)
-            if not m:
-                continue
-            ep_id = f"S{m.group(1).upper()}E{m.group(2).upper()}"
-            raw_ranges = got.EPISODES.get(ep_id, "").strip()
-
-            if not raw_ranges:
-                continue
-
-            normalized = raw_ranges.replace(",", "+")
-            ranges = [r.strip() for r in normalized.split("+") if r.strip()]
-            flagged = [got.parse_range(r) for r in ranges]
-            gaps = got.invert_ranges(flagged)
-
-            cues = []
-            for start, end in gaps:
-                cues.append(
-                    {
-                        "start": start,
-                        "end": end,
-                        "category": "SexAndNudity.FullNudity",
-                        "channel": "video",
-                        "action": "skip",
-                        "description": "Objectionable scene",
-                    }
-                )
-
-            source_desc = "Reddit r/naath & r/gameofthrones (inverted safe ranges)"
-            if ep_id == "S01E01" and s01_lang_cues:
-                cues.extend(s01_lang_cues)
-                source_desc = (
-                    "Reddit r/naath & r/gameofthrones (nudity) + Subtitle scan (profanity)"
-                )
-
-            target_jcf = mkv.with_suffix(".jcf")
-            content = format_cues_jcf(
-                title=mkv.stem,
-                year="2011",
-                source=source_desc,
-                cues=cues,
-            )
-
-            status = "UPDATE" if target_jcf.exists() else "CREATE"
-            print(f"[{status}] {season_dir.name}/{target_jcf.name} ({len(cues)} cues)")
-
-            if not dry_run:
-                target_jcf.write_text(content, encoding="utf-8")
-
-            written_count += 1
-            total_cues += len(cues)
+        w, tc = _deploy_season_mkvs(season_dir, s01_lang_cues, dry_run)
+        written_count += w
+        total_cues += tc
 
     print("\nSummary:")
     print(f"  Obsolete JCFs deleted: {deleted_count}")

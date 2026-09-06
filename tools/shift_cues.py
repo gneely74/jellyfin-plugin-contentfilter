@@ -69,6 +69,12 @@ class JcfCue:
         self.description = description
         self.extra_lines = extra_lines or []
 
+    def _matches_video(self, ch: str, act: str) -> bool:
+        return ch == "video" or (ch == "both" and act != "mute") or act == "skip"
+
+    def _matches_audio(self, ch: str, act: str) -> bool:
+        return ch == "audio" or (ch == "both" and act == "mute") or act == "mute"
+
     def matches_channel(self, target: str) -> bool:
         """Check if this cue matches the target channel filter ('all', 'video', 'audio')."""
         if not target or target.lower() == "all":
@@ -76,13 +82,13 @@ class JcfCue:
 
         ch = (self.channel or "").strip().lower()
         act = (self.action or "").strip().lower()
-        target = target.strip().lower()
+        t = target.strip().lower()
 
-        if target == "video":
-            return ch == "video" or (ch == "both" and act != "mute") or act == "skip"
-        if target == "audio":
-            return ch == "audio" or (ch == "both" and act == "mute") or act == "mute"
-        return ch == target
+        if t == "video":
+            return self._matches_video(ch, act)
+        if t == "audio":
+            return self._matches_audio(ch, act)
+        return ch == t
 
     def shift(self, offset_ms: int) -> None:
         """Shift start and end by offset_ms, ensuring non-negative start and valid duration."""
@@ -107,6 +113,47 @@ class JcfCue:
         return "\n".join(lines)
 
 
+def _parse_timecode_ms(tc_match: re.Match) -> Tuple[int, int]:
+    sh = int(tc_match.group("sh") or 0)
+    sm = int(tc_match.group("sm"))
+    ss = int(tc_match.group("ss"))
+    sms = int(tc_match.group("sms"))
+    start_ms = ((sh * 3600) + (sm * 60) + ss) * 1000 + sms
+
+    eh = int(tc_match.group("eh") or 0)
+    em = int(tc_match.group("em"))
+    es = int(tc_match.group("es"))
+    ems = int(tc_match.group("ems"))
+    end_ms = ((eh * 3600) + (em * 60) + es) * 1000 + ems
+    return start_ms, end_ms
+
+
+def _parse_cue_payload(lines: List[str], i: int) -> Tuple[dict, List[str], int]:
+    props = {"category": "", "channel": "both", "action": "none", "description": None}
+    extra_lines: List[str] = []
+    while i < len(lines) and lines[i].strip():
+        payload_line = lines[i].strip()
+        if ":" in payload_line:
+            k, v = payload_line.split(":", 1)
+            k, v = k.strip().lower(), v.strip()
+            if k in props:
+                props[k] = v
+            else:
+                extra_lines.append(payload_line)
+        elif "=" in payload_line:
+            parts = [p.strip() for p in payload_line.split("=")]
+            if len(parts) > 0:
+                props["category"] = parts[0]
+            if len(parts) > 1:
+                props["action"] = parts[1]
+            if len(parts) > 2:
+                props["channel"] = parts[2]
+        else:
+            extra_lines.append(payload_line)
+        i += 1
+    return props, extra_lines, i
+
+
 def parse_jcf_cues(content: str) -> Tuple[List[str], List[JcfCue]]:
     """Parse JCF content into header/note lines and a list of JcfCue objects."""
     lines = content.splitlines()
@@ -120,66 +167,19 @@ def parse_jcf_cues(content: str) -> Tuple[List[str], List[JcfCue]]:
         line = lines[i]
         stripped = line.strip()
 
-        # Check for timecode line
         tc_match = TIMECODE_RE.match(stripped)
         if tc_match:
             in_header = False
-            sh = int(tc_match.group("sh") or 0)
-            sm = int(tc_match.group("sm"))
-            ss = int(tc_match.group("ss"))
-            sms = int(tc_match.group("sms"))
-            start_ms = ((sh * 3600) + (sm * 60) + ss) * 1000 + sms
-
-            eh = int(tc_match.group("eh") or 0)
-            em = int(tc_match.group("em"))
-            es = int(tc_match.group("es"))
-            ems = int(tc_match.group("ems"))
-            end_ms = ((eh * 3600) + (em * 60) + es) * 1000 + ems
-
-            category = ""
-            channel = "both"
-            action = "none"
-            description = None
-            extra_lines: List[str] = []
-
-            i += 1
-            while i < len(lines) and lines[i].strip():
-                payload_line = lines[i].strip()
-                if ":" in payload_line:
-                    k, v = payload_line.split(":", 1)
-                    k = k.strip().lower()
-                    v = v.strip()
-                    if k == "category":
-                        category = v
-                    elif k == "channel":
-                        channel = v
-                    elif k == "action":
-                        action = v
-                    elif k == "description":
-                        description = v
-                    else:
-                        extra_lines.append(payload_line)
-                elif "=" in payload_line:
-                    # Legacy MCF format: category=action=channel
-                    parts = [p.strip() for p in payload_line.split("=")]
-                    if len(parts) > 0:
-                        category = parts[0]
-                    if len(parts) > 1:
-                        action = parts[1]
-                    if len(parts) > 2:
-                        channel = parts[2]
-                else:
-                    extra_lines.append(payload_line)
-                i += 1
-
+            start_ms, end_ms = _parse_timecode_ms(tc_match)
+            props, extra_lines, i = _parse_cue_payload(lines, i + 1)
             cues.append(
                 JcfCue(
                     start_ms=start_ms,
                     end_ms=end_ms,
-                    category=category,
-                    channel=channel,
-                    action=action,
-                    description=description,
+                    category=props["category"],
+                    channel=props["channel"],
+                    action=props["action"],
+                    description=props["description"],
                     extra_lines=extra_lines,
                 )
             )

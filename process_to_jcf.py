@@ -120,11 +120,7 @@ def clean_line_typos(line: str) -> str:
     return line
 
 
-def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, str]:
-    """Map raw TheTimestampDudes category header/description to plugin standard category, channel, and action."""
-    combined = f"{raw_cat} {desc}".lower()
-
-    # 1. Profanity / Language / Inappropriate Talk
+def _match_language(combined: str) -> Optional[Tuple[str, str, str]]:
     if any(
         k in combined
         for k in [
@@ -148,92 +144,11 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
         if any(k in combined for k in ["childish", "butt", "fart", "dumb", "stupid", "poop"]):
             return "Language.ChildishLanguage", "audio", "mute"
         return "Language.GeneralProfanity", "audio", "mute"
+    return None
 
-    # 2. Gestures
-    if any(
-        k in combined
-        for k in ["middle finger", "flipping off", "vulgar gesture", "obscene gesture"]
-    ):
-        return "SexualReferences.Visuals", "video", "skip"
 
-    # 3. Sexual Dialogue / Innuendo
-    if any(
-        k in combined
-        for k in [
-            "sexual dialogue",
-            "sexual conversation",
-            "sexual remark",
-            "sexual comment",
-            "innuendo",
-            "dirty talk",
-            "prostitution talk",
-        ]
-    ):
-        return "SexualReferences.ContextualDialogue", "video", "skip"
-
-    # 4. Sex & Nudity
-    # 4a. Sexual Assault / Rape
-    if any(
-        k in combined
-        for k in [
-            "sexual assault",
-            "rape",
-            "molest",
-            "non-consensual",
-            "groping",
-            "forces herself",
-            "forces himself",
-        ]
-    ):
-        return "SexAndNudity.SexualAssault", "video", "skip"
-
-    # 4b. Graphic Sex / Intercourse / Explicit / Erotic / Masturbation
-    if any(
-        k in combined
-        for k in [
-            "intercourse",
-            "sex scene",
-            "explicit sex",
-            "oral sex",
-            "blowjob",
-            "handjob",
-            "masturbat",
-            "orgasm",
-            "penetrat",
-            "erotic",
-            "sex with nudity",
-        ]
-    ) or (
-        re.search(r"\bsex\b", combined)
-        and any(k in combined for k in ["explicit", "scene", "act", "bed", "having"])
-    ):
-        return "SexAndNudity.Graphic", "video", "skip"
-
-    # 4c. Implied Sex / Bedroom / Suggestive Activity (without explicit intercourse or intimacy)
-    if any(
-        k in combined
-        for k in [
-            "implied sex",
-            "fooling in bed",
-            "sex without nudity",
-            "sensual",
-            "bedroom scene",
-            "suggestive dancing",
-            "adult scene",
-            "touchy feely",
-        ]
-    ):
-        return "SexAndNudity.ImpliedSex", "video", "skip"
-
-    # 4d. Physical Intimacy (Kissing / Making out / Caress)
-    if any(
-        k in combined
-        for k in ["kissing", "kiss", "make out", "making out", "caress", "passionate kiss"]
-    ):
-        return "SexAndNudity.PhysicalIntimacy", "video", "skip"
-
-    # 4e. Full Nudity
-    if any(
+def _is_full_nudity(combined: str) -> bool:
+    return any(
         k in combined
         for k in [
             "full nudity",
@@ -273,11 +188,11 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
                 "revealing",
             ]
         )
-    ):
-        return "SexAndNudity.FullNudity", "video", "skip"
+    )
 
-    # 4f. Partial Nudity / Revealing Clothing / Lingerie / Underwear / Swimwear
-    if any(
+
+def _is_partial_nudity(combined: str) -> bool:
+    return any(
         k in combined
         for k in [
             "nudity",
@@ -305,13 +220,106 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
             "crop top",
             "suggestive",
         ]
+    )
+
+
+def _match_sexual_assault_or_graphic(combined: str) -> Optional[Tuple[str, str, str]]:
+    if any(
+        k in combined
+        for k in ["middle finger", "flipping off", "vulgar gesture", "obscene gesture"]
     ):
+        return "SexualReferences.Visuals", "video", "skip"
+
+    if any(
+        k in combined
+        for k in [
+            "sexual dialogue",
+            "sexual conversation",
+            "sexual remark",
+            "sexual comment",
+            "innuendo",
+            "dirty talk",
+            "prostitution talk",
+        ]
+    ):
+        return "SexualReferences.ContextualDialogue", "video", "skip"
+
+    if any(
+        k in combined
+        for k in [
+            "sexual assault",
+            "rape",
+            "molest",
+            "non-consensual",
+            "groping",
+            "forces herself",
+            "forces himself",
+        ]
+    ):
+        return "SexAndNudity.SexualAssault", "video", "skip"
+
+    if any(
+        k in combined
+        for k in [
+            "intercourse",
+            "sex scene",
+            "explicit sex",
+            "oral sex",
+            "blowjob",
+            "handjob",
+            "masturbat",
+            "orgasm",
+            "penetrat",
+            "erotic",
+            "sex with nudity",
+        ]
+    ) or (
+        re.search(r"\bsex\b", combined)
+        and any(k in combined for k in ["explicit", "scene", "act", "bed", "having"])
+    ):
+        return "SexAndNudity.Graphic", "video", "skip"
+
+    return None
+
+
+def _match_intimacy_or_nudity(combined: str) -> Optional[Tuple[str, str, str]]:
+    if any(
+        k in combined
+        for k in [
+            "implied sex",
+            "fooling in bed",
+            "sex without nudity",
+            "sensual",
+            "bedroom scene",
+            "suggestive dancing",
+            "adult scene",
+            "touchy feely",
+        ]
+    ):
+        return "SexAndNudity.ImpliedSex", "video", "skip"
+
+    if any(
+        k in combined
+        for k in ["kissing", "kiss", "make out", "making out", "caress", "passionate kiss"]
+    ):
+        return "SexAndNudity.PhysicalIntimacy", "video", "skip"
+
+    if _is_full_nudity(combined):
+        return "SexAndNudity.FullNudity", "video", "skip"
+
+    if _is_partial_nudity(combined):
         if any(k in combined for k in ["bikini", "swimsuit", "swimwear", "beach"]):
             return "SexAndNudity.Mild", "video", "skip"
         return "SexAndNudity.PartialNudity", "video", "skip"
 
-    # 5. Violence & Horror
-    # 5a. Gore / Dismemberment / Organs / Decapitation
+    return None
+
+
+def _match_sexual(combined: str) -> Optional[Tuple[str, str, str]]:
+    return _match_sexual_assault_or_graphic(combined) or _match_intimacy_or_nudity(combined)
+
+
+def _match_severe_violence(combined: str) -> Optional[Tuple[str, str, str]]:
     if any(
         k in combined
         for k in [
@@ -334,50 +342,31 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
     ):
         return "Violence.Gore", "video", "skip"
 
-    # 5b. Jump Scares
     if any(k in combined for k in ["jumpscare", "jump scare", "startle", "surprise scare"]):
         return "Violence.JumpScares", "video", "skip"
 
-    # 5c. Disturbing / Psychological Horror / Corpses / Suicide
     if any(
         k in combined
         for k in [
-            "disturbing",
-            "corpse",
-            "dead body",
-            "skeletal",
-            "suicide",
-            "torture",
-            "scary",
-            "creepy",
-            "fear",
-            "unsettling",
-            "psychological",
-            "hanging",
+            "disturbing", "corpse", "dead body", "skeletal", "suicide", "torture",
+            "scary", "creepy", "fear", "unsettling", "psychological", "hanging",
         ]
     ):
         return "Violence.Disturbing", "video", "skip"
 
-    # 5d. Graphic Violence / Severe / Fatal
     if any(
         k in combined
         for k in [
-            "graphic violence",
-            "fatal",
-            "stabbed in eye",
-            "torture death",
-            "slashes his cheeks",
-            "brutal",
-            "visceral",
-            "kill",
-            "murder",
-            "behead",
-            "close range",
+            "graphic violence", "fatal", "stabbed in eye", "torture death", "slashes his cheeks",
+            "brutal", "visceral", "kill", "murder", "behead", "close range",
         ]
     ):
         return "Violence.Graphic", "video", "skip"
 
-    # 5e. Mild Violence
+    return None
+
+
+def _match_combat_or_mild(combined: str) -> Optional[Tuple[str, str, str]]:
     if any(
         k in combined
         for k in [
@@ -398,7 +387,6 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
     ):
         return "Violence.Mild", "video", "skip"
 
-    # 5f. Moderate Violence / General Combat / Shootouts / Fights
     if any(
         k in combined
         for k in [
@@ -427,7 +415,14 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
     ):
         return "Violence.Moderate", "video", "skip"
 
-    # 6. Substance Use
+    return None
+
+
+def _match_violence(combined: str) -> Optional[Tuple[str, str, str]]:
+    return _match_severe_violence(combined) or _match_combat_or_mild(combined)
+
+
+def _match_substances(combined: str) -> Optional[Tuple[str, str, str]]:
     if any(
         k in combined
         for k in ["substance", "drug", "alcohol", "smoke", "smoking", "drink", "drunk"]
@@ -456,24 +451,11 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
             for k in ["tobacco", "smoke", "smoking", "cigarette", "cigar", "vape", "vaping"]
         ):
             return "Substances.Tobacco", "video", "skip"
-        if any(
-            k in combined
-            for k in [
-                "alcohol",
-                "drink",
-                "drinking",
-                "drunk",
-                "beer",
-                "wine",
-                "liquor",
-                "sake",
-                "bar",
-            ]
-        ):
-            return "Substances.Alcohol", "video", "skip"
         return "Substances.Alcohol", "video", "skip"
+    return None
 
-    # 7. Medical & Biological
+
+def _match_medical_and_structural(combined: str) -> Optional[Tuple[str, str, str]]:
     if any(
         k in combined
         for k in [
@@ -490,6 +472,7 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
         ]
     ):
         return "Medical.Events", "both", "skip"
+
     if any(
         k in combined
         for k in [
@@ -505,14 +488,30 @@ def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, st
     ):
         return "Medical.BodilyFunctions", "both", "skip"
 
-    # 8. Structural Timestamps
     if any(k in combined for k in ["credits", "opening credits", "closing credits"]):
         return "Structural.Credits", "both", "skip"
+
     if any(k in combined for k in ["intro", "outro", "recap", "outtake", "blooper"]):
         return "Structural.IntroRecap", "both", "skip"
 
-    # Fallback default
-    return "Violence.Moderate", "video", "skip"
+    return None
+
+
+def _match_substances_and_other(combined: str) -> Optional[Tuple[str, str, str]]:
+    return _match_substances(combined) or _match_medical_and_structural(combined)
+
+
+def map_category_and_channel(raw_cat: str, desc: str = "") -> Tuple[str, str, str]:
+    """Map raw TheTimestampDudes category header/description to plugin standard category, channel, and action."""
+    combined = f"{raw_cat} {desc}".lower()
+    return (
+        _match_language(combined)
+        or _match_sexual(combined)
+        or _match_violence(combined)
+        or _match_substances_and_other(combined)
+        or ("Violence.Moderate", "video", "skip")
+    )
+
 
 
 def map_category(raw_cat: str, desc: str = "") -> str:
@@ -564,126 +563,122 @@ def is_header_line(line: str) -> bool:
     return any(k in lower for k in cat_keywords)
 
 
+def _parse_range_cue(m: re.Match, clean_l: str, current_cat: str) -> Optional[Cue]:
+    st_raw = m.group(1)
+    et_raw = m.group(2)
+    st_sec = parse_time_to_seconds(st_raw)
+    et_sec = parse_time_to_seconds(et_raw)
+    if st_sec is None or et_sec is None:
+        return None
+
+    if ":" in st_raw and len(st_raw.split(":")) == 3:
+        start_h = int(st_raw.split(":")[0])
+        if len(et_raw.split(":")) == 2:
+            candidate_et = start_h * 3600 + et_sec
+            if candidate_et >= st_sec:
+                et_sec = candidate_et
+
+    if et_sec < st_sec:
+        if st_sec - et_sec < 600:
+            st_sec, et_sec = et_sec, st_sec
+        else:
+            return None
+
+    if et_sec == st_sec:
+        et_sec = st_sec + 3
+
+    desc = (clean_l[: m.start()] + " " + clean_l[m.end() :]).strip(" -:–—()")
+    desc = re.sub(r"\s+", " ", desc).strip()
+    if not desc or desc.lower() in ("same as above", "same"):
+        desc = f"Scene flagged under {current_cat}"
+
+    full_desc = f"[{current_cat}] {desc}"
+    mapped_cat, channel, action = map_category_and_channel(current_cat, desc)
+    return Cue(
+        start_seconds=st_sec,
+        end_seconds=et_sec,
+        category=mapped_cat,
+        description=full_desc,
+        raw_category=current_cat,
+        channel=channel,
+        action=action,
+    )
+
+
+def _parse_single_cue(s_match: re.Match, clean_l: str, current_cat: str) -> Optional[Cue]:
+    ts_raw = s_match.group(1)
+    st_sec = parse_time_to_seconds(ts_raw)
+    if st_sec is None:
+        return None
+    et_sec = st_sec + 8
+    desc = (clean_l[: s_match.start()] + " " + clean_l[s_match.end() :]).strip(" -:–—()")
+    desc = re.sub(r"\s+", " ", desc).strip()
+    if not desc:
+        desc = f"Scene flagged under {current_cat}"
+
+    full_desc = f"[{current_cat}] {desc}"
+    mapped_cat, channel, action = map_category_and_channel(current_cat, desc)
+    return Cue(
+        start_seconds=st_sec,
+        end_seconds=et_sec,
+        category=mapped_cat,
+        description=full_desc,
+        raw_category=current_cat,
+        channel=channel,
+        action=action,
+    )
+
+
+def _should_skip_line(line: str) -> bool:
+    return not line or line.startswith(("#", "-", "http", "If you have any questions"))
+
+
+def _extract_category_header(line: str) -> Optional[str]:
+    if not is_header_line(line):
+        return None
+    cleaned = re.sub(
+        r"^(?:(?:directly|right)\s+after|in\s+between\s+scene\s+above|at\s+the\s+same\s+time[^\:]*):\s*",
+        "",
+        line,
+        flags=re.IGNORECASE,
+    ).strip(" :-–—")
+    return cleaned or None
+
+
+def _parse_line_cues(clean_l: str, current_cat: str) -> List[Cue]:
+    matches = list(RANGE_REGEX.finditer(clean_l))
+    if matches:
+        res = []
+        for m in matches:
+            c = _parse_range_cue(m, clean_l, current_cat)
+            if c:
+                res.append(c)
+        return res
+
+    s_match = SINGLE_TS_REGEX.search(clean_l)
+    if s_match:
+        cue = _parse_single_cue(s_match, clean_l, current_cat)
+        return [cue] if cue else []
+    return []
+
+
 def parse_post_into_cues(plain_text: str) -> List[Cue]:
     """Parse the text content of a post into structured JCF cues."""
-    lines = plain_text.splitlines()
     cues: List[Cue] = []
     current_cat = "General"
 
-    for raw_line in lines:
+    for raw_line in plain_text.splitlines():
         line = raw_line.strip()
-        if not line:
+        if _should_skip_line(line):
             continue
 
-        # Skip headers / introductory metadata lines
-        if (
-            line.startswith("#")
-            or line.startswith("-")
-            or line.startswith("http")
-            or line.startswith("If you have any questions")
-        ):
+        header = _extract_category_header(line)
+        if header:
+            current_cat = header
             continue
 
-        # Check if line is a category header
-        if is_header_line(line):
-            cleaned_h = re.sub(
-                r"^(?:(?:directly|right)\s+after|in\s+between\s+scene\s+above|at\s+the\s+same\s+time[^\:]*):\s*",
-                "",
-                line,
-                flags=re.IGNORECASE,
-            ).strip(" :-–—")
-            if cleaned_h:
-                current_cat = cleaned_h
-            continue
+        cues.extend(_parse_line_cues(clean_line_typos(line), current_cat))
 
-        clean_l = clean_line_typos(line)
-        matches = list(RANGE_REGEX.finditer(clean_l))
-
-        if matches:
-            for m in matches:
-                st_raw = m.group(1)
-                et_raw = m.group(2)
-
-                st_sec = parse_time_to_seconds(st_raw)
-                et_sec = parse_time_to_seconds(et_raw)
-
-                if st_sec is None or et_sec is None:
-                    continue
-
-                # Fix omitted hour in end time: e.g. 1:14:03 - 15:30 -> 1:14:03 - 1:15:30
-                if ":" in st_raw and len(st_raw.split(":")) == 3:
-                    # Start had hours
-                    start_h = int(st_raw.split(":")[0])
-                    if len(et_raw.split(":")) == 2:
-                        # End had only MM:SS
-                        candidate_et = start_h * 3600 + et_sec
-                        if candidate_et >= st_sec:
-                            et_sec = candidate_et
-
-                # Fix swapped start/end if within reasonable threshold
-                if et_sec < st_sec:
-                    if st_sec - et_sec < 600:  # within 10 min typo
-                        st_sec, et_sec = et_sec, st_sec
-                    else:
-                        # Skip corrupted timestamps
-                        continue
-
-                # Ensure minimum 1-second cue
-                if et_sec == st_sec:
-                    et_sec = st_sec + 3
-
-                # Extract description for this cue
-                # Strip out the timestamp substring
-                desc = (clean_l[: m.start()] + " " + clean_l[m.end() :]).strip(" -:–—()")
-                desc = re.sub(r"\s+", " ", desc).strip()
-                if not desc or desc.lower() in ("same as above", "same"):
-                    desc = f"Scene flagged under {current_cat}"
-
-                full_desc = f"[{current_cat}] {desc}"
-                mapped_cat, channel, action = map_category_and_channel(current_cat, desc)
-
-                cues.append(
-                    Cue(
-                        start_seconds=st_sec,
-                        end_seconds=et_sec,
-                        category=mapped_cat,
-                        description=full_desc,
-                        raw_category=current_cat,
-                        channel=channel,
-                        action=action,
-                    )
-                )
-        else:
-            # Check for standalone single timestamp e.g. "At 1:15:42 (a woman starts to unbutton her shirt...)"
-            s_match = SINGLE_TS_REGEX.search(clean_l)
-            if s_match:
-                ts_raw = s_match.group(1)
-                st_sec = parse_time_to_seconds(ts_raw)
-                if st_sec is not None:
-                    et_sec = st_sec + 8  # Default 8s duration for point events
-                    desc = (clean_l[: s_match.start()] + " " + clean_l[s_match.end() :]).strip(
-                        " -:–—()"
-                    )
-                    desc = re.sub(r"\s+", " ", desc).strip()
-                    if not desc:
-                        desc = f"Scene flagged under {current_cat}"
-
-                    full_desc = f"[{current_cat}] {desc}"
-                    mapped_cat, channel, action = map_category_and_channel(current_cat, desc)
-
-                    cues.append(
-                        Cue(
-                            start_seconds=st_sec,
-                            end_seconds=et_sec,
-                            category=mapped_cat,
-                            description=full_desc,
-                            raw_category=current_cat,
-                            channel=channel,
-                            action=action,
-                        )
-                    )
-
-    # Sort cues chronologically
     cues.sort(key=lambda c: (c.start_seconds, c.end_seconds))
     return cues
 
@@ -837,6 +832,54 @@ class JcfProcessor:
         self.output_dir = Path(output_dir)
         self.merge_adjacent = merge_adjacent
 
+    def _process_single_post(
+        self, p: Dict[str, Any], category_counts: Dict[str, int]
+    ) -> Tuple[int, int, Optional[str]]:
+        title = p.get("title", "")
+        media_title = p.get("media_title", "").strip()
+        year = p.get("year")
+        slug = p.get("slug", "").lower()
+        plain_text = p.get("plain_text", "")
+
+        if any(term in title.lower() or term in slug for term in NON_MOVIE_SLUGS_OR_TITLES):
+            return 0, 0, title
+
+        if "lord of the rings (all 3" in title.lower():
+            lotr_results = process_lord_of_the_rings_trilogy(plain_text, self.output_dir)
+            files = len(lotr_results)
+            cues_cnt = sum(c for _, c in lotr_results)
+            return files, cues_cnt, None
+
+        if not year:
+            clean_lookup = media_title.lower().strip()
+            if clean_lookup in KNOWN_MOVIE_YEARS:
+                media_title, year = KNOWN_MOVIE_YEARS[clean_lookup]
+            else:
+                y_match = re.search(r"\b(19\d{2}|20\d{2})\b", title)
+                if y_match:
+                    year = int(y_match.group(1))
+
+        cues = parse_post_into_cues(plain_text)
+        if self.merge_adjacent:
+            cues = merge_cues(cues)
+
+        if not cues:
+            return 0, 0, f"{title} (no timestamps found)"
+
+        for c in cues:
+            category_counts[c.category] = category_counts.get(c.category, 0) + 1
+
+        jcf_content = build_jcf_content(
+            title=media_title,
+            year=year,
+            cues=cues,
+        )
+
+        filename = f"{sanitize_filename(media_title)} ({year}).jcf" if year else f"{sanitize_filename(media_title)}.jcf"
+        out_path = self.output_dir / filename
+        out_path.write_text(jcf_content, encoding="utf-8")
+        return 1, len(cues), None
+
     def run(self) -> Dict[str, Any]:
         """Execute JCF conversion on all posts."""
         if not self.input_file.exists():
@@ -855,62 +898,11 @@ class JcfProcessor:
         skipped_posts: List[str] = []
 
         for p in posts:
-            title = p.get("title", "")
-            media_title = p.get("media_title", "").strip()
-            year = p.get("year")
-            slug = p.get("slug", "").lower()
-            plain_text = p.get("plain_text", "")
-
-            # Check if informational post
-            if any(term in title.lower() or term in slug for term in NON_MOVIE_SLUGS_OR_TITLES):
-                skipped_posts.append(title)
-                continue
-
-            # Check for multi-movie LOTR trilogy post
-            if "lord of the rings (all 3" in title.lower():
-                lotr_results = process_lord_of_the_rings_trilogy(plain_text, self.output_dir)
-                for fname, cue_count in lotr_results:
-                    total_files += 1
-                    total_cues += cue_count
-                continue
-
-            # Fallback for known titles without year
-            if not year:
-                clean_lookup = media_title.lower().strip()
-                if clean_lookup in KNOWN_MOVIE_YEARS:
-                    media_title, year = KNOWN_MOVIE_YEARS[clean_lookup]
-                else:
-                    # Check for year in title string: e.g. "Dark City 1998"
-                    y_match = re.search(r"\b(19\d{2}|20\d{2})\b", title)
-                    if y_match:
-                        year = int(y_match.group(1))
-
-            cues = parse_post_into_cues(plain_text)
-            if self.merge_adjacent:
-                cues = merge_cues(cues)
-
-            if not cues:
-                skipped_posts.append(f"{title} (no timestamps found)")
-                continue
-
-            for c in cues:
-                category_counts[c.category] = category_counts.get(c.category, 0) + 1
-
-            jcf_content = build_jcf_content(
-                title=media_title,
-                year=year,
-                cues=cues,
-            )
-
-            if year:
-                filename = f"{sanitize_filename(media_title)} ({year}).jcf"
-            else:
-                filename = f"{sanitize_filename(media_title)}.jcf"
-
-            out_path = self.output_dir / filename
-            out_path.write_text(jcf_content, encoding="utf-8")
-            total_files += 1
-            total_cues += len(cues)
+            files, cues_cnt, skipped = self._process_single_post(p, category_counts)
+            total_files += files
+            total_cues += cues_cnt
+            if skipped:
+                skipped_posts.append(skipped)
 
         summary = {
             "source_file": str(self.input_file),
@@ -937,7 +929,7 @@ class JcfProcessor:
         return summary
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert TheTimestampDudes posts into discrete Jellyfin Content Filter (.jcf) files."
     )
