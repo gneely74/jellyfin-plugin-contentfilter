@@ -32,6 +32,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<SubtitleFilter>();
         serviceCollection.AddSingleton<SubtitleWordScanner>();
         serviceCollection.AddSingleton<SubtitleSyncService>();
+        serviceCollection.AddHostedService(static sp => sp.GetRequiredService<SubtitleSyncService>());
         serviceCollection.AddSingleton<MediaBrowser.Model.Tasks.IScheduledTask, SubtitleSyncTask>();
         serviceCollection.AddSingleton<SubtitleSyncTask>();
         serviceCollection.AddSingleton<OllamaClient>();

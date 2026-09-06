@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.Threading.Channels;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.ContentFilter.Models;
 using MediaBrowser.Controller.Configuration;
@@ -8,6 +10,7 @@ using MediaBrowser.Controller.Subtitles;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ContentFilter.Services;
@@ -15,8 +18,10 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// <summary>
 /// Service managing automated searching, downloading, cleaning, and default assignment of subtitles.
 /// </summary>
-public class SubtitleSyncService
+public class SubtitleSyncService : IHostedService, IDisposable
 {
+    private sealed record NewMediaQueueItem(Guid ItemId, string ItemName, DateTime AvailableAt);
+
     private readonly ILogger<SubtitleSyncService> _logger;
     private readonly ILibraryManager _libraryManager;
     private readonly ISubtitleManager _subtitleManager;
@@ -26,6 +31,17 @@ public class SubtitleSyncService
     private readonly FilterStore _filterStore;
     private readonly SqliteFilterRepository _sqliteRepository;
     private readonly IServiceProvider _serviceProvider;
+
+    private readonly Channel<NewMediaQueueItem> _newMediaQueue = Channel.CreateBounded<NewMediaQueueItem>(new BoundedChannelOptions(500)
+    {
+        FullMode = BoundedChannelFullMode.DropOldest,
+        SingleReader = true,
+        SingleWriter = false
+    });
+    private readonly ConcurrentDictionary<Guid, DateTime> _enqueuedMedia = new();
+    private CancellationTokenSource? _workerCts;
+    private Task? _workerTask;
+    private bool _disposed;
 
     private readonly object _syncLock = new();
     private CancellationTokenSource? _activeSyncCts;
@@ -53,6 +69,166 @@ public class SubtitleSyncService
         _filterStore = filterStore;
         _sqliteRepository = sqliteRepository;
         _serviceProvider = serviceProvider;
+    }
+
+    /// <inheritdoc/>
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _libraryManager.ItemAdded += OnItemAdded;
+        _workerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _workerTask = Task.Run(() => ProcessNewMediaQueueAsync(_workerCts.Token), CancellationToken.None);
+        _logger.LogInformation("ContentFilter SubtitleSyncService started and listening for new media additions.");
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _libraryManager.ItemAdded -= OnItemAdded;
+        if (_workerCts is not null)
+        {
+            _workerCts.Cancel();
+            _newMediaQueue.Writer.TryComplete();
+        }
+
+        if (_workerTask is not null)
+        {
+            await Task.WhenAny(_workerTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
+        }
+        _logger.LogInformation("ContentFilter SubtitleSyncService stopped.");
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes managed and unmanaged resources.
+    /// </summary>
+    /// <param name="disposing">Whether managed resources are being disposed.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _libraryManager.ItemAdded -= OnItemAdded;
+            _workerCts?.Cancel();
+            _workerCts?.Dispose();
+            _activeSyncCts?.Dispose();
+        }
+
+        _disposed = true;
+    }
+
+    private void OnItemAdded(object? sender, ItemChangeEventArgs e)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (config?.AutoProcessNewMediaSubtitles != true)
+        {
+            return;
+        }
+
+        if (e.Item is Video { IsVirtualItem: false } video && !string.IsNullOrWhiteSpace(video.Path))
+        {
+            EnqueueNewMedia(video.Id, video.Name);
+        }
+    }
+
+    /// <summary>
+    /// Enqueues a newly added video item for automated subtitle downloading and cleaning.
+    /// </summary>
+    /// <param name="itemId">The video item ID.</param>
+    /// <param name="itemName">The item display name.</param>
+    /// <returns><see langword="true"/> if enqueued; <see langword="false"/> if already queued.</returns>
+    public bool EnqueueNewMedia(Guid itemId, string itemName)
+    {
+        var availableAt = DateTime.UtcNow.AddSeconds(15);
+        if (!_enqueuedMedia.TryAdd(itemId, availableAt))
+        {
+            return false;
+        }
+
+        var queueItem = new NewMediaQueueItem(itemId, itemName, availableAt);
+        if (!_newMediaQueue.Writer.TryWrite(queueItem))
+        {
+            _enqueuedMedia.TryRemove(itemId, out _);
+            return false;
+        }
+
+        Status.PendingNewMediaQueueCount = _enqueuedMedia.Count;
+        AddLog($"[Auto-Process] Queued newly added media: \"{itemName}\" (settling for 15s)");
+        _logger.LogInformation("Queued newly added video {ItemId} ({Name}) for subtitle processing.", itemId, itemName);
+        return true;
+    }
+
+    private async Task ProcessNewMediaQueueAsync(CancellationToken ct)
+    {
+        var reader = _newMediaQueue.Reader;
+        while (await reader.WaitToReadAsync(ct).ConfigureAwait(false))
+        {
+            while (reader.TryRead(out var queueItem))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                try
+                {
+                    // 1. Settling delay: wait until AvailableAt
+                    var delay = queueItem.AvailableAt - DateTime.UtcNow;
+                    if (delay > TimeSpan.Zero)
+                    {
+                        await Task.Delay(delay, ct).ConfigureAwait(false);
+                    }
+
+                    // 2. Check if library-wide sync is actively running; if so, wait briefly
+                    while (Status.IsRunning)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                    }
+
+                    // 3. Process video
+                    AddLog($"[Auto-Process] Processing subtitles for \"{queueItem.ItemName}\"...");
+                    var result = await ProcessSingleVideoAsync(queueItem.ItemId, force: false, overrideLanguage: null, ct).ConfigureAwait(false);
+
+                    if (result.Cleaned)
+                    {
+                        AddLog($"[Auto-Process] Cleaned subtitle generated and set default for \"{queueItem.ItemName}\".");
+                    }
+                    else if (result.Skipped)
+                    {
+                        AddLog($"[Auto-Process] Skipped \"{queueItem.ItemName}\" (already has clean subtitle or locked).");
+                    }
+                    else if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+                    {
+                        AddLog($"[Auto-Process] Error on \"{queueItem.ItemName}\": {result.ErrorMessage}");
+                    }
+
+                    // 4. Rate-limit throttle between items to avoid hammering remote subtitle providers
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error auto-processing new media subtitle for {ItemId} ({Name})",
+                        queueItem.ItemId, queueItem.ItemName);
+                    AddLog($"[Auto-Process] Exception on \"{queueItem.ItemName}\": {ex.Message}");
+                }
+                finally
+                {
+                    _enqueuedMedia.TryRemove(queueItem.ItemId, out _);
+                    Status.PendingNewMediaQueueCount = _enqueuedMedia.Count;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -260,44 +436,28 @@ public class SubtitleSyncService
                 continue;
             }
 
-            // 2. Skip if already has clean sidecar and not overwriting
-            bool hasClean = _subtitleFilter.HasSidecarFilteredSrt(video.Id, targetLang2);
-            if (hasClean && !overwriteExisting)
-            {
-                Status.SubtitlesSkipped++;
-                continue;
-            }
-
             try
             {
-                // 3. Search and download remote subtitle if external subtitle is missing
-                bool hasExternalSource = HasExternalSrtFile(video, targetLang2, targetLang3);
-                if (!hasExternalSource && autoDownloadEnabled)
+                var res = await ProcessSingleVideoAsync(video.Id, forceAll, overrideLanguage, ct).ConfigureAwait(false);
+                if (res.Downloaded)
                 {
-                    var downloaded = await SearchAndDownloadBestSubtitleAsync(video, targetLang3, ct).ConfigureAwait(false);
-                    if (downloaded)
-                    {
-                        Status.SubtitlesDownloaded++;
-                        AddLog($"Downloaded subtitle for: {video.Name}");
-                    }
+                    Status.SubtitlesDownloaded++;
+                    AddLog($"Downloaded subtitle for: {video.Name}");
                 }
 
-                // 4. Auto-generate mute cues from profanity dictionary if no filter exists
-                if (autoMuteProfanity)
-                {
-                    await EnsureItemHasWordFilterAsync(video.Id, targetLang3, ct).ConfigureAwait(false);
-                }
-
-                // 5. Generate clean subtitles and set as default
-                var filter = _filterStore.GetFilter(video.Id);
-                var generatedPath = await _subtitleFilter.RegenerateAsync(video.Id, filter, targetLang3, ct).ConfigureAwait(false);
-                if (generatedPath != null)
+                if (res.Cleaned)
                 {
                     Status.SubtitlesCleaned++;
                 }
-                else
+                else if (res.Skipped)
                 {
                     Status.SubtitlesSkipped++;
+                }
+
+                if (!string.IsNullOrWhiteSpace(res.ErrorMessage))
+                {
+                    Status.ErrorCount++;
+                    AddLog($"Error on {video.Name}: {res.ErrorMessage}");
                 }
             }
             catch (OperationCanceledException)
@@ -319,6 +479,96 @@ public class SubtitleSyncService
         AddLog($"Subtitle sync finished. Cleaned: {Status.SubtitlesCleaned}, Downloaded: {Status.SubtitlesDownloaded}, Skipped: {Status.SubtitlesSkipped}, Errors: {Status.ErrorCount}");
         _logger.LogInformation("Subtitle sync completed. Cleaned={Cleaned}, Downloaded={Downloaded}, Skipped={Skipped}, Errors={Errors}",
             Status.SubtitlesCleaned, Status.SubtitlesDownloaded, Status.SubtitlesSkipped, Status.ErrorCount);
+    }
+
+    /// <summary>
+    /// Processes subtitle download, profanity cue detection, and clean subtitle generation for a single video item.
+    /// </summary>
+    /// <param name="itemId">The video item ID.</param>
+    /// <param name="force">Whether to overwrite existing clean subtitles even if already present.</param>
+    /// <param name="overrideLanguage">Optional language override.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="SingleSubtitleProcessResult"/> detailing the outcome.</returns>
+    public async Task<SingleSubtitleProcessResult> ProcessSingleVideoAsync(
+        Guid itemId,
+        bool force = false,
+        string? overrideLanguage = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new SingleSubtitleProcessResult { ItemId = itemId };
+
+        var video = _libraryManager.GetItemById(itemId) as Video;
+        if (video is null || string.IsNullOrWhiteSpace(video.Path))
+        {
+            result.Skipped = true;
+            result.ErrorMessage = "Media item not found or has no physical file path.";
+            return result;
+        }
+
+        // 1. Skip items that user has locked
+        if (_sqliteRepository.IsItemLocked(itemId))
+        {
+            result.Skipped = true;
+            return result;
+        }
+
+        var (targetLang3, targetLang2) = ResolveTargetLanguage(overrideLanguage);
+        var config = Plugin.Instance?.Configuration;
+        bool autoDownloadEnabled = config?.AutoDownloadSubtitles ?? true;
+        bool autoMuteProfanity = config?.AutoMuteProfanityFromSubtitles ?? true;
+        bool overwriteExisting = force || (config?.OverwriteExistingCleanSubtitles ?? false);
+
+        // 2. Skip if already has clean sidecar and not overwriting
+        bool hasClean = _subtitleFilter.HasSidecarFilteredSrt(itemId, targetLang2);
+        if (hasClean && !overwriteExisting)
+        {
+            result.Skipped = true;
+            return result;
+        }
+
+        try
+        {
+            // 3. Search and download remote subtitle if external subtitle is missing
+            bool hasExternalSource = HasExternalSrtFile(video, targetLang2, targetLang3);
+            if (!hasExternalSource && autoDownloadEnabled)
+            {
+                var downloaded = await SearchAndDownloadBestSubtitleAsync(video, targetLang3, cancellationToken).ConfigureAwait(false);
+                if (downloaded)
+                {
+                    result.Downloaded = true;
+                }
+            }
+
+            // 4. Auto-generate mute cues from profanity dictionary if enabled
+            if (autoMuteProfanity)
+            {
+                await EnsureItemHasWordFilterAsync(itemId, targetLang3, cancellationToken).ConfigureAwait(false);
+            }
+
+            // 5. Generate clean subtitles and set as default
+            var filter = _filterStore.GetFilter(itemId);
+            var generatedPath = await _subtitleFilter.RegenerateAsync(itemId, filter, targetLang3, cancellationToken).ConfigureAwait(false);
+            if (generatedPath != null)
+            {
+                result.Cleaned = true;
+            }
+            else
+            {
+                result.Skipped = true;
+            }
+
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error processing subtitle for video {ItemId} ({Name})", video.Id, video.Name);
+            result.ErrorMessage = ex.Message;
+            return result;
+        }
     }
 
     /// <summary>

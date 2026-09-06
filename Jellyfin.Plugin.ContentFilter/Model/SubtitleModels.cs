@@ -73,6 +73,30 @@ public sealed class SubtitleSyncStatus
 
     /// <summary>Gets or sets recent log messages for display in the UI.</summary>
     public List<string> RecentLogs { get; set; } = [];
+
+    /// <summary>Gets or sets the number of pending items in the new media processing queue.</summary>
+    public int PendingNewMediaQueueCount { get; set; }
+}
+
+/// <summary>
+/// Result of processing subtitles for a single video item.
+/// </summary>
+public sealed class SingleSubtitleProcessResult
+{
+    /// <summary>Gets or sets the item identifier.</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether a remote subtitle was downloaded.</summary>
+    public bool Downloaded { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether clean subtitles were generated.</summary>
+    public bool Cleaned { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the item was skipped (e.g. locked or already clean).</summary>
+    public bool Skipped { get; set; }
+
+    /// <summary>Gets or sets an error message if processing failed.</summary>
+    public string? ErrorMessage { get; set; }
 }
 
 /// <summary>

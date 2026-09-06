@@ -155,4 +155,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether to fallback to skipping past profanity/mute cues on clients that do not support volume muting (such as Swiftfin on tvOS/iOS).
     /// </summary>
     public bool FallbackToSkipOnUnmutableClients { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether newly added media items should be automatically processed for subtitle downloading, profanity scanning, and clean subtitle generation.
+    /// </summary>
+    public bool AutoProcessNewMediaSubtitles { get; set; } = true;
 }

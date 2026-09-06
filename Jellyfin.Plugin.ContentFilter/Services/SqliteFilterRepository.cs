@@ -512,6 +512,21 @@ public sealed class SqliteFilterRepository : IDisposable
     }
 
     /// <summary>
+    /// Checks whether an individual item is locked against automated subtitle overwrites.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns><see langword="true"/> if locked; otherwise <see langword="false"/>.</returns>
+    public bool IsItemLocked(Guid itemId)
+    {
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM item_subtitle_overrides WHERE item_id = @itemId AND is_locked = 1 LIMIT 1;";
+        cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+        var result = cmd.ExecuteScalar();
+        return result != null && result != DBNull.Value;
+    }
+
+    /// <summary>
     /// Gets the custom filter rule overrides for a media item (Series, Movie, or Episode).
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>

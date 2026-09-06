@@ -1436,6 +1436,26 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Processes subtitle downloading, profanity scanning, and clean subtitle generation for a single video item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="force">Whether to overwrite existing clean subtitles.</param>
+    /// <param name="language">Optional language override.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="SingleSubtitleProcessResult"/> with the outcome.</returns>
+    [HttpPost("subtitles/{itemId:guid}/process")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<SingleSubtitleProcessResult>> ProcessSingleSubtitle(
+        Guid itemId,
+        [FromQuery] bool force = false,
+        [FromQuery] string? language = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _subtitleSyncService.ProcessSingleVideoAsync(itemId, force, language, cancellationToken).ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Searches remote subtitle providers for an item and returns matching releases.
     /// </summary>
     [HttpGet("subtitles/{itemId:guid}/remote-search")]
