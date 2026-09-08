@@ -26,6 +26,8 @@ public class WhisperTranscriptionService
     private readonly ILogger<WhisperTranscriptionService> _logger;
     private readonly IMediaEncoder _mediaEncoder;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly object _arbiterLock = new();
+    private int _activeBatchLocks;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WhisperTranscriptionService"/> class.
@@ -41,6 +43,64 @@ public class WhisperTranscriptionService
         _logger = logger;
         _mediaEncoder = mediaEncoder;
         _httpClientFactory = httpClientFactory;
+    }
+
+    /// <summary>
+    /// Acquires a batch-level GPU arbitration lock, ensuring the arbiter pause flag is written
+    /// and all resident Ollama models are evicted. While this lock is active, individual calls to
+    /// <see cref="TranscribeVideoAsync"/> will NOT release the pause flag between files.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if GPU arbitration was successfully acquired; otherwise false.</returns>
+    public async Task<bool> AcquireBatchGpuLockAsync(CancellationToken cancellationToken)
+    {
+        var config = Plugin.Instance?.Configuration;
+        var enableArbitration = config?.EnableGpuArbitration ?? true;
+        if (!enableArbitration)
+        {
+            return false;
+        }
+
+        lock (_arbiterLock)
+        {
+            _activeBatchLocks++;
+        }
+
+        var pauseFlagPath = config?.GpuArbiterPauseFlagPath ?? "/gpu-arbiter/pause-preload";
+        _logger.LogInformation("Acquiring batch GPU arbitration lock (active locks: {Count})...", _activeBatchLocks);
+        return await AcquireGpuVramAsync(config?.OllamaApiUrl, pauseFlagPath, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Releases a batch-level GPU arbitration lock. When all batch locks are released,
+    /// the GPU arbiter pause flag is removed to allow Ollama models to resume loading into VRAM.
+    /// </summary>
+    public void ReleaseBatchGpuLock()
+    {
+        var config = Plugin.Instance?.Configuration;
+        var enableArbitration = config?.EnableGpuArbitration ?? true;
+        var pauseFlagPath = config?.GpuArbiterPauseFlagPath ?? "/gpu-arbiter/pause-preload";
+
+        bool shouldRelease = false;
+        lock (_arbiterLock)
+        {
+            if (_activeBatchLocks > 0)
+            {
+                _activeBatchLocks--;
+            }
+
+            if (_activeBatchLocks == 0)
+            {
+                shouldRelease = true;
+            }
+
+            _logger.LogInformation("Released batch GPU arbitration lock (remaining locks: {Count}).", _activeBatchLocks);
+        }
+
+        if (shouldRelease && enableArbitration)
+        {
+            ReleaseGpuVram(pauseFlagPath);
+        }
     }
 
     /// <summary>
@@ -78,7 +138,13 @@ public class WhisperTranscriptionService
 
         var enableArbitration = config?.EnableGpuArbitration ?? true;
         var pauseFlagPath = config?.GpuArbiterPauseFlagPath ?? "/gpu-arbiter/pause-preload";
-        bool gpuAcquired = false;
+        bool isBatchActive;
+        lock (_arbiterLock)
+        {
+            isBatchActive = _activeBatchLocks > 0;
+        }
+
+        bool perItemGpuAcquired = false;
 
         // 1. Select optimal audio stream
         var (audioStream, audioTrackIndex) = SelectOptimalAudioStream(video, lang2);
@@ -104,7 +170,15 @@ public class WhisperTranscriptionService
             // 3. Optionally acquire GPU VRAM from resident Ollama LLM models
             if (enableArbitration)
             {
-                gpuAcquired = await AcquireGpuVramAsync(config?.OllamaApiUrl, pauseFlagPath, cancellationToken).ConfigureAwait(false);
+                if (!isBatchActive)
+                {
+                    perItemGpuAcquired = await AcquireGpuVramAsync(config?.OllamaApiUrl, pauseFlagPath, cancellationToken).ConfigureAwait(false);
+                }
+                else if (!File.Exists(pauseFlagPath))
+                {
+                    // If a batch lock is active but the flag was somehow removed, re-assert it
+                    await AcquireGpuVramAsync(config?.OllamaApiUrl, pauseFlagPath, cancellationToken).ConfigureAwait(false);
+                }
             }
 
             // 4. Post to OpenAI-compatible /v1/audio/transcriptions endpoint
@@ -167,8 +241,14 @@ public class WhisperTranscriptionService
         }
         finally
         {
-            // 7. Release GPU VRAM back to Ollama
-            if (gpuAcquired || (enableArbitration && File.Exists(pauseFlagPath)))
+            // 7. Release GPU VRAM back to Ollama ONLY if acquired per-item and no batch lock is active
+            bool shouldRelease;
+            lock (_arbiterLock)
+            {
+                shouldRelease = perItemGpuAcquired && _activeBatchLocks == 0;
+            }
+
+            if (shouldRelease)
             {
                 ReleaseGpuVram(pauseFlagPath);
             }
@@ -450,39 +530,62 @@ public class WhisperTranscriptionService
 
             try
             {
-                // Loop up to 3 times to ensure all models (even queued ones) are completely evicted
-                for (int attempt = 0; attempt < 3; attempt++)
+                var config = Plugin.Instance?.Configuration;
+                var knownModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "metalspork/qwen3.8-ud:Q3_K_XL"
+                };
+
+                if (!string.IsNullOrWhiteSpace(config?.OllamaVisionModel))
+                {
+                    knownModels.Add(config.OllamaVisionModel.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(config?.OllamaTextModel))
+                {
+                    knownModels.Add(config.OllamaTextModel.Trim());
+                }
+
+                // Loop up to 5 times (waiting up to 5 seconds) to ensure models are evicted and CUDA memory settled
+                for (int attempt = 0; attempt < 5; attempt++)
                 {
                     using var psReq = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/ps");
                     using var psResp = await client.SendAsync(psReq, ct).ConfigureAwait(false);
-                    if (!psResp.IsSuccessStatusCode)
+                    bool hasActiveModels = false;
+
+                    if (psResp.IsSuccessStatusCode)
                     {
-                        break;
+                        var psBody = await psResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                        using var doc = JsonDocument.Parse(psBody);
+                        if (doc.RootElement.TryGetProperty("models", out var modelsProp) &&
+                            modelsProp.ValueKind == JsonValueKind.Array &&
+                            modelsProp.GetArrayLength() > 0)
+                        {
+                            hasActiveModels = true;
+                            foreach (var m in modelsProp.EnumerateArray())
+                            {
+                                string? modelName = null;
+                                if (m.TryGetProperty("name", out var n))
+                                {
+                                    modelName = n.GetString();
+                                }
+                                else if (m.TryGetProperty("model", out var mdl))
+                                {
+                                    modelName = mdl.GetString();
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(modelName))
+                                {
+                                    knownModels.Add(modelName);
+                                }
+                            }
+                        }
                     }
 
-                    var psBody = await psResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    using var doc = JsonDocument.Parse(psBody);
-                    if (!doc.RootElement.TryGetProperty("models", out var modelsProp) ||
-                        modelsProp.ValueKind != JsonValueKind.Array ||
-                        modelsProp.GetArrayLength() == 0)
+                    // On first attempt, or if active models remain, send keep_alive=0 to all discovered and known models
+                    if (attempt == 0 || hasActiveModels)
                     {
-                        // All models are fully unloaded
-                        break;
-                    }
-
-                    foreach (var m in modelsProp.EnumerateArray())
-                    {
-                        string? modelName = null;
-                        if (m.TryGetProperty("name", out var n))
-                        {
-                            modelName = n.GetString();
-                        }
-                        else if (m.TryGetProperty("model", out var mdl))
-                        {
-                            modelName = mdl.GetString();
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(modelName))
+                        foreach (var modelName in knownModels)
                         {
                             _logger.LogInformation("Unloading Ollama model \"{Model}\" to free GPU VRAM for Whisper (attempt {Attempt})...", modelName, attempt + 1);
                             var unloadPayload = JsonSerializer.Serialize(new { model = modelName, keep_alive = 0 });
@@ -494,7 +597,13 @@ public class WhisperTranscriptionService
                         }
                     }
 
-                    await Task.Delay(500, ct).ConfigureAwait(false);
+                    if (!hasActiveModels && attempt > 0)
+                    {
+                        _logger.LogInformation("All Ollama models successfully unloaded from GPU VRAM.");
+                        break;
+                    }
+
+                    await Task.Delay(1000, ct).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

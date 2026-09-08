@@ -229,63 +229,90 @@ public class SubtitleSyncService : IHostedService, IDisposable
         var reader = _newMediaQueue.Reader;
         while (await reader.WaitToReadAsync(ct).ConfigureAwait(false))
         {
-            while (reader.TryRead(out var queueItem))
-            {
-                ct.ThrowIfCancellationRequested();
+            var config = Plugin.Instance?.Configuration;
+            bool useTranscription = config?.EnableLocalTranscription ?? false;
+            bool enableArbitration = config?.EnableGpuArbitration ?? true;
+            bool batchGpuHeld = false;
 
+            if (useTranscription && enableArbitration)
+            {
                 try
                 {
-                    // 1. Settling delay: wait until AvailableAt
-                    var delay = queueItem.AvailableAt - DateTime.UtcNow;
-                    if (delay > TimeSpan.Zero)
-                    {
-                        await Task.Delay(delay, ct).ConfigureAwait(false);
-                    }
-
-                    // 2. Check if library-wide sync is actively running; if so, wait briefly
-                    while (Status.IsRunning)
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
-                    }
-
-                    // 3. Process video
-                    AddLog($"[Auto-Process] Processing subtitles for \"{queueItem.ItemName}\"...");
-                    var result = await ProcessSingleVideoAsync(queueItem.ItemId, force: queueItem.Force, overrideLanguage: null, ct).ConfigureAwait(false);
-
-                    if (result.Transcribed)
-                    {
-                        AddLog($"[Auto-Process] Transcribed AI subtitles ({result.CuesAdded} cues) for \"{queueItem.ItemName}\".");
-                    }
-                    else if (result.Cleaned)
-                    {
-                        AddLog($"[Auto-Process] Cleaned subtitle generated and set default for \"{queueItem.ItemName}\".");
-                    }
-                    else if (result.Skipped)
-                    {
-                        AddLog($"[Auto-Process] Skipped \"{queueItem.ItemName}\" (already has clean subtitle or locked).");
-                    }
-                    else if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
-                    {
-                        AddLog($"[Auto-Process] Error on \"{queueItem.ItemName}\": {result.ErrorMessage}");
-                    }
-
-                    // 4. Rate-limit throttle between items to avoid hammering remote subtitle providers
-                    await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
+                    batchGpuHeld = await _whisperTranscriptionService.AcquireBatchGpuLockAsync(ct).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error auto-processing new media subtitle for {ItemId} ({Name})",
-                        queueItem.ItemId, queueItem.ItemName);
-                    AddLog($"[Auto-Process] Exception on \"{queueItem.ItemName}\": {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to acquire batch GPU lock for queued media processing");
                 }
-                finally
+            }
+
+            try
+            {
+                while (reader.TryRead(out var queueItem))
                 {
-                    _enqueuedMedia.TryRemove(queueItem.ItemId, out _);
-                    Status.PendingNewMediaQueueCount = _enqueuedMedia.Count;
+                    ct.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        // 1. Settling delay: wait until AvailableAt
+                        var delay = queueItem.AvailableAt - DateTime.UtcNow;
+                        if (delay > TimeSpan.Zero)
+                        {
+                            await Task.Delay(delay, ct).ConfigureAwait(false);
+                        }
+
+                        // 2. Check if library-wide sync is actively running; if so, wait briefly
+                        while (Status.IsRunning)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                        }
+
+                        // 3. Process video
+                        AddLog($"[Auto-Process] Processing subtitles for \"{queueItem.ItemName}\"...");
+                        var result = await ProcessSingleVideoAsync(queueItem.ItemId, force: queueItem.Force, overrideLanguage: null, ct).ConfigureAwait(false);
+
+                        if (result.Transcribed)
+                        {
+                            AddLog($"[Auto-Process] Transcribed AI subtitles ({result.CuesAdded} cues) for \"{queueItem.ItemName}\".");
+                        }
+                        else if (result.Cleaned)
+                        {
+                            AddLog($"[Auto-Process] Cleaned subtitle generated and set default for \"{queueItem.ItemName}\".");
+                        }
+                        else if (result.Skipped)
+                        {
+                            AddLog($"[Auto-Process] Skipped \"{queueItem.ItemName}\" (already has clean subtitle or locked).");
+                        }
+                        else if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+                        {
+                            AddLog($"[Auto-Process] Error on \"{queueItem.ItemName}\": {result.ErrorMessage}");
+                        }
+
+                        // 4. Rate-limit throttle between items to avoid hammering remote subtitle providers
+                        await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error auto-processing new media subtitle for {ItemId} ({Name})",
+                            queueItem.ItemId, queueItem.ItemName);
+                        AddLog($"[Auto-Process] Exception on \"{queueItem.ItemName}\": {ex.Message}");
+                    }
+                    finally
+                    {
+                        _enqueuedMedia.TryRemove(queueItem.ItemId, out _);
+                        Status.PendingNewMediaQueueCount = _enqueuedMedia.Count;
+                    }
+                }
+            }
+            finally
+            {
+                if (batchGpuHeld)
+                {
+                    _whisperTranscriptionService.ReleaseBatchGpuLock();
                 }
             }
         }
@@ -543,94 +570,121 @@ public class SubtitleSyncService : IHostedService, IDisposable
         bool autoDownloadEnabled = config?.AutoDownloadSubtitles ?? true;
         bool autoMuteProfanity = config?.AutoMuteProfanityFromSubtitles ?? true;
         bool overwriteExisting = forceAll || (config?.OverwriteExistingCleanSubtitles ?? false);
+        bool useTranscription = config?.EnableLocalTranscription ?? false;
+        bool enableArbitration = config?.EnableGpuArbitration ?? true;
 
         AddLog($"Target language: {targetLang3} ({targetLang2}). Remote auto-download enabled: {autoDownloadEnabled}.");
         _logger.LogInformation("Beginning subtitle sync. Language={Lang}, AutoDownload={AutoDL}, Overwrite={Overwrite}",
             targetLang3, autoDownloadEnabled, overwriteExisting);
 
-        var query = new InternalItemsQuery
+        bool batchGpuHeld = false;
+        if (useTranscription && enableArbitration)
         {
-            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode],
-            IsVirtualItem = false,
-            Recursive = true
-        };
-
-        var items = _libraryManager.GetItemList(query)
-            .OfType<Video>()
-            .Where(v => !string.IsNullOrWhiteSpace(v.Path))
-            .ToList();
-
-        Status.TotalItems = items.Count;
-        AddLog($"Found {items.Count} media video item(s) in library.");
-
-        var lockedItemIds = _sqliteRepository.GetAllLockedItemIds();
-
-        for (int i = 0; i < items.Count; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var video = items[i];
-            Status.ProcessedItems = i + 1;
-            Status.CurrentItemId = video.Id;
-            Status.CurrentItemName = $"{video.Name} ({i + 1}/{items.Count})";
-            Status.ProgressPercentage = Math.Round(((double)(i + 1) / items.Count) * 100, 1);
-            progress?.Report(Status.ProgressPercentage);
-
-            // 1. Skip items that user has locked
-            if (lockedItemIds.Contains(video.Id))
-            {
-                Status.SubtitlesSkipped++;
-                continue;
-            }
-
             try
             {
-                var res = await ProcessSingleVideoAsync(video.Id, forceAll, overrideLanguage, ct).ConfigureAwait(false);
-                if (res.Transcribed)
-                {
-                    Status.SubtitlesCleaned++;
-                    AddLog($"Transcribed AI subtitles ({res.CuesAdded} cues) for: {video.Name}");
-                }
-                else if (res.Downloaded)
-                {
-                    Status.SubtitlesDownloaded++;
-                    AddLog($"Downloaded subtitle for: {video.Name}");
-                }
-
-                if (!res.Transcribed && res.Cleaned)
-                {
-                    Status.SubtitlesCleaned++;
-                }
-                else if (res.Skipped)
-                {
-                    Status.SubtitlesSkipped++;
-                }
-
-                if (!string.IsNullOrWhiteSpace(res.ErrorMessage))
-                {
-                    Status.ErrorCount++;
-                    AddLog($"Error on {video.Name}: {res.ErrorMessage}");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
+                AddLog("Acquiring batch GPU arbitration lock for duration of subtitle sync...");
+                batchGpuHeld = await _whisperTranscriptionService.AcquireBatchGpuLockAsync(ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Status.ErrorCount++;
-                _logger.LogWarning(ex, "Error processing subtitles for item {ItemId} ({Name})", video.Id, video.Name);
-                AddLog($"Error on {video.Name}: {ex.Message}");
+                _logger.LogWarning(ex, "Could not acquire batch GPU arbitration lock; proceeding with per-item fallback.");
             }
         }
 
-        Status.State = SubtitleSyncState.Completed;
-        Status.CompletedAt = DateTime.UtcNow;
-        Status.CurrentItemName = null;
-        Status.ProgressPercentage = 100;
-        AddLog($"Subtitle sync finished. Cleaned: {Status.SubtitlesCleaned}, Downloaded: {Status.SubtitlesDownloaded}, Skipped: {Status.SubtitlesSkipped}, Errors: {Status.ErrorCount}");
-        _logger.LogInformation("Subtitle sync completed. Cleaned={Cleaned}, Downloaded={Downloaded}, Skipped={Skipped}, Errors={Errors}",
-            Status.SubtitlesCleaned, Status.SubtitlesDownloaded, Status.SubtitlesSkipped, Status.ErrorCount);
+        try
+        {
+            var query = new InternalItemsQuery
+            {
+                IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode],
+                IsVirtualItem = false,
+                Recursive = true
+            };
+
+            var items = _libraryManager.GetItemList(query)
+                .OfType<Video>()
+                .Where(v => !string.IsNullOrWhiteSpace(v.Path))
+                .ToList();
+
+            Status.TotalItems = items.Count;
+            AddLog($"Found {items.Count} media video item(s) in library.");
+
+            var lockedItemIds = _sqliteRepository.GetAllLockedItemIds();
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var video = items[i];
+                Status.ProcessedItems = i + 1;
+                Status.CurrentItemId = video.Id;
+                Status.CurrentItemName = $"{video.Name} ({i + 1}/{items.Count})";
+                Status.ProgressPercentage = Math.Round(((double)(i + 1) / items.Count) * 100, 1);
+                progress?.Report(Status.ProgressPercentage);
+
+                // 1. Skip items that user has locked
+                if (lockedItemIds.Contains(video.Id))
+                {
+                    Status.SubtitlesSkipped++;
+                    continue;
+                }
+
+                try
+                {
+                    var res = await ProcessSingleVideoAsync(video.Id, forceAll, overrideLanguage, ct).ConfigureAwait(false);
+                    if (res.Transcribed)
+                    {
+                        Status.SubtitlesCleaned++;
+                        AddLog($"Transcribed AI subtitles ({res.CuesAdded} cues) for: {video.Name}");
+                    }
+                    else if (res.Downloaded)
+                    {
+                        Status.SubtitlesDownloaded++;
+                        AddLog($"Downloaded subtitle for: {video.Name}");
+                    }
+
+                    if (!res.Transcribed && res.Cleaned)
+                    {
+                        Status.SubtitlesCleaned++;
+                    }
+                    else if (res.Skipped)
+                    {
+                        Status.SubtitlesSkipped++;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(res.ErrorMessage))
+                    {
+                        Status.ErrorCount++;
+                        AddLog($"Error on {video.Name}: {res.ErrorMessage}");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Status.ErrorCount++;
+                    _logger.LogWarning(ex, "Error processing subtitles for item {ItemId} ({Name})", video.Id, video.Name);
+                    AddLog($"Error on {video.Name}: {ex.Message}");
+                }
+            }
+
+            Status.State = SubtitleSyncState.Completed;
+            Status.CompletedAt = DateTime.UtcNow;
+            Status.CurrentItemName = null;
+            Status.ProgressPercentage = 100;
+            AddLog($"Subtitle sync finished. Cleaned: {Status.SubtitlesCleaned}, Downloaded: {Status.SubtitlesDownloaded}, Skipped: {Status.SubtitlesSkipped}, Errors: {Status.ErrorCount}");
+            _logger.LogInformation("Subtitle sync completed. Cleaned={Cleaned}, Downloaded={Downloaded}, Skipped={Skipped}, Errors={Errors}",
+                Status.SubtitlesCleaned, Status.SubtitlesDownloaded, Status.SubtitlesSkipped, Status.ErrorCount);
+        }
+        finally
+        {
+            if (batchGpuHeld)
+            {
+                _whisperTranscriptionService.ReleaseBatchGpuLock();
+                AddLog("Released batch GPU arbitration lock.");
+            }
+        }
     }
 
     /// <summary>
