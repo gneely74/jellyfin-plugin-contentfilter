@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.37.0",
+        "changelog": "Add GPU VRAM arbitration for Whisper transcription to pause Ollama preload and yield VRAM, ensuring 100% GPU acceleration without memory spill.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.37/Jellyfin.Plugin.ContentFilter_1.0.37.0.zip",
+        "checksum": "efeea74d6573ecf4cd0e3ce6604f6033",
+        "timestamp": "2026-09-08T00:00:00Z"
+      },
+      {
         "version": "1.0.36.0",
         "changelog": "Add local AI / Whisper audio transcription to generate dual filtered (default) and unfiltered subtitle streams, automatic media file upgrade detection, and on-demand Studio transcription.",
         "targetAbi": "10.11.0.0",

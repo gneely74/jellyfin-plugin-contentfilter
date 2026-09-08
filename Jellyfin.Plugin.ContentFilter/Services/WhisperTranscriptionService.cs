@@ -76,6 +76,10 @@ public class WhisperTranscriptionService
         var lang2 = SubtitleFilter.ToTwoLetterLanguage(targetLanguage);
         var sw = Stopwatch.StartNew();
 
+        var enableArbitration = config?.EnableGpuArbitration ?? true;
+        var pauseFlagPath = config?.GpuArbiterPauseFlagPath ?? "/gpu-arbiter/pause-preload";
+        bool gpuAcquired = false;
+
         // 1. Select optimal audio stream
         var (audioStream, audioTrackIndex) = SelectOptimalAudioStream(video, lang2);
 
@@ -97,7 +101,13 @@ public class WhisperTranscriptionService
             _logger.LogInformation("Audio extracted ({SizeMb:F2} MB). Posting to Whisper API ({ApiUrl}, model: {Model})...",
                 audioFileInfo.Length / (1024.0 * 1024.0), apiUrl, model);
 
-            // 3. Post to OpenAI-compatible /v1/audio/transcriptions endpoint
+            // 3. Optionally acquire GPU VRAM from resident Ollama LLM models
+            if (enableArbitration)
+            {
+                gpuAcquired = await AcquireGpuVramAsync(config?.OllamaApiUrl, pauseFlagPath, cancellationToken).ConfigureAwait(false);
+            }
+
+            // 4. Post to OpenAI-compatible /v1/audio/transcriptions endpoint
             var responseDto = await CallWhisperApiAsync(apiUrl, model, lang2, tempWavPath, config?.TranscriptionApiKey, cancellationToken).ConfigureAwait(false);
             if (responseDto == null)
             {
@@ -108,7 +118,7 @@ public class WhisperTranscriptionService
             sw.Stop();
             _logger.LogInformation("Whisper transcription completed in {ElapsedMs}ms for \"{ItemName}\"", sw.ElapsedMilliseconds, video.Name);
 
-            // 4. Build segments and word timestamps
+            // 5. Build segments and word timestamps
             var segments = responseDto.Segments ?? [];
             var words = new List<WhisperWordDto>();
 
@@ -127,7 +137,7 @@ public class WhisperTranscriptionService
                 }
             }
 
-            // 5. Build raw unfiltered SRT
+            // 6. Build raw unfiltered SRT
             var srt = ConvertSegmentsToSrt(segments);
             if (string.IsNullOrWhiteSpace(srt) && !string.IsNullOrWhiteSpace(responseDto.Text))
             {
@@ -157,7 +167,13 @@ public class WhisperTranscriptionService
         }
         finally
         {
-            // 6. Clean up temp WAV file immediately
+            // 7. Release GPU VRAM back to Ollama
+            if (gpuAcquired || (enableArbitration && File.Exists(pauseFlagPath)))
+            {
+                ReleaseGpuVram(pauseFlagPath);
+            }
+
+            // 8. Clean up temp WAV file immediately
             try
             {
                 if (File.Exists(tempWavPath))
@@ -397,4 +413,109 @@ public class WhisperTranscriptionService
             ts.Seconds,
             ts.Milliseconds);
     }
+
+    /// <summary>
+    /// Acquires GPU VRAM for Whisper by creating the GPU arbiter pause flag and unloading any resident Ollama models.
+    /// </summary>
+    private async Task<bool> AcquireGpuVramAsync(string? ollamaApiUrl, string pauseFlagPath, CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Acquiring GPU VRAM for transcription: setting pause flag and unloading Ollama models...");
+
+            // 1. Write pause flag so ollama-preload does not attempt to reload models during transcription
+            try
+            {
+                var dir = Path.GetDirectoryName(pauseFlagPath);
+                if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+                {
+                    await File.WriteAllTextAsync(pauseFlagPath, $"jellyfin_whisper {DateTime.UtcNow:O}\n", ct).ConfigureAwait(false);
+                    _logger.LogInformation("Wrote GPU arbiter pause flag to {Path}", pauseFlagPath);
+                }
+                else
+                {
+                    _logger.LogDebug("GPU arbiter directory not found at {Dir}; skipping pause flag.", dir);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write GPU arbiter pause flag to {Path}", pauseFlagPath);
+            }
+
+            // 2. Unload models from Ollama to free VRAM for Whisper
+            var baseUrl = string.IsNullOrWhiteSpace(ollamaApiUrl) ? "http://localhost:11434" : ollamaApiUrl.TrimEnd('/');
+            var client = _httpClientFactory.CreateClient(nameof(WhisperTranscriptionService));
+
+            try
+            {
+                using var psReq = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/ps");
+                using var psResp = await client.SendAsync(psReq, ct).ConfigureAwait(false);
+                if (psResp.IsSuccessStatusCode)
+                {
+                    var psBody = await psResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    using var doc = JsonDocument.Parse(psBody);
+                    if (doc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var m in modelsProp.EnumerateArray())
+                        {
+                            string? modelName = null;
+                            if (m.TryGetProperty("name", out var n))
+                            {
+                                modelName = n.GetString();
+                            }
+                            else if (m.TryGetProperty("model", out var mdl))
+                            {
+                                modelName = mdl.GetString();
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(modelName))
+                            {
+                                _logger.LogInformation("Unloading Ollama model \"{Model}\" to free GPU VRAM for Whisper...", modelName);
+                                var unloadPayload = JsonSerializer.Serialize(new { model = modelName, keep_alive = 0 });
+                                using var unloadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/generate")
+                                {
+                                    Content = new StringContent(unloadPayload, Encoding.UTF8, "application/json")
+                                };
+                                using var unloadResp = await client.SendAsync(unloadReq, ct).ConfigureAwait(false);
+                            }
+                        }
+                    }
+                }
+
+                // Short settling delay for GPU VRAM release
+                await Task.Delay(1000, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not unload Ollama models from {Url}. Proceeding with transcription.", baseUrl);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error occurred during GPU VRAM acquisition");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Releases GPU VRAM after transcription by removing the pause flag.
+    /// </summary>
+    private void ReleaseGpuVram(string pauseFlagPath)
+    {
+        try
+        {
+            if (File.Exists(pauseFlagPath))
+            {
+                File.Delete(pauseFlagPath);
+                _logger.LogInformation("Removed GPU arbiter pause flag at {Path}. Ollama models may now resume loading into VRAM.", pauseFlagPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to remove GPU arbiter pause flag at {Path}", pauseFlagPath);
+        }
+    }
 }
+

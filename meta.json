@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Add local AI / Whisper audio transcription to generate dual filtered (default) and unfiltered subtitle streams, automatic media file upgrade detection, and on-demand Studio transcription.",
+  "changelog": "Add GPU VRAM arbitration for Whisper transcription to pause Ollama preload and yield VRAM, ensuring 100% GPU acceleration without memory spill.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,5 +9,5 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-09-08T00:00:00Z",
-  "version": "1.0.36.0"
+  "version": "1.0.37.0"
 }

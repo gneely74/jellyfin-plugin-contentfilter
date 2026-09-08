@@ -202,4 +202,23 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether to automatically re-transcribe and regenerate subtitles/JCF cues when a newer version or higher quality video file is downloaded/replaced.
     /// </summary>
     public bool AutoRegenerateOnMediaUpgrade { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether GPU VRAM arbitration is enabled.
+    /// When enabled, pauses Ollama preloads and unloads active LLM models during Whisper transcription to ensure 100% GPU VRAM availability.
+    /// </summary>
+    public bool EnableGpuArbitration { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the Ollama API base URL used for unloading models during transcription.
+    /// Default: "http://localhost:11434".
+    /// </summary>
+    public string OllamaApiUrl { get; set; } = "http://localhost:11434";
+
+    /// <summary>
+    /// Gets or sets the path to the GPU arbiter pause flag file.
+    /// Default: "/gpu-arbiter/pause-preload".
+    /// </summary>
+    public string GpuArbiterPauseFlagPath { get; set; } = "/gpu-arbiter/pause-preload";
 }
+
