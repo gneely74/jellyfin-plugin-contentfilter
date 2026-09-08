@@ -9,6 +9,9 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public static class JcfParser
 {
+    /// <summary>
+    /// Regular expression pattern matching standard WEBVTT and SRT timecode ranges (e.g., "01:23:45.678 --> 01:23:49.012").
+    /// </summary>
     private static readonly Regex TimecodeRegex = new(
         @"^(?:(?<sh>\d+):)?(?<sm>\d{2}):(?<ss>\d{2})[.,](?<sms>\d{3})\s+-->\s+(?:(?<eh>\d+):)?(?<em>\d{2}):(?<es>\d{2})[.,](?<ems>\d{3})(?:[ \t].*)?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -98,6 +101,12 @@ public static class JcfParser
         return result;
     }
 
+    /// <summary>
+    /// Parses a WEBVTT NOTE block containing file metadata tags (TITLE, YEAR, IMDB, SOURCE).
+    /// </summary>
+    /// <param name="lines">All lines from the file.</param>
+    /// <param name="index">Current line cursor index reference.</param>
+    /// <param name="filter">Target JCF filter instance receiving extracted metadata.</param>
     private static void ParseNoteBlock(IReadOnlyList<string> lines, ref int index, JcfFilter filter)
     {
         while (index < lines.Count && !string.IsNullOrWhiteSpace(lines[index]))
@@ -124,6 +133,13 @@ public static class JcfParser
         }
     }
 
+    /// <summary>
+    /// Parses key-value payload lines from modern JCF cue blocks (e.g. description, category, channel, action).
+    /// </summary>
+    /// <param name="payloadLines">Lines in the cue block body.</param>
+    /// <param name="start">Parsed start timestamp.</param>
+    /// <param name="end">Parsed end timestamp.</param>
+    /// <param name="cues">Output collection receiving constructed cues.</param>
     private static void ParseJcfCueLines(
         IReadOnlyList<string> payloadLines,
         TimeSpan start,
@@ -179,6 +195,13 @@ public static class JcfParser
         });
     }
 
+    /// <summary>
+    /// Parses legacy MovieContentFilter (MCF) format payload lines (category=intensity=channel).
+    /// </summary>
+    /// <param name="payloadLines">Lines in the legacy cue block body.</param>
+    /// <param name="start">Parsed start timestamp.</param>
+    /// <param name="end">Parsed end timestamp.</param>
+    /// <param name="cues">Output collection receiving constructed cues.</param>
     private static void ParseClassicMcfCueLines(
         IReadOnlyList<string> payloadLines,
         TimeSpan start,
@@ -211,6 +234,13 @@ public static class JcfParser
         }
     }
 
+    /// <summary>
+    /// Attempts to parse a WEBVTT/SRT timing line into start and end <see cref="TimeSpan"/> timestamps.
+    /// </summary>
+    /// <param name="value">Raw string line containing timecode arrow.</param>
+    /// <param name="start">When successful, receives parsed start timestamp.</param>
+    /// <param name="end">When successful, receives parsed end timestamp.</param>
+    /// <returns><see langword="true"/> if successfully matched and parsed; otherwise <see langword="false"/>.</returns>
     private static bool TryParseTimecode(string value, out TimeSpan start, out TimeSpan end)
     {
         start = default;
@@ -227,6 +257,12 @@ public static class JcfParser
         return true;
     }
 
+    /// <summary>
+    /// Extracts hours, minutes, seconds, and milliseconds from regex match groups for a given prefix ('s' for start, 'e' for end).
+    /// </summary>
+    /// <param name="match">The regex match from <see cref="TimecodeRegex"/>.</param>
+    /// <param name="prefix">Group prefix character ('s' or 'e').</param>
+    /// <returns>A calculated <see cref="TimeSpan"/> representation of the timestamp.</returns>
     private static TimeSpan ParseTimestamp(Match match, string prefix)
     {
         var hoursGroup = match.Groups[prefix + "h"];

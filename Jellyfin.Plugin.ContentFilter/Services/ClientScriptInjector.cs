@@ -9,7 +9,14 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public static class ClientScriptInjector
 {
+    /// <summary>
+    /// Logger instance used for diagnostic messaging during injection and transformation registration.
+    /// </summary>
     private static ILogger? _logger;
+
+    /// <summary>
+    /// Flag indicating whether script injection hooks have already been initialized.
+    /// </summary>
     private static bool _initialized;
 
     /// <summary>
@@ -39,6 +46,9 @@ public static class ClientScriptInjector
         RegisterWithFileTransformation();
     }
 
+    /// <summary>
+    /// Locates the optional FileTransformation plugin via reflection and registers index.html transformation callback.
+    /// </summary>
     private static void RegisterWithFileTransformation()
     {
         try

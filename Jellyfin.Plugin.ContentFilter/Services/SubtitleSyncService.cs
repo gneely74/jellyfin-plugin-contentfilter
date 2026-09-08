@@ -23,31 +23,103 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class SubtitleSyncService : IHostedService, IDisposable
 {
+    /// <summary>
+    /// Represents an item in the queue for newly added or modified media pending subtitle processing.
+    /// </summary>
+    /// <param name="ItemId">The unique identifier of the media item.</param>
+    /// <param name="ItemName">The display name of the media item.</param>
+    /// <param name="AvailableAt">The UTC timestamp after which the item has settled and may be processed.</param>
+    /// <param name="Force">Whether to force reprocessing even if subtitles already exist.</param>
     private sealed record NewMediaQueueItem(Guid ItemId, string ItemName, DateTime AvailableAt, bool Force = false);
 
+    /// <summary>
+    /// The logger instance.
+    /// </summary>
     private readonly ILogger<SubtitleSyncService> _logger;
+
+    /// <summary>
+    /// The Jellyfin library manager used to enumerate and query media items.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// The subtitle manager for searching and downloading remote subtitles.
+    /// </summary>
     private readonly ISubtitleManager _subtitleManager;
+
+    /// <summary>
+    /// The Jellyfin server configuration manager.
+    /// </summary>
     private readonly IServerConfigurationManager _serverConfigManager;
+
+    /// <summary>
+    /// The subtitle filter service for generating cleaned subtitle streams.
+    /// </summary>
     private readonly SubtitleFilter _subtitleFilter;
+
+    /// <summary>
+    /// The subtitle profanity word scanner.
+    /// </summary>
     private readonly SubtitleWordScanner _subtitleWordScanner;
+
+    /// <summary>
+    /// Repository and cache for filter profiles.
+    /// </summary>
     private readonly FilterStore _filterStore;
+
+    /// <summary>
+    /// SQLite database repository for subtitle tracking and lock states.
+    /// </summary>
     private readonly SqliteFilterRepository _sqliteRepository;
+
+    /// <summary>
+    /// Speech-to-text transcription service using Whisper.
+    /// </summary>
     private readonly WhisperTranscriptionService _whisperTranscriptionService;
+
+    /// <summary>
+    /// Dependency injection service provider.
+    /// </summary>
     private readonly IServiceProvider _serviceProvider;
 
+    /// <summary>
+    /// Bounded channel queue for processing newly added or upgraded media.
+    /// </summary>
     private readonly Channel<NewMediaQueueItem> _newMediaQueue = Channel.CreateBounded<NewMediaQueueItem>(new BoundedChannelOptions(500)
     {
         FullMode = BoundedChannelFullMode.DropOldest,
         SingleReader = true,
         SingleWriter = false
     });
+
+    /// <summary>
+    /// Concurrent dictionary tracking enqueued item IDs and their target availability timestamps.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, DateTime> _enqueuedMedia = new();
+
+    /// <summary>
+    /// Cancellation token source for the background queue worker.
+    /// </summary>
     private CancellationTokenSource? _workerCts;
+
+    /// <summary>
+    /// Background task processing the new media channel.
+    /// </summary>
     private Task? _workerTask;
+
+    /// <summary>
+    /// Indicates whether the service instance has been disposed.
+    /// </summary>
     private bool _disposed;
 
+    /// <summary>
+    /// Synchronization lock for library sync execution.
+    /// </summary>
     private readonly object _syncLock = new();
+
+    /// <summary>
+    /// Cancellation token source for the active library sync operation.
+    /// </summary>
     private CancellationTokenSource? _activeSyncCts;
 
     /// <summary>
@@ -115,6 +187,11 @@ public class SubtitleSyncService : IHostedService, IDisposable
         _logger.LogInformation("ContentFilter SubtitleSyncService stopped.");
     }
 
+    /// <summary>
+    /// Handles plugin configuration changes to update the daily scheduled trigger time if modified.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="config">The updated plugin configuration.</param>
     private void OnConfigurationChanged(object? sender, MediaBrowser.Model.Plugins.BasePluginConfiguration config)
     {
         if (config is PluginConfiguration pluginConfig &&
@@ -155,6 +232,11 @@ public class SubtitleSyncService : IHostedService, IDisposable
         _disposed = true;
     }
 
+    /// <summary>
+    /// Event handler invoked when a new media item is added to the Jellyfin library.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">The item change event arguments.</param>
     private void OnItemAdded(object? sender, ItemChangeEventArgs e)
     {
         var config = Plugin.Instance?.Configuration;
@@ -169,6 +251,11 @@ public class SubtitleSyncService : IHostedService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Event handler invoked when an existing media item is updated in the Jellyfin library.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">The item change event arguments.</param>
     private void OnItemUpdated(object? sender, ItemChangeEventArgs e)
     {
         var config = Plugin.Instance?.Configuration;
@@ -224,6 +311,11 @@ public class SubtitleSyncService : IHostedService, IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Background loop consuming items from the new media channel queue after their settling delay.
+    /// </summary>
+    /// <param name="ct">A cancellation token for the worker loop.</param>
+    /// <returns>A task representing the background queue consumer.</returns>
     private async Task ProcessNewMediaQueueAsync(CancellationToken ct)
     {
         var reader = _newMediaQueue.Reader;
@@ -563,6 +655,11 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Internal execution loop for library-wide subtitle sync.
     /// </summary>
+    /// <param name="forceAll">Whether to reprocess items that already have clean subtitles.</param>
+    /// <param name="overrideLanguage">Optional language override.</param>
+    /// <param name="progress">Progress reporter (0-100%).</param>
+    /// <param name="ct">A cancellation token for the sync loop.</param>
+    /// <returns>A task representing the asynchronous sync operation.</returns>
     private async Task RunSyncInternalAsync(bool forceAll, string? overrideLanguage, IProgress<double>? progress, CancellationToken ct)
     {
         var (targetLang3, targetLang2) = ResolveTargetLanguage(overrideLanguage);
@@ -875,6 +972,12 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Transcribes a video using Whisper, saves both unfiltered and filtered tailored streams, creates profanity mute cues, and assigns the filtered track as default.
     /// </summary>
+    /// <param name="video">The video media item to transcribe.</param>
+    /// <param name="targetLang3">The three-letter ISO language code.</param>
+    /// <param name="targetLang2">The two-letter ISO language code.</param>
+    /// <param name="fileInfo">The file information for the video container.</param>
+    /// <param name="ct">A cancellation token for the operation.</param>
+    /// <returns>A populated <see cref="SingleSubtitleProcessResult"/> on success, or <c>null</c> on failure.</returns>
     private async Task<SingleSubtitleProcessResult?> TranscribeAndCleanSingleVideoInternalAsync(
         Video video,
         string targetLang3,
@@ -982,6 +1085,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Scans transcribed text and word timestamps to generate profanity mute cues with microsecond accuracy.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="transcription">The transcription result containing segments and word timestamps.</param>
+    /// <param name="ct">A cancellation token for the operation.</param>
+    /// <returns>The number of profanity mute cues added to the item filter.</returns>
     private async Task<int> CreateProfanityMuteCuesFromTranscriptionAsync(
         Guid itemId,
         TranscriptionResult transcription,
@@ -1140,6 +1247,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Checks whether an external SRT file exists adjacent to the media file on disk.
     /// </summary>
+    /// <param name="video">The video item.</param>
+    /// <param name="lang2">The two-letter ISO language code.</param>
+    /// <param name="lang3">The three-letter ISO language code.</param>
+    /// <returns><c>true</c> if a matching external SRT subtitle file exists; otherwise, <c>false</c>.</returns>
     private static bool HasExternalSrtFile(Video video, string lang2, string lang3)
     {
         if (string.IsNullOrWhiteSpace(video.Path)) return false;
@@ -1172,6 +1283,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Searches remote subtitle providers for an item and downloads the best matching candidate.
     /// </summary>
+    /// <param name="video">The video media item.</param>
+    /// <param name="language">The three-letter ISO language code.</param>
+    /// <param name="ct">A cancellation token for the remote operation.</param>
+    /// <returns><c>true</c> if a candidate was successfully matched and downloaded; otherwise, <c>false</c>.</returns>
     private async Task<bool> SearchAndDownloadBestSubtitleAsync(Video video, string language, CancellationToken ct)
     {
         try
@@ -1211,6 +1326,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <summary>
     /// Scans an item's dialogue and auto-generates mute cues for detected profanity if the item has no cues yet.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The target language code for subtitle scanning.</param>
+    /// <param name="ct">A cancellation token for the scanning operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task EnsureItemHasWordFilterAsync(Guid itemId, string language, CancellationToken ct)
     {
         var filter = _filterStore.GetFilter(itemId);
@@ -1371,6 +1490,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
         return generated != null;
     }
 
+    /// <summary>
+    /// Appends a timestamped log message to the rolling sync status log buffer.
+    /// </summary>
+    /// <param name="message">The text message to log.</param>
     private void AddLog(string message)
     {
         var entry = $"[{DateTime.UtcNow:HH:mm:ss}] {message}";

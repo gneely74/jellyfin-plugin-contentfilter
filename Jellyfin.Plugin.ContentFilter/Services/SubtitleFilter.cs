@@ -16,12 +16,26 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class SubtitleFilter
 {
+    /// <summary>
+    /// Regular expression matching standard SRT timecode formatting (e.g. "01:23:45,678" or "01:23:45.678").
+    /// </summary>
     private static readonly Regex SrtTsRegex = new(
         @"^(?<h>\d+):(?<m>\d{2}):(?<s>\d{2})[,.](?<ms>\d{3})$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>
+    /// Logger instance for subtitle filtering operations.
+    /// </summary>
     private readonly ILogger<SubtitleFilter> _logger;
+
+    /// <summary>
+    /// Jellyfin library manager for retrieving media item information and paths.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// Service provider for resolving optional dependencies (repositories, word scanner, etc.).
+    /// </summary>
     private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
@@ -37,6 +51,9 @@ public class SubtitleFilter
         _serviceProvider = serviceProvider;
     }
 
+    /// <summary>
+    /// Gets the absolute directory path where filtered subtitle cache files are saved.
+    /// </summary>
     private string SubtitlesPath => Path.Combine(Plugin.Instance!.DataFolderPath, "subtitles");
 
     /// <summary>
@@ -93,6 +110,9 @@ public class SubtitleFilter
     /// <summary>
     /// Resolves a language parameter that might be a numeric stream index to the actual stream language.
     /// </summary>
+    /// <param name="item">The target media item.</param>
+    /// <param name="language">The language string or numeric stream index.</param>
+    /// <returns>The resolved language string.</returns>
     private static string ResolveLanguage(BaseItem? item, string language)
     {
         if (int.TryParse(language, out var streamIdx) && item is Video v)
@@ -161,6 +181,10 @@ public class SubtitleFilter
     /// Gets the AI-generated filtered sidecar SRT path adjacent to the media file on disk.
     /// Example: Movie.mkv -> Movie.en.Generated - Filtered.default.srt
     /// </summary>
+    /// <param name="item">The media item.</param>
+    /// <param name="language">The subtitle language code.</param>
+    /// <param name="trackTitle">Optional custom track title suffix override.</param>
+    /// <returns>The generated filtered SRT file path, or <see langword="null"/> if not resolvable.</returns>
     public static string? GetGeneratedFilteredSrtPath(BaseItem? item, string language = "en", string? trackTitle = null)
     {
         if (item is null || string.IsNullOrWhiteSpace(item.Path))
@@ -189,6 +213,10 @@ public class SubtitleFilter
     /// Gets the AI-generated unfiltered sidecar SRT path adjacent to the media file on disk.
     /// Example: Movie.mkv -> Movie.en.Generated - Unfiltered.srt
     /// </summary>
+    /// <param name="item">The media item.</param>
+    /// <param name="language">The subtitle language code.</param>
+    /// <param name="trackTitle">Optional custom track title suffix override.</param>
+    /// <returns>The generated unfiltered SRT file path, or <see langword="null"/> if not resolvable.</returns>
     public static string? GetGeneratedUnfilteredSrtPath(BaseItem? item, string language = "en", string? trackTitle = null)
     {
         if (item is null || string.IsNullOrWhiteSpace(item.Path))
@@ -734,6 +762,11 @@ public class SubtitleFilter
         return string.Join($"{Environment.NewLine}{Environment.NewLine}", processedBlocks);
     }
 
+    /// <summary>
+    /// Splits an entire SRT file string into distinct subtitle blocks separated by double linebreaks.
+    /// </summary>
+    /// <param name="srtContent">The full SRT subtitle content.</param>
+    /// <returns>A list of non-empty subtitle block strings.</returns>
     private static List<string> SplitSrtBlocks(string srtContent)
     {
         return Regex.Split(srtContent.Trim(), @"\r?\n\r?\n")
@@ -741,6 +774,11 @@ public class SubtitleFilter
             .ToList();
     }
 
+    /// <summary>
+    /// Parses a single SRT subtitle block into its index, start timestamp, end timestamp, and dialogue text.
+    /// </summary>
+    /// <param name="block">The multi-line SRT block.</param>
+    /// <returns>A tuple of the parsed components, or <see langword="null"/> if the block is malformed.</returns>
     private static (int index, TimeSpan start, TimeSpan end, string text)? ParseSrtBlock(string block)
     {
         var lines = block.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
@@ -766,6 +804,12 @@ public class SubtitleFilter
         return (index, start, end, text);
     }
 
+    /// <summary>
+    /// Attempts to parse an individual SRT timestamp string into a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="value">The raw timestamp string (e.g. "01:23:45,678").</param>
+    /// <param name="timestamp">When successful, receives the parsed <see cref="TimeSpan"/>.</param>
+    /// <returns><see langword="true"/> if parsed successfully; otherwise <see langword="false"/>.</returns>
     private static bool TryParseSrtTs(string value, out TimeSpan timestamp)
     {
         timestamp = default;
@@ -783,6 +827,11 @@ public class SubtitleFilter
         return true;
     }
 
+    /// <summary>
+    /// Formats a <see cref="TimeSpan"/> timestamp into standard SRT timecode format (HH:mm:ss,fff).
+    /// </summary>
+    /// <param name="timestamp">The timestamp value to format.</param>
+    /// <returns>A formatted SRT timecode string.</returns>
     private static string FormatSrtTimecode(TimeSpan timestamp)
     {
         return string.Create(

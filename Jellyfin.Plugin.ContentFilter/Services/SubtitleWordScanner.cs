@@ -122,15 +122,38 @@ public class SubtitleScanResult
 /// </summary>
 public class SubtitleWordScanner
 {
+    /// <summary>
+    /// Regular expression matching HTML tags (&lt;...&gt;) and ASS style override blocks ({...}) within subtitle dialogue.
+    /// </summary>
     private static readonly Regex HtmlTagRegex = new(@"<[^>]+>|\{[^}]+\}", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Logger instance for subtitle word scanning diagnostics.
+    /// </summary>
     private readonly ILogger<SubtitleWordScanner> _logger;
+
+    /// <summary>
+    /// Jellyfin library manager used to look up media items and paths.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// Media encoder providing the path to the system or Jellyfin ffmpeg binary.
+    /// </summary>
     private readonly IMediaEncoder _mediaEncoder;
+
+    /// <summary>
+    /// Filter store accessing existing item filters and cue configurations.
+    /// </summary>
     private readonly FilterStore _filterStore;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SubtitleWordScanner"/> class.
     /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="libraryManager">The library manager.</param>
+    /// <param name="mediaEncoder">The media encoder.</param>
+    /// <param name="filterStore">The filter store.</param>
     public SubtitleWordScanner(
         ILogger<SubtitleWordScanner> logger,
         ILibraryManager libraryManager,
@@ -143,11 +166,16 @@ public class SubtitleWordScanner
         _filterStore = filterStore;
     }
 
+    /// <summary>
+    /// Gets the absolute directory path where extracted and downloaded SRT files are cached.
+    /// </summary>
     private string CacheDir => Path.Combine(Plugin.Instance?.DataFolderPath ?? "/tmp", "subtitles", "cache");
 
     /// <summary>
-    /// Gets all available subtitle tracks for an item.
+    /// Gets all available subtitle tracks for an item, including both external disk files and embedded container streams.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>A list of <see cref="SubtitleTrackInfo"/> records.</returns>
     public List<SubtitleTrackInfo> GetAvailableTracks(Guid itemId)
     {
         var result = new List<SubtitleTrackInfo>();
@@ -223,6 +251,10 @@ public class SubtitleWordScanner
     /// <summary>
     /// Retrieves or extracts SRT content for a given item and language or stream index.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The ISO language code or numeric stream index string.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The raw SRT subtitle text, or <see langword="null"/> if unavailable.</returns>
     public async Task<string?> GetSrtContentAsync(Guid itemId, string language, CancellationToken ct)
     {
         bool isNumericIndex = int.TryParse(language, out var reqIndex);
@@ -317,8 +349,12 @@ public class SubtitleWordScanner
     }
 
     /// <summary>
-    /// Scans an item's subtitle track for filterable words.
+    /// Scans an item's subtitle track for filterable words and computes cue timecodes.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="language">The ISO language code or numeric stream index string.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A populated <see cref="SubtitleScanResult"/> with detected occurrences and word groups.</returns>
     public async Task<SubtitleScanResult> ScanWordsAsync(Guid itemId, string language, CancellationToken ct)
     {
         bool isNumericIndex = int.TryParse(language, out _);
@@ -472,6 +508,13 @@ public class SubtitleWordScanner
         return result;
     }
 
+    /// <summary>
+    /// Invokes the ffmpeg binary to extract a specific embedded subtitle track index into SRT format.
+    /// </summary>
+    /// <param name="mediaPath">The path to the container media file.</param>
+    /// <param name="streamIndex">The zero-based or absolute subtitle stream index.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Extracted SRT string, or <see langword="null"/> if extraction fails.</returns>
     private async Task<string?> ExtractSubtitleStreamAsync(string mediaPath, int streamIndex, CancellationToken ct)
     {
         var encoderPath = _mediaEncoder.EncoderPath;
@@ -518,17 +561,35 @@ public class SubtitleWordScanner
         }
     }
 
+    /// <summary>
+    /// Strips font tags and ASS styling markup from raw subtitle text while preserving dialogue.
+    /// </summary>
+    /// <param name="raw">The raw subtitle dialogue string.</param>
+    /// <returns>The cleaned plain dialogue text.</returns>
     private static string CleanSrtText(string raw)
     {
         // Strip font and ASS styling markup while keeping dialogue text
         return HtmlTagRegex.Replace(raw, string.Empty);
     }
 
+    /// <summary>
+    /// Splits an SRT file into distinct subtitle cue blocks.
+    /// </summary>
+    /// <param name="srtContent">The full SRT string.</param>
+    /// <returns>An enumerable of non-empty SRT block strings.</returns>
     private static IEnumerable<string> SplitSrtBlocks(string srtContent)
     {
         return srtContent.Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries);
     }
 
+    /// <summary>
+    /// Parses an SRT block to extract start/end timestamps and dialogue lines.
+    /// </summary>
+    /// <param name="block">The subtitle block string.</param>
+    /// <param name="start">When successful, receives the parsed start timestamp.</param>
+    /// <param name="end">When successful, receives the parsed end timestamp.</param>
+    /// <param name="text">When successful, receives the joined dialogue text.</param>
+    /// <returns><see langword="true"/> if parsed successfully; otherwise <see langword="false"/>.</returns>
     private static bool TryParseSrtBlock(string block, out TimeSpan start, out TimeSpan end, out string text)
     {
         start = default;
@@ -562,6 +623,12 @@ public class SubtitleWordScanner
         return true;
     }
 
+    /// <summary>
+    /// Parses an SRT time string (e.g. "01:23:45,678" or "01:23:45.678") into a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="raw">The raw timestamp token.</param>
+    /// <param name="value">When successful, receives the parsed <see cref="TimeSpan"/>.</param>
+    /// <returns><see langword="true"/> if successfully parsed; otherwise <see langword="false"/>.</returns>
     private static bool TryParseSrtTime(string raw, out TimeSpan value)
     {
         value = default;
@@ -580,6 +647,11 @@ public class SubtitleWordScanner
         return true;
     }
 
+    /// <summary>
+    /// Formats a <see cref="TimeSpan"/> into HH:mm:ss.fff format.
+    /// </summary>
+    /// <param name="ts">The timestamp value.</param>
+    /// <returns>Formatted timecode string.</returns>
     private static string FormatTimecode(TimeSpan ts)
     {
         return string.Create(
@@ -587,6 +659,11 @@ public class SubtitleWordScanner
             $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}");
     }
 
+    /// <summary>
+    /// Normalizes language names and ISO codes into standard 3-letter codes (e.g. "English" -> "eng").
+    /// </summary>
+    /// <param name="lang">The raw language string.</param>
+    /// <returns>Normalized 3-letter language code.</returns>
     private static string NormalizeLanguage(string lang)
     {
         if (string.IsNullOrWhiteSpace(lang)) return "eng";
@@ -600,6 +677,11 @@ public class SubtitleWordScanner
         return l.Length > 3 ? l[..3] : l;
     }
 
+    /// <summary>
+    /// Returns the English display name corresponding to an ISO language code.
+    /// </summary>
+    /// <param name="lang">The language code or name.</param>
+    /// <returns>User-friendly display name (e.g. "English", "Spanish").</returns>
     private static string GetLanguageDisplayName(string lang)
     {
         return NormalizeLanguage(lang) switch

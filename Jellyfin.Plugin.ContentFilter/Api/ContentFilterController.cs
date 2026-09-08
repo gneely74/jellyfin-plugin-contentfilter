@@ -20,13 +20,44 @@ namespace Jellyfin.Plugin.ContentFilter.Api;
 [Authorize]
 public class ContentFilterController : ControllerBase
 {
+    /// <summary>
+    /// The filter store service providing access to filter definitions and sidecars.
+    /// </summary>
     private readonly FilterStore _filterStore;
+
+    /// <summary>
+    /// The subtitle filter service used for managing cleaned subtitle streams.
+    /// </summary>
     private readonly SubtitleFilter _subtitleFilter;
+
+    /// <summary>
+    /// The subtitle word scanner service.
+    /// </summary>
     private readonly SubtitleWordScanner _subtitleWordScanner;
+
+    /// <summary>
+    /// The subtitle synchronization service.
+    /// </summary>
     private readonly SubtitleSyncService _subtitleSyncService;
+
+    /// <summary>
+    /// The SQLite database repository for tracking subtitle configurations and locks.
+    /// </summary>
     private readonly SqliteFilterRepository _sqliteRepository;
+
+    /// <summary>
+    /// The Jellyfin library manager.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// The filter rule evaluation service.
+    /// </summary>
     private readonly FilterRuleService _filterRuleService;
+
+    /// <summary>
+    /// The controller logger.
+    /// </summary>
     private readonly ILogger<ContentFilterController> _logger;
 
     /// <summary>
@@ -836,6 +867,12 @@ public class ContentFilterController : ControllerBase
         return Ok(newCue);
     }
 
+    /// <summary>
+    /// Attempts to parse a flexible timestamp string (such as "HH:mm:ss.fff", "mm:ss.fff", or total seconds) into a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="input">The raw timestamp string.</param>
+    /// <param name="result">When this method returns, contains the parsed <see cref="TimeSpan"/>.</param>
+    /// <returns><c>true</c> if the input was parsed successfully; otherwise, <c>false</c>.</returns>
     private static bool ParseFlexibleTimestamp(string? input, out TimeSpan result)
     {
         result = TimeSpan.Zero;
@@ -1061,6 +1098,11 @@ public class ContentFilterController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Formats a <see cref="TimeSpan"/> into standard "HH:mm:ss.fff" string format.
+    /// </summary>
+    /// <param name="value">The timespan value to format.</param>
+    /// <returns>A formatted timestamp string.</returns>
     private static string FormatTimestamp(TimeSpan value)
     {
         return string.Create(
@@ -1068,6 +1110,13 @@ public class ContentFilterController : ControllerBase
             $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}.{value.Milliseconds:000}");
     }
 
+    /// <summary>
+    /// Parses an incoming JCF filter from an uploaded form file or request body stream.
+    /// </summary>
+    /// <param name="file">The uploaded form file, if present.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation, returning the parsed <see cref="JcfFilter"/>.</returns>
+    /// <exception cref="FormatException">Thrown if no valid file or body stream was provided.</exception>
     private async Task<JcfFilter> ParseIncomingFilterAsync(IFormFile? file, CancellationToken cancellationToken)
     {
         if (file is not null && file.Length > 0)
@@ -1088,6 +1137,13 @@ public class ContentFilterController : ControllerBase
         throw new FormatException("A JCF file is required. Send multipart form field 'file' or raw text starting with WEBVTT.");
     }
 
+    /// <summary>
+    /// Searches the Jellyfin library for media items matching a filter definition and filename.
+    /// </summary>
+    /// <param name="filter">The parsed JCF filter containing title and metadata.</param>
+    /// <param name="filename">The original filename of the imported filter file.</param>
+    /// <param name="seriesId">Optional series identifier to scope episode matching.</param>
+    /// <returns>A list of candidate matching library items.</returns>
     private List<MediaBrowser.Controller.Entities.BaseItem> FindMatchingItems(JcfFilter filter, string? filename, Guid? seriesId = null)
     {
         var candidates = new List<MediaBrowser.Controller.Entities.BaseItem>();

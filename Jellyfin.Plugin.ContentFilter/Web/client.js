@@ -27,6 +27,12 @@
     var subtitleWords = null;
     var selectedSubtitleLanguage = 'eng';
 
+    /**
+     * Parses a timecode string into total seconds.
+     * Supports seconds, mm:ss, and hh:mm:ss with optional fractional seconds.
+     * @param {string|number} tc - The timecode or seconds value to parse.
+     * @returns {number} The parsed time in seconds.
+     */
     function parseTimecode(tc) {
         if (!tc) return 0;
         tc = String(tc).trim();
@@ -52,6 +58,11 @@
         return 0;
     }
 
+    /**
+     * Formats seconds into a human-readable string (e.g. "m:ss" or "h:mm:ss").
+     * @param {number} sec - The duration in seconds.
+     * @returns {string} The formatted time string.
+     */
     function formatTime(sec) {
         if (isNaN(sec) || sec < 0) sec = 0;
         var h = Math.floor(sec / 3600);
@@ -63,6 +74,11 @@
         return m + ':' + (s < 10 ? '0' : '') + s;
     }
 
+    /**
+     * Formats seconds into an exact timestamp with millisecond precision ("hh:mm:ss.fff").
+     * @param {number} sec - The duration in seconds.
+     * @returns {string} The formatted timecode string.
+     */
     function formatTimecode(sec) {
         if (isNaN(sec) || sec < 0) sec = 0;
         var h = Math.floor(sec / 3600);
@@ -75,6 +91,11 @@
                (ms < 100 ? (ms < 10 ? '00' : '0') : '') + ms;
     }
 
+    /**
+     * Retrieves the DOM element currently hosting playback controls or fullscreen surfaces.
+     * Falls back to document.body when not in fullscreen.
+     * @returns {HTMLElement} The player container element.
+     */
     function getPlayerContainer() {
         if (document.fullscreenElement) {
             return document.fullscreenElement;
@@ -83,6 +104,10 @@
     }
 
     // --- Toast HUD ---
+    /**
+     * Ensures the toast notification HUD container is instantiated and attached to the player DOM.
+     * @returns {HTMLElement} The toast HUD element.
+     */
     function ensureHud() {
         var container = getPlayerContainer();
         if (hudElement && container.contains(hudElement)) {
@@ -122,6 +147,11 @@
         return hudElement;
     }
 
+    /**
+     * Displays a temporary notification badge in the player HUD.
+     * @param {string} text - The message text to display.
+     * @param {string} [icon] - Optional icon or symbol prefix.
+     */
     function showHud(text, icon) {
         try {
             var el = ensureHud();
@@ -141,6 +171,10 @@
         }
     }
 
+    /**
+     * Resolves the active Jellyfin API client instance.
+     * @returns {Object|null} The ApiClient instance or null if unavailable.
+     */
     function getApiClient() {
         if (window.ApiClient) return window.ApiClient;
         if (window.ServerConnections && typeof window.ServerConnections.currentApiClient === 'function') {
@@ -149,6 +183,11 @@
         return null;
     }
 
+    /**
+     * Fetches the filter cues and metadata for a specific media item from the ContentFilter backend.
+     * @param {string} itemId - The media item GUID.
+     * @returns {Promise<Object|null>} A promise resolving to the filter object or null.
+     */
     function fetchItemFilter(itemId) {
         var client = getApiClient();
         if (!client || !itemId) return Promise.resolve(null);
@@ -194,6 +233,11 @@
         });
     }
 
+    /**
+     * Resolves the media item identifier for the currently playing video by querying player state, DOM, and URL parameters.
+     * @param {HTMLVideoElement} video - The video element.
+     * @returns {string|null} The resolved item ID, or null if not found.
+     */
     function resolveMediaItemId(video) {
         // 1. Direct match on HTML5 video stream URL
         if (video) {
@@ -233,6 +277,11 @@
     var activeTargetWords = new Set();
     var globalBlanketWords = new Set();
 
+    /**
+     * Masks a word with asterisks, preserving only the initial character of each subword.
+     * @param {string} word - The word to mask.
+     * @returns {string} The masked word.
+     */
     function maskLeavingFirstLetter(word) {
         if (!word) return word;
         return word.replace(/\b\w+/g, function (match) {
@@ -241,10 +290,21 @@
         });
     }
 
+    /**
+     * Escapes special characters in a string for safe use inside a regular expression.
+     * @param {string} string - The raw string to escape.
+     * @returns {string} The regex-safe string.
+     */
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
+    /**
+     * Sanitizes subtitle text by masking occurrences of target sensitive terms.
+     * @param {string} text - The raw subtitle text.
+     * @param {Set<string>|Array<string>} targetWords - The sensitive words to mask.
+     * @returns {string} The sanitized subtitle text.
+     */
     function sanitizeSubtitleText(text, targetWords) {
         if (!text || !targetWords || targetWords.size === 0) return text;
         var output = text;
@@ -262,6 +322,9 @@
         return output;
     }
 
+    /**
+     * Rebuilds the set of target profanity and sensitive words from active filter cues and global blanket words.
+     */
     function updateTargetWords() {
         activeTargetWords.clear();
         globalBlanketWords.forEach(function (w) {
@@ -288,6 +351,9 @@
         }
     }
 
+    /**
+     * Loads the global blanket words list from the backend API.
+     */
     function loadGlobalBlanketWords() {
         var client = getApiClient();
         if (!client) return;
@@ -306,6 +372,10 @@
             }).catch(function () {});
     }
 
+    /**
+     * Sanitizes all cues within an active TextTrack.
+     * @param {TextTrack} track - The subtitle track whose cues should be sanitized.
+     */
     function sanitizeTrackCues(track) {
         if (!track || !track.cues) return;
         for (var i = 0; i < track.cues.length; i++) {
@@ -319,6 +389,10 @@
         }
     }
 
+    /**
+     * Attaches cuechange and addtrack event listeners to a video element's text tracks to sanitize subtitles in real-time.
+     * @param {HTMLVideoElement} video - The target video element.
+     */
     function hookTextTracks(video) {
         if (!video || !video.textTracks) return;
         var tracks = video.textTracks;
@@ -345,6 +419,9 @@
         }
     }
 
+    /**
+     * Queries the backend API to determine if clean filtered subtitles exist and are active for the current item.
+     */
     function checkCleanSubStatus() {
         var modal = ensureEditorModal();
         var banner = modal.querySelector("#cfCleanSubStatusBanner");
@@ -377,6 +454,9 @@
             });
     }
 
+    /**
+     * Triggers clean subtitle generation on the server for the currently playing media item.
+     */
     function generateCleanSubtitles() {
         var modal = ensureEditorModal();
         var genBtn = modal.querySelector("#cfBtnGenCleanSubs");
@@ -425,6 +505,9 @@
         });
     }
 
+    /**
+     * Evaluates current playback position against active filter cues to enforce volume muting and timeline skipping.
+     */
     function checkCues() {
         if (!activeFilter || !activeVideo || activeVideo.paused) {
             return;
@@ -512,6 +595,9 @@
     }
 
     // --- Floating Cue Editor Launcher ---
+    /**
+     * Instantiates and mounts the floating Cue Editor launcher button on the media player overlay.
+     */
     function ensureLauncherButton() {
         var container = getPlayerContainer();
         if (launchBtn && container.contains(launchBtn)) {
@@ -570,6 +656,9 @@
         return launchBtn;
     }
 
+    /**
+     * Removes the Cue Editor launcher button from the DOM.
+     */
     function removeLauncherButton() {
         if (launchBtn && launchBtn.parentElement) {
             launchBtn.parentElement.removeChild(launchBtn);
@@ -577,6 +666,10 @@
     }
 
     // Helper to stop key events from leaking to Jellyfin player shortcuts
+    /**
+     * Stops keyboard event propagation from an input element to prevent triggering Jellyfin player shortcuts.
+     * @param {HTMLElement} input - The input element to isolate.
+     */
     function isolateInput(input) {
         if (!input) return;
         ['keydown', 'keyup', 'keypress'].forEach(function (evType) {
@@ -587,6 +680,10 @@
     }
 
     // --- In-Player Cue Editor Modal ---
+    /**
+     * Constructs and mounts the Cue Editor HUD modal into the player container if not already present.
+     * @returns {HTMLElement} The root modal element.
+     */
     function ensureEditorModal() {
         var container = getPlayerContainer();
         if (editorModal && container.contains(editorModal)) {
@@ -931,6 +1028,11 @@
         return editorModal;
     }
 
+    /**
+     * Attaches mouse drag handlers to a container header to make the modal movable across the screen.
+     * @param {HTMLElement} header - The draggable handle element.
+     * @param {HTMLElement} container - The container element to translate.
+     */
     function makeDraggable(modal, handle) {
         var isDragging = false;
         var startX, startY, initialLeft, initialTop;
@@ -998,6 +1100,10 @@
         handle.addEventListener('touchstart', startDrag, { passive: false });
     }
 
+    /**
+     * Wires all click, input, tab navigation, and action events for the Cue Editor modal.
+     * @param {HTMLElement} modal - The root editor modal element.
+     */
     function wireEditorEvents(modal) {
         var header = modal.querySelector('#cfEditorHeader');
         makeDraggable(modal, header);
@@ -1501,6 +1607,11 @@
         }
     }
 
+    /**
+     * Escapes HTML entities in a string for safe rendering in DOM templates.
+     * @param {string} str - The raw string.
+     * @returns {string} The HTML-escaped string.
+     */
     function escHtml(str) {
         if (!str) return '';
         return String(str)
@@ -1511,6 +1622,10 @@
             .replace(/'/g, '&#039;');
     }
 
+    /**
+     * Fetches the available subtitle tracks for an item and populates the track selector.
+     * @param {string} itemId - The media item identifier.
+     */
     function loadSubtitleTracks() {
         var client = getApiClient();
         if (!client || !activeItemId) return Promise.resolve([]);
@@ -1532,6 +1647,10 @@
         });
     }
 
+    /**
+     * Populates the subtitle language selection dropdown with available tracks.
+     * @param {Array<Object>} tracks - The list of subtitle track descriptors.
+     */
     function populateLanguageSelector() {
         var modal = ensureEditorModal();
         var sel = modal.querySelector('#cfSelectSubLanguage');
@@ -1586,6 +1705,11 @@
         }
     }
 
+    /**
+     * Scans subtitle dialogue words for the given language and renders the results in the Subtitle Scanner tab.
+     * @param {string} itemId - The media item identifier.
+     * @param {string} lang - The three-letter language code.
+     */
     function loadAndRenderSubtitleWords(forceRefresh) {
         var modal = ensureEditorModal();
         var statusMsg = modal.querySelector('#cfWordsStatusMsg');
@@ -1644,6 +1768,9 @@
         });
     }
 
+    /**
+     * Renders the detected profanity words list with frequency counts, categories, and quick action buttons.
+     */
     function renderSubtitleWordsList(searchTerm) {
         var modal = ensureEditorModal();
         var container = modal.querySelector('#cfWordsListContainer');
@@ -1766,6 +1893,13 @@
         });
     }
 
+    /**
+     * Applies blanket filtering across all occurrences of a word in the current item, optionally adding it globally.
+     * @param {string} word - The word to filter.
+     * @param {string} category - The cue category.
+     * @param {string} action - The cue action ("mute" or "skip").
+     * @param {boolean} makeGlobal - Whether to save the word to the global blanket words list.
+     */
     function applyBlanketFilter(word, isGlobal) {
         var client = getApiClient();
         if (!client || !activeItemId) return;
@@ -1810,6 +1944,11 @@
         });
     }
 
+    /**
+     * Removes all filter cues matching a specific word from the current item, optionally removing it from global blanket words.
+     * @param {string} word - The word to remove cues for.
+     * @param {boolean} removeFromGlobal - Whether to remove the word from the global blanket list.
+     */
     function removeWordFilter(word, removeFromGlobal) {
         var client = getApiClient();
         if (!client || !activeItemId) return;
@@ -1852,6 +1991,10 @@
         });
     }
 
+    /**
+     * Applies blanket filtering to all words currently visible in the filtered search list.
+     * @param {string} action - The action to apply ("mute" or "skip").
+     */
     function blanketFilterVisibleWords() {
         var modal = ensureEditorModal();
         var searchWordsInput = modal.querySelector('#cfInputSearchWords');
@@ -1910,12 +2053,20 @@
         });
     }
 
+    /**
+     * Updates the badge count displayed on the Active Cues tab.
+     * @param {number} count - The number of active cues.
+     */
     function updateCuesBadge() {
         var count = (activeFilter && activeFilter.cues) ? activeFilter.cues.length : 0;
         var badge = document.querySelector('#cfTabCuesCount');
         if (badge) badge.textContent = count;
     }
 
+    /**
+     * Populates the Add/Edit Cue tab form with an existing cue's properties for modification.
+     * @param {string} cueKey - The unique key of the cue to edit.
+     */
     function startEditingCue(cue) {
         if (!cue) return;
         editingCueKey = cue.key;
@@ -1961,6 +2112,9 @@
         tabBtnAdd.click();
     }
 
+    /**
+     * Renders the list of active filter cues in the Active Cues tab, including timing, actions, and deletion buttons.
+     */
     function renderActiveCuesList() {
         var container = document.querySelector('#cfCuesListContainer');
         if (!container) return;
@@ -2055,6 +2209,9 @@
         });
     }
 
+    /**
+     * Refreshes filter cues from the backend and updates client-side enforcement state and active cues display.
+     */
     function refreshActiveFilter() {
         if (!activeItemId) return;
         fetchItemFilter(activeItemId).then(function (filter) {
@@ -2066,6 +2223,10 @@
         });
     }
 
+    /**
+     * Loads the effective filter rules and parent inheritance configuration for the media item.
+     * @param {string} itemId - The media item identifier.
+     */
     function loadPlayerItemRules() {
         if (!activeItemId) return;
         var modal = ensureEditorModal();
@@ -2105,6 +2266,10 @@
         });
     }
 
+    /**
+     * Renders the filter rules configuration list with category toggles and parent inheritance status.
+     * @param {Object} rulesData - The rules configuration object returned from the API.
+     */
     function renderPlayerRulesList(rules) {
         var modal = ensureEditorModal();
         var listEl = modal.querySelector('#cfPlayerRulesList');
@@ -2179,6 +2344,9 @@
         });
     }
 
+    /**
+     * Saves the modified item filter rules and overrides to the backend API.
+     */
     function savePlayerItemRules() {
         if (!activeItemId) return;
         var modal = ensureEditorModal();
@@ -2232,6 +2400,9 @@
         });
     }
 
+    /**
+     * Resets the item's custom filter rules to restore default parent inheritance.
+     */
     function resetPlayerItemRules() {
         if (!activeItemId) return;
         var modal = ensureEditorModal();
@@ -2261,6 +2432,9 @@
         });
     }
 
+    /**
+     * Opens the Cue Editor HUD modal, pauses playback if configured, and refreshes current tab data.
+     */
     function openEditorModal() {
         var modal = ensureEditorModal();
         modal.style.display = 'flex';
@@ -2312,6 +2486,9 @@
         }, 80);
     }
 
+    /**
+     * Closes the Cue Editor HUD modal and resumes playback if paused by editor opening.
+     */
     function closeEditorModal() {
         if (editorModal) {
             editorModal.style.display = 'none';
@@ -2322,6 +2499,9 @@
         }
     }
 
+    /**
+     * Toggles the visibility of the Cue Editor HUD modal.
+     */
     function toggleEditorModal() {
         var modal = ensureEditorModal();
         if (modal.style.display === 'none' || !modal.style.display) {
@@ -2331,6 +2511,9 @@
         }
     }
 
+    /**
+     * Handles browser fullscreen transitions to re-attach the HUD and editor modal into the active fullscreen container.
+     */
     function onFullscreenChange() {
         var target = getPlayerContainer();
         if (launchBtn && !target.contains(launchBtn)) {
@@ -2348,6 +2531,10 @@
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
     // Stop wheel events originating inside modal from leaking to Jellyfin's volume listener and perform container scrolling
+    /**
+     * Handles wheel scroll events inside modal list containers, preventing player timeline seeking.
+     * @param {WheelEvent} e - The wheel event.
+     */
     function handleModalWheel(e) {
         var modal = editorModal || document.getElementById('cfEditorModal');
         if (!modal || modal.style.display === 'none') return;
@@ -2422,6 +2609,10 @@
         }
     }, true);
 
+    /**
+     * Binds client playback enforcement and time monitoring loops to a video element.
+     * @param {HTMLVideoElement} video - The video element to monitor.
+     */
     function attachToVideo(video, itemId) {
         if (!video || !itemId) return;
 
@@ -2452,6 +2643,9 @@
         });
     }
 
+    /**
+     * Unbinds playback enforcement loops, restores volume state, and cleans up video event listeners.
+     */
     function detach() {
         if (activeVideo) {
             try {
@@ -2479,6 +2673,10 @@
         lastSkippedCue = null;
     }
 
+    /**
+     * Event listener called when video playback commences.
+     * @param {HTMLVideoElement} video - The starting video element.
+     */
     function onPlaybackStart(e, state) {
         var video = document.querySelector('video');
         var itemId = resolveMediaItemId(video);
@@ -2492,10 +2690,16 @@
         }
     }
 
+    /**
+     * Event listener called when video playback halts.
+     */
     function onPlaybackStop() {
         detach();
     }
 
+    /**
+     * Initializes the ContentFilter client userscript, sets up navigation hooks, and binds global DOM listeners.
+     */
     function init() {
         if (window.Events) {
             window.Events.on(window.playbackManager || document, 'playbackstart', onPlaybackStart);

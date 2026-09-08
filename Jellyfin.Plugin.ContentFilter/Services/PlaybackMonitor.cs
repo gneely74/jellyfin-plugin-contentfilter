@@ -11,13 +11,44 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class PlaybackMonitor : IHostedService
 {
+    /// <summary>
+    /// The logger instance.
+    /// </summary>
     private readonly ILogger<PlaybackMonitor> _logger;
+
+    /// <summary>
+    /// The Jellyfin session manager used to monitor and control playback sessions.
+    /// </summary>
     private readonly ISessionManager _sessionManager;
+
+    /// <summary>
+    /// The filter store providing access to cached and stored filter profiles.
+    /// </summary>
     private readonly FilterStore _filterStore;
+
+    /// <summary>
+    /// The subtitle filtering service.
+    /// </summary>
     private readonly SubtitleFilter _subtitleFilter;
+
+    /// <summary>
+    /// The filter rule evaluation service.
+    /// </summary>
     private readonly FilterRuleService _filterRuleService;
+
+    /// <summary>
+    /// Concurrently maps session IDs to ephemeral playback state.
+    /// </summary>
     private readonly ConcurrentDictionary<string, SessionState> _sessionState = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Cancellation token source for the background monitoring loop.
+    /// </summary>
     private CancellationTokenSource? _monitorCts;
+
+    /// <summary>
+    /// Background task running the monitoring loop.
+    /// </summary>
     private Task? _monitorTask;
 
     /// <summary>
@@ -71,6 +102,11 @@ public class PlaybackMonitor : IHostedService
         await Task.WhenAny(_monitorTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Continuously polls active sessions at a high frequency to evaluate filter cues and enforce muting or skipping.
+    /// </summary>
+    /// <param name="ct">A cancellation token to observe while waiting for the next tick.</param>
+    /// <returns>A task representing the background loop operation.</returns>
     private async Task MonitorLoopAsync(CancellationToken ct)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
@@ -125,6 +161,12 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    /// <summary>
+    /// Evaluates an individual active playback session against stored filter cues, dispatching seek or mute commands as appropriate.
+    /// </summary>
+    /// <param name="session">The active playback session information.</param>
+    /// <param name="ct">A cancellation token for the session handling operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task HandleSessionAsync(SessionInfo session, CancellationToken ct)
     {
         if (Plugin.Instance?.Configuration.IsEnabled != true)
@@ -351,6 +393,11 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    /// <summary>
+    /// Determines whether a playback client handles content filtering autonomously (e.g., Swiftfin or Jellyfin Web).
+    /// </summary>
+    /// <param name="session">The playback session information.</param>
+    /// <returns><c>true</c> if the client is self-filtering; otherwise, <c>false</c>.</returns>
     private static bool IsClientAutonomousFilterClient(SessionInfo session)
     {
         var client = session.Client ?? string.Empty;
@@ -360,6 +407,11 @@ public class PlaybackMonitor : IHostedService
                deviceName.Contains("AppleTV", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Evaluates whether a session's declared client capabilities support remote volume muting commands.
+    /// </summary>
+    /// <param name="session">The playback session information.</param>
+    /// <returns><c>true</c> if mute commands are supported or unconstrained; otherwise, <c>false</c>.</returns>
     private static bool CanSessionMute(SessionInfo session)
     {
         // If client capabilities declare supported commands, verify Mute is supported
@@ -373,6 +425,11 @@ public class PlaybackMonitor : IHostedService
         return true;
     }
 
+    /// <summary>
+    /// Resolves all candidate session identifiers that should receive playback control commands for a given session.
+    /// </summary>
+    /// <param name="session">The primary playback session.</param>
+    /// <returns>A set of session IDs including the primary session and any linked companion or controlling sessions.</returns>
     private HashSet<string> GetTargetSessionIds(SessionInfo session)
     {
         var targets = new HashSet<string>(StringComparer.Ordinal);
@@ -419,6 +476,13 @@ public class PlaybackMonitor : IHostedService
         return targets;
     }
 
+    /// <summary>
+    /// Dispatches a playstate command (such as seek) to a session and any associated controlling sessions.
+    /// </summary>
+    /// <param name="session">The primary playback session.</param>
+    /// <param name="request">The playstate command request.</param>
+    /// <param name="ct">A cancellation token for the dispatch operation.</param>
+    /// <returns><c>true</c> if the command was sent successfully to at least one target session; otherwise, <c>false</c>.</returns>
     private async Task<bool> SendPlaystateToSessionOrGroupAsync(SessionInfo session, PlaystateRequest request, CancellationToken ct)
     {
         var targetSessionIds = GetTargetSessionIds(session);
@@ -435,16 +499,36 @@ public class PlaybackMonitor : IHostedService
         return anySent;
     }
 
+    /// <summary>
+    /// Dispatches a mute command to a session and any associated controller sessions.
+    /// </summary>
+    /// <param name="session">The target playback session.</param>
+    /// <param name="ct">A cancellation token for the command dispatch.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task SendMuteToSessionOrGroupAsync(SessionInfo session, CancellationToken ct)
     {
         await SendGeneralToSessionOrGroupAsync(session, GeneralCommandType.Mute, null, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Dispatches an unmute command to a session and any associated controller sessions.
+    /// </summary>
+    /// <param name="session">The target playback session.</param>
+    /// <param name="ct">A cancellation token for the command dispatch.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task SendUnmuteToSessionOrGroupAsync(SessionInfo session, CancellationToken ct)
     {
         await SendGeneralToSessionOrGroupAsync(session, GeneralCommandType.Unmute, null, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Dispatches a general command with optional arguments across all target session IDs for a session.
+    /// </summary>
+    /// <param name="session">The primary playback session.</param>
+    /// <param name="commandType">The general command type to send.</param>
+    /// <param name="arguments">Optional key-value arguments for the command.</param>
+    /// <param name="ct">A cancellation token for the command dispatch.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task SendGeneralToSessionOrGroupAsync(SessionInfo session, GeneralCommandType commandType, Dictionary<string, string>? arguments, CancellationToken ct)
     {
         var targetSessionIds = GetTargetSessionIds(session);
@@ -454,6 +538,13 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    /// <summary>
+    /// Dispatches a playstate command directly to a specific session ID using the Jellyfin session manager.
+    /// </summary>
+    /// <param name="sessionId">The target session ID.</param>
+    /// <param name="request">The playstate command payload.</param>
+    /// <param name="ct">A cancellation token for the command dispatch.</param>
+    /// <returns><c>true</c> if the command was successfully dispatched; otherwise, <c>false</c>.</returns>
     private async Task<bool> SendPlaystateAsync(string sessionId, PlaystateRequest request, CancellationToken ct)
     {
         try
@@ -474,6 +565,14 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    /// <summary>
+    /// Dispatches a general command directly to a specific session ID using the Jellyfin session manager.
+    /// </summary>
+    /// <param name="sessionId">The target session ID.</param>
+    /// <param name="commandType">The general command type.</param>
+    /// <param name="arguments">Optional key-value arguments for the command.</param>
+    /// <param name="ct">A cancellation token for the command dispatch.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task SendGeneralAsync(string sessionId, GeneralCommandType commandType, Dictionary<string, string>? arguments, CancellationToken ct)
     {
         try
@@ -499,6 +598,18 @@ public class PlaybackMonitor : IHostedService
         }
     }
 
+    /// <summary>
+    /// Ephemeral state tracked for an active playback session during monitoring.
+    /// </summary>
+    /// <param name="ItemId">The unique identifier of the media item currently playing.</param>
+    /// <param name="IsMuted">Indicates whether the session is currently muted by ContentFilter.</param>
+    /// <param name="LastSeekTarget">The position ticks of the most recent seek command sent to the session.</param>
+    /// <param name="LastSeekTime">The timestamp when the most recent seek command was issued.</param>
+    /// <param name="SeekRetryCount">The count of retry attempts for the current seek target.</param>
+    /// <param name="FilteredSubtitleIndex">The track index of the filtered subtitle stream, or -1 if default.</param>
+    /// <param name="LastReportedTicks">The media position ticks last reported by the client.</param>
+    /// <param name="LastReportedUtc">The UTC timestamp when position ticks were last reported.</param>
+    /// <param name="LastMuteTimeUtc">The UTC timestamp when the session was last muted.</param>
     private sealed record SessionState(
         Guid ItemId,
         bool IsMuted,

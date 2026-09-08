@@ -12,6 +12,9 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class OllamaClient
 {
+    /// <summary>
+    /// Shared JSON serializer options configured with web defaults for camelCase payload serialization.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonSerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly ILogger<OllamaClient> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -257,6 +260,11 @@ public class OllamaClient
         return ([], string.Empty);
     }
 
+    /// <summary>
+    /// Constructs the vision prompt instructing the multimodal model to inspect frame contents against target categories.
+    /// </summary>
+    /// <param name="visualDescriptions">The dictionary of visual category descriptions.</param>
+    /// <returns>The formatted prompt string.</returns>
     private static string BuildPrompt(IEnumerable<KeyValuePair<string, string[]>> visualDescriptions)
     {
         var sb = new StringBuilder();
@@ -281,10 +289,10 @@ public class OllamaClient
         return sb.ToString();
     }
 
-    // Confirmation keywords per group — at least one must appear in a substantive description.
-    // If none appear, the category was almost certainly hallucinated by the model.
-    // Only visual groups are listed here; word-list groups (Substances, ContextualDialogue) are
-    // handled by transcript matching and never reach this code path.
+    /// <summary>
+    /// Confirmation keywords per category group — at least one must appear in a substantive description.
+    /// If none appear, the category was almost certainly hallucinated by the model.
+    /// </summary>
     private static readonly IReadOnlyDictionary<string, string[]> CategoryConfirmationKeywords =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
@@ -309,12 +317,14 @@ public class OllamaClient
             ],
         };
 
-    // Descriptions shorter than this are given the benefit of the doubt — llava may have
-    // been too brief to describe all scene content.
+    /// <summary>
+    /// Descriptions shorter than this character threshold are given the benefit of the doubt rather than rejected.
+    /// </summary>
     private const int MinDescriptionLengthForConfirmation = 50;
 
-    // Keywords per group used to detect when a description negates a detected category.
-    // Only visual groups are listed; word-list groups never appear in vision output.
+    /// <summary>
+    /// Keywords per group used to detect when a description explicitly negates a detected category.
+    /// </summary>
     private static readonly IReadOnlyDictionary<string, string[]> CategoryNegationKeywords =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
@@ -325,7 +335,9 @@ public class OllamaClient
             ["SexualReferences"] = ["gesture", "vulgar"],
         };
 
-    // Phrases that globally mean "nothing from the category list applies".
+    /// <summary>
+    /// Phrases that globally mean "nothing from the category list applies".
+    /// </summary>
     private static readonly string[] GlobalNegations =
     [
         "does not contain any",
@@ -337,7 +349,9 @@ public class OllamaClient
         "image does not contain any",
     ];
 
-    // Compound negation phrases that are safe to search for as context-window prefixes.
+    /// <summary>
+    /// Compound negation phrases searched as prefixes within the sentence context window.
+    /// </summary>
     private static readonly string[] ContextNegationMarkers =
     [
         "no visible ", "no signs of ", "no sign of ", "no indication",
@@ -349,6 +363,12 @@ public class OllamaClient
         "nor ",  // catches "nor are there any depictions of"
     ];
 
+    /// <summary>
+    /// Parses the assistant reply content JSON into detected category names and objective description.
+    /// </summary>
+    /// <param name="response">The raw assistant message response content.</param>
+    /// <param name="knownCategories">Set of recognized category identifiers.</param>
+    /// <returns>A tuple of detected categories and the extracted scene description.</returns>
     private static (HashSet<string> DetectedSubCategories, string Description) ParseResponse(string response, HashSet<string> knownCategories)
     {
         JsonDocument json;
@@ -438,6 +458,9 @@ public class OllamaClient
     /// A substantive description that mentions none of a category's confirmation keywords most
     /// likely means the model hallucinated that category.
     /// </summary>
+    /// <param name="description">The scene description string.</param>
+    /// <param name="category">The category identifier.</param>
+    /// <returns><see langword="true"/> if corroboration is present or exempted; otherwise <see langword="false"/>.</returns>
     private static bool IsDescriptionCorroboratingCategory(string description, string category)
     {
         if (string.IsNullOrWhiteSpace(description) || description.Length < MinDescriptionLengthForConfirmation)
@@ -469,6 +492,9 @@ public class OllamaClient
     /// Returns <see langword="true"/> when the description text clearly negates the given category,
     /// meaning the model's prose contradicts its own categories array.
     /// </summary>
+    /// <param name="description">The scene description string.</param>
+    /// <param name="category">The category identifier.</param>
+    /// <returns><see langword="true"/> if the description explicitly negates the category; otherwise <see langword="false"/>.</returns>
     private static bool IsDescriptionNegatingCategory(string description, string category)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -535,6 +561,10 @@ public class OllamaClient
         return false;
     }
 
+    /// <summary>
+    /// Retrieves the configured Ollama or vision server base URL.
+    /// </summary>
+    /// <returns>Configured base URL string, defaulting to "http://localhost:8000".</returns>
     private static string GetVisionBaseUrl()
     {
         var url = Plugin.Instance?.Configuration.OllamaBaseUrl;
@@ -545,6 +575,7 @@ public class OllamaClient
     /// Builds the chat completions endpoint, handling both bare base URLs (oMLX/Ollama)
     /// and URLs that already include the <c>/v1</c> path segment (OpenRouter).
     /// </summary>
+    /// <returns>The full chat completions <see cref="Uri"/>.</returns>
     private static Uri GetCompletionsEndpoint()
     {
         var url = GetVisionBaseUrl().TrimEnd('/');
@@ -555,6 +586,10 @@ public class OllamaClient
         return new Uri(url + suffix);
     }
 
+    /// <summary>
+    /// Applies the configured API Bearer token to the HTTP client headers if one is set.
+    /// </summary>
+    /// <param name="client">The target HTTP client instance.</param>
     private static void ApplyApiKey(HttpClient client)
     {
         var key = Plugin.Instance?.Configuration.OllamaApiKey;

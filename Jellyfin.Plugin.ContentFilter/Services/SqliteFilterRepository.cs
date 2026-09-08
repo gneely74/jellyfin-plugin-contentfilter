@@ -11,9 +11,24 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public sealed class SqliteFilterRepository : IDisposable
 {
+    /// <summary>
+    /// Logger instance for SQLite repository operations and diagnostics.
+    /// </summary>
     private readonly ILogger<SqliteFilterRepository> _logger;
+
+    /// <summary>
+    /// Formatted SQLite connection string with WAL mode and shared cache.
+    /// </summary>
     private readonly string _connectionString;
+
+    /// <summary>
+    /// Synchronization lock object ensuring serialized write transactions.
+    /// </summary>
     private readonly object _writeLock = new();
+
+    /// <summary>
+    /// Disposed lifecycle flag.
+    /// </summary>
     private bool _disposed;
 
     /// <summary>
@@ -40,6 +55,10 @@ public sealed class SqliteFilterRepository : IDisposable
         InitializeDatabase();
     }
 
+    /// <summary>
+    /// Opens and configures a new SQLite connection with foreign keys and busy timeout enabled.
+    /// </summary>
+    /// <returns>An open <see cref="SqliteConnection"/>.</returns>
     private SqliteConnection CreateConnection()
     {
         var conn = new SqliteConnection(_connectionString);
@@ -52,6 +71,9 @@ public sealed class SqliteFilterRepository : IDisposable
         return conn;
     }
 
+    /// <summary>
+    /// Creates the database tables, indices, and schema migrations under write lock.
+    /// </summary>
     private void InitializeDatabase()
     {
         lock (_writeLock)

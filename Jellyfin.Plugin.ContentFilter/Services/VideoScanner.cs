@@ -19,17 +19,64 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class VideoScanner : IHostedService
 {
+    /// <summary>
+    /// Interval between periodic saves of in-progress scan cues to disk/database.
+    /// </summary>
     private static readonly TimeSpan PartialFlushInterval = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Maximum time difference between adjacent cues of the same category to merge them into a single continuous cue.
+    /// </summary>
     private static readonly TimeSpan MergeGap = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Logger instance for video scanner diagnostics.
+    /// </summary>
     private readonly ILogger<VideoScanner> _logger;
+
+    /// <summary>
+    /// Jellyfin library manager used to look up media items and paths.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// Media encoder providing the path to the ffmpeg executable.
+    /// </summary>
     private readonly IMediaEncoder _mediaEncoder;
+
+    /// <summary>
+    /// Filter store for persisting generated filters and cues.
+    /// </summary>
     private readonly FilterStore _filterStore;
+
+    /// <summary>
+    /// Ollama vision client for image content classification.
+    /// </summary>
     private readonly OllamaClient _ollamaClient;
+
+    /// <summary>
+    /// Bounded in-memory queue of pending scan jobs.
+    /// </summary>
     private readonly Channel<ScanJob> _queue;
+
+    /// <summary>
+    /// Current scan status dictionary indexed by media item GUID.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, ScanStatus> _statusByItem = new();
+
+    /// <summary>
+    /// Cancellation token sources for running scan jobs indexed by item GUID.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _jobTokens = new();
+
+    /// <summary>
+    /// Cancellation token source controlling the background worker loop.
+    /// </summary>
     private CancellationTokenSource? _workerCts;
+
+    /// <summary>
+    /// Task handle representing the long-running worker processing queue items.
+    /// </summary>
     private Task? _workerTask;
 
     /// <summary>
@@ -166,6 +213,10 @@ public class VideoScanner : IHostedService
         await Task.WhenAny(_workerTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Background processing loop reading scan jobs from the channel and executing them sequentially.
+    /// </summary>
+    /// <param name="ct">Service stopping cancellation token.</param>
     private async Task WorkerLoopAsync(CancellationToken ct)
     {
         await foreach (var job in _queue.Reader.ReadAllAsync(ct).ConfigureAwait(false))
@@ -178,6 +229,11 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Executes the full scanning pipeline for a single media item: frame extraction, vision analysis, subtitle matching, and cue persistence.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="ct">Cancellation token for this scan run.</param>
     private async Task RunScanAsync(Guid itemId, CancellationToken ct)
     {
         var status = GetStatus(itemId);
@@ -419,6 +475,13 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Invokes ffmpeg to extract JPEG video frames at the specified frame rate into a temporary directory.
+    /// </summary>
+    /// <param name="mediaPath">Path to the media video file.</param>
+    /// <param name="tempDir">Target directory to receive frame image files.</param>
+    /// <param name="fps">Frame extraction rate in frames per second.</param>
+    /// <param name="ct">Cancellation token.</param>
     private async Task ExtractFramesAsync(string mediaPath, string tempDir, double fps, CancellationToken ct)
     {
         var outputPattern = Path.Combine(tempDir, "%06d.jpg");
@@ -469,6 +532,11 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Filters the visual category definitions against active group switches and disabled items in plugin configuration.
+    /// </summary>
+    /// <param name="config">Plugin configuration.</param>
+    /// <returns>An enumerable of active category description pairs.</returns>
     private static IEnumerable<KeyValuePair<string, string[]>> GetEnabledVisualDescriptions(PluginConfiguration? config)
     {
         var disabled = config?.DisabledFilterItems is { Count: > 0 }
@@ -493,6 +561,11 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Merges contiguous or near-contiguous cues (within <see cref="MergeGap"/>) sharing the same category.
+    /// </summary>
+    /// <param name="cues">Raw detected cues list.</param>
+    /// <returns>Merged cues list.</returns>
     private static List<FilterCue> MergeCues(List<FilterCue> cues)
     {
         if (cues.Count == 0)
@@ -538,6 +611,11 @@ public class VideoScanner : IHostedService
         return merged;
     }
 
+    /// <summary>
+    /// Creates a deep copy of a filter cue.
+    /// </summary>
+    /// <param name="cue">The source cue.</param>
+    /// <returns>A new <see cref="FilterCue"/> with identical values.</returns>
     private static FilterCue CloneCue(FilterCue cue)
     {
         return new FilterCue
@@ -555,6 +633,9 @@ public class VideoScanner : IHostedService
     /// Resolves the best available SRT file for a media path.
     /// Checks WhisperSubs-generated files first, then falls back to a plain .srt.
     /// </summary>
+    /// <param name="mediaPath">Path to the video media file.</param>
+    /// <param name="preferredLanguage">Preferred ISO audio language.</param>
+    /// <returns>Path to the located SRT file, or <see langword="null"/> if not found.</returns>
     private static string? FindSrtPath(string mediaPath, string preferredLanguage)
     {
         var dir = Path.GetDirectoryName(mediaPath);
@@ -579,6 +660,13 @@ public class VideoScanner : IHostedService
         return candidates.FirstOrDefault(File.Exists);
     }
 
+    /// <summary>
+    /// Scans an external or sidecar SRT subtitle file for configured dictionary phrase matches and converts them to filter cues.
+    /// </summary>
+    /// <param name="mediaPath">The absolute path to the media file.</param>
+    /// <param name="config">The plugin configuration containing filtering rules and disabled items.</param>
+    /// <param name="maxTimestamp">The maximum media timestamp to scan up to.</param>
+    /// <returns>An enumerable of generated <see cref="FilterCue"/> items matching dictionary words.</returns>
     private static IEnumerable<FilterCue> ScanSrtWordMatches(string mediaPath, PluginConfiguration? config, TimeSpan maxTimestamp = default)
     {
         var preferredLanguage = config?.PreferredAudioLanguage ?? "en";
@@ -664,6 +752,13 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Generates a censored sidecar SRT file with matched profanity/sensitive terms masked with asterisks.
+    /// </summary>
+    /// <param name="mediaPath">The absolute path to the media file.</param>
+    /// <param name="config">The plugin configuration.</param>
+    /// <param name="ct">A cancellation token for the asynchronous write operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task WriteCensoredSrtAsync(string mediaPath, PluginConfiguration? config, CancellationToken ct)
     {
         var preferredLanguage = config?.PreferredAudioLanguage ?? "en";
@@ -738,6 +833,11 @@ public class VideoScanner : IHostedService
         }
     }
 
+    /// <summary>
+    /// Masks a word or phrase with asterisks while preserving the leading and trailing characters.
+    /// </summary>
+    /// <param name="phrase">The phrase to mask.</param>
+    /// <returns>The masked string.</returns>
     private static string BleepText(string phrase)
     {
         return string.Join(' ', phrase.Split(' ').Select(static w =>
@@ -751,6 +851,14 @@ public class VideoScanner : IHostedService
         }));
     }
 
+    /// <summary>
+    /// Attempts to parse an individual SRT subtitle block into start time, end time, and text content.
+    /// </summary>
+    /// <param name="block">The raw text block from an SRT file.</param>
+    /// <param name="start">When this method returns, contains the parsed start timestamp.</param>
+    /// <param name="end">When this method returns, contains the parsed end timestamp.</param>
+    /// <param name="text">When this method returns, contains the cleaned subtitle text.</param>
+    /// <returns><c>true</c> if parsing succeeded; otherwise, <c>false</c>.</returns>
     private static bool TryParseSrtBlock(string block, out TimeSpan start, out TimeSpan end, out string text)
     {
         start = TimeSpan.Zero;
@@ -786,17 +894,34 @@ public class VideoScanner : IHostedService
         return true;
     }
 
+    /// <summary>
+    /// Splits raw SRT subtitle content into individual subtitle blocks delimited by blank lines.
+    /// </summary>
+    /// <param name="srtContent">The raw SRT text content.</param>
+    /// <returns>An enumerable of raw subtitle block strings.</returns>
     private static IEnumerable<string> SplitSrtBlocks(string srtContent)
     {
         return srtContent.Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries);
     }
 
+    /// <summary>
+    /// Parses an SRT timestamp format ("HH:mm:ss,fff") into a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="raw">The raw timestamp string.</param>
+    /// <param name="value">When this method returns, contains the parsed <see cref="TimeSpan"/>.</param>
+    /// <returns><c>true</c> if the timestamp was parsed successfully; otherwise, <c>false</c>.</returns>
     private static bool TryParseSrtTime(string raw, out TimeSpan value)
     {
         var normalized = raw.Replace(',', '.');
         return TimeSpan.TryParse(normalized, CultureInfo.InvariantCulture, out value);
     }
 
+    /// <summary>
+    /// Evaluates whether a filter category group is enabled according to the provided configuration.
+    /// </summary>
+    /// <param name="config">The plugin configuration.</param>
+    /// <param name="group">The filter group name.</param>
+    /// <returns><c>true</c> if the group is enabled or config is null; otherwise, <c>false</c>.</returns>
     private static bool IsGroupEnabled(PluginConfiguration? config, string group)
     {
         if (config is null)
@@ -819,6 +944,13 @@ public class VideoScanner : IHostedService
         };
     }
 
+    /// <summary>
+    /// Constructs a <see cref="JcfFilter"/> metadata record for the specified media item and cues.
+    /// </summary>
+    /// <param name="item">The Jellyfin library item.</param>
+    /// <param name="cues">The list of filter cues.</param>
+    /// <param name="source">The source identifier of the scan result.</param>
+    /// <returns>A populated <see cref="JcfFilter"/> instance.</returns>
     private static JcfFilter BuildFilter(BaseItem item, List<FilterCue> cues, string source)
     {
         var imdbId = item.GetProviderId(MetadataProvider.Imdb);
@@ -832,6 +964,11 @@ public class VideoScanner : IHostedService
         };
     }
 
+    /// <summary>
+    /// Formats a <see cref="TimeSpan"/> into a standard hours:minutes:seconds.milliseconds string.
+    /// </summary>
+    /// <param name="value">The timespan to format.</param>
+    /// <returns>The formatted timestamp string.</returns>
     private static string FormatTs(TimeSpan value)
     {
         return $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}.{value.Milliseconds:000}";

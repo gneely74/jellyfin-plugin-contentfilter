@@ -14,8 +14,19 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class FilterRuleService
 {
+    /// <summary>
+    /// Logger instance for filter rule evaluation diagnostics.
+    /// </summary>
     private readonly ILogger<FilterRuleService> _logger;
+
+    /// <summary>
+    /// Repository accessing SQLite item and series rule overrides.
+    /// </summary>
     private readonly SqliteFilterRepository _repository;
+
+    /// <summary>
+    /// Jellyfin library manager used to inspect parent/child entity relationships.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
 
     /// <summary>
@@ -168,6 +179,8 @@ public class FilterRuleService
     /// <summary>
     /// Resolves the parent series ID for an item if it is an episode.
     /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The parent series ID, or <see langword="null"/> if not an episode or not found.</returns>
     public Guid? ResolveParentSeriesId(Guid itemId)
     {
         try
@@ -200,6 +213,13 @@ public class FilterRuleService
         return null;
     }
 
+    /// <summary>
+    /// Evaluates a cue against item or series custom overrides.
+    /// </summary>
+    /// <param name="cue">The filter cue.</param>
+    /// <param name="itemOverride">The item or series override configuration.</param>
+    /// <param name="config">The global plugin configuration for fallback lookups.</param>
+    /// <returns><see langword="true"/> or <see langword="false"/> if explicitly resolved; <see langword="null"/> to fall back to global config.</returns>
     private static bool? EvaluateCueAgainstOverride(FilterCue cue, ItemFilterOverride itemOverride, PluginConfiguration config)
     {
         var category = cue.Category;
@@ -226,6 +246,12 @@ public class FilterRuleService
         return null;
     }
 
+    /// <summary>
+    /// Evaluates whether a cue is enabled under global server filter configuration.
+    /// </summary>
+    /// <param name="cue">The filter cue to test.</param>
+    /// <param name="config">The global plugin configuration.</param>
+    /// <returns><see langword="true"/> if enabled globally; otherwise <see langword="false"/>.</returns>
     private static bool EvaluateCueAgainstGlobal(FilterCue cue, PluginConfiguration config)
     {
         var category = cue.Category;
@@ -274,6 +300,13 @@ public class FilterRuleService
         return true;
     }
 
+    /// <summary>
+    /// Checks whether a specific cue term or phrase is disabled within the given disabled item entries.
+    /// </summary>
+    /// <param name="category">The category key.</param>
+    /// <param name="description">The cue description containing word/phrase info.</param>
+    /// <param name="disabledFilterItems">Collection of disabled filter items formatted as "{category}:{term}".</param>
+    /// <returns><see langword="true"/> if the term is disabled; otherwise <see langword="false"/>.</returns>
     private static bool IsFilterItemDisabled(string category, string? description, IEnumerable<string>? disabledFilterItems)
     {
         if (string.IsNullOrEmpty(description) || disabledFilterItems is null)
@@ -322,6 +355,11 @@ public class FilterRuleService
         return false;
     }
 
+    /// <summary>
+    /// Extracts the target spoken word or phrase from a cue description (e.g. extracts "bastards" from "Spoken: \"bastards\"").
+    /// </summary>
+    /// <param name="description">The raw cue description.</param>
+    /// <returns>Extracted word/phrase, or an empty string if null or whitespace.</returns>
     private static string ExtractSpokenWord(string description)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -343,6 +381,12 @@ public class FilterRuleService
         return description.Trim();
     }
 
+    /// <summary>
+    /// Checks whether a category is disabled in the specified disabled collection, honoring legacy aliases.
+    /// </summary>
+    /// <param name="category">The category key to test.</param>
+    /// <param name="disabledList">Collection of disabled category keys.</param>
+    /// <returns><see langword="true"/> if the category is disabled; otherwise <see langword="false"/>.</returns>
     private static bool IsCategoryDisabled(string category, IEnumerable<string>? disabledList)
     {
         if (disabledList is null)
@@ -378,6 +422,12 @@ public class FilterRuleService
         return false;
     }
 
+    /// <summary>
+    /// Checks whether a category is explicitly enabled in an item's enabled list, honoring legacy aliases.
+    /// </summary>
+    /// <param name="category">The category key to test.</param>
+    /// <param name="enabledList">Collection of enabled category keys.</param>
+    /// <returns><see langword="true"/> if the category is explicitly enabled; otherwise <see langword="false"/>.</returns>
     private static bool IsCategoryEnabled(string category, IEnumerable<string>? enabledList)
     {
         if (enabledList is null)

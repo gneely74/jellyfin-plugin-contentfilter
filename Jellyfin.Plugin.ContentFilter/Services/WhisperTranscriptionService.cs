@@ -18,15 +18,37 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class WhisperTranscriptionService
 {
+    /// <summary>
+    /// Shared JSON serializer options configured for case-insensitive property matching.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// The logger instance for transcription diagnostics.
+    /// </summary>
     private readonly ILogger<WhisperTranscriptionService> _logger;
+
+    /// <summary>
+    /// The media encoder providing ffmpeg binary path and execution.
+    /// </summary>
     private readonly IMediaEncoder _mediaEncoder;
+
+    /// <summary>
+    /// The HTTP client factory used to communicate with Whisper and Ollama services.
+    /// </summary>
     private readonly IHttpClientFactory _httpClientFactory;
+
+    /// <summary>
+    /// Synchronization lock coordinating GPU arbitration counters.
+    /// </summary>
     private readonly object _arbiterLock = new();
+
+    /// <summary>
+    /// The number of active batch-level GPU arbitration locks currently held.
+    /// </summary>
     private int _activeBatchLocks;
 
     /// <summary>
@@ -273,6 +295,9 @@ public class WhisperTranscriptionService
     /// Prefers streams matching the target language, avoiding commentary/descriptive tracks,
     /// and preferring higher channel counts and default tracks.
     /// </summary>
+    /// <param name="video">The video media item containing audio streams.</param>
+    /// <param name="targetLanguage">The preferred audio language ISO code.</param>
+    /// <returns>A tuple containing the selected <see cref="MediaStream"/> and its zero-based index among audio streams.</returns>
     public static (MediaStream? Stream, int AudioTrackIndex) SelectOptimalAudioStream(Video video, string targetLanguage)
     {
         var allAudio = video.GetMediaStreams()
@@ -324,6 +349,11 @@ public class WhisperTranscriptionService
     /// <summary>
     /// Extracts audio from the video file into a 16kHz mono 16-bit PCM WAV using Jellyfin's ffmpeg.
     /// </summary>
+    /// <param name="videoPath">The file path of the source video.</param>
+    /// <param name="audioTrackIndex">The zero-based index of the audio track to extract.</param>
+    /// <param name="outputPath">The file path to save the converted WAV audio.</param>
+    /// <param name="ct">A cancellation token for the process execution.</param>
+    /// <returns><c>true</c> if the audio file was created successfully; otherwise, <c>false</c>.</returns>
     private async Task<bool> ExtractAudioWavAsync(
         string videoPath,
         int audioTrackIndex,
@@ -382,6 +412,13 @@ public class WhisperTranscriptionService
     /// <summary>
     /// Sends a multipart form-data request to the OpenAI-compatible audio transcriptions API.
     /// </summary>
+    /// <param name="apiUrl">The Whisper API endpoint URL.</param>
+    /// <param name="model">The Whisper model identifier.</param>
+    /// <param name="language">The two-letter ISO language code.</param>
+    /// <param name="audioFilePath">The path of the WAV file to transcribe.</param>
+    /// <param name="apiKey">Optional API bearer token for authentication.</param>
+    /// <param name="ct">A cancellation token for the HTTP request.</param>
+    /// <returns>A <see cref="WhisperResponseDto"/> containing transcription results, or <c>null</c> on failure.</returns>
     private async Task<WhisperResponseDto?> CallWhisperApiAsync(
         string apiUrl,
         string model,
@@ -481,6 +518,8 @@ public class WhisperTranscriptionService
     /// <summary>
     /// Formats a time in seconds to standard SRT format (HH:mm:ss,fff).
     /// </summary>
+    /// <param name="seconds">The duration or timestamp in seconds.</param>
+    /// <returns>A formatted SRT timestamp string.</returns>
     public static string FormatSrtTimestamp(double seconds)
     {
         if (seconds < 0)
@@ -499,6 +538,10 @@ public class WhisperTranscriptionService
     /// <summary>
     /// Acquires GPU VRAM for Whisper by creating the GPU arbiter pause flag and unloading any resident Ollama models.
     /// </summary>
+    /// <param name="ollamaApiUrl">The base URL of the Ollama server instance.</param>
+    /// <param name="pauseFlagPath">The file path used to write the arbiter pause flag.</param>
+    /// <param name="ct">A cancellation token for the HTTP and file operations.</param>
+    /// <returns><c>true</c> if GPU VRAM arbitration completed; otherwise, <c>false</c>.</returns>
     private async Task<bool> AcquireGpuVramAsync(string? ollamaApiUrl, string pauseFlagPath, CancellationToken ct)
     {
         try
@@ -623,6 +666,7 @@ public class WhisperTranscriptionService
     /// <summary>
     /// Releases GPU VRAM after transcription by removing the pause flag.
     /// </summary>
+    /// <param name="pauseFlagPath">The file path where the GPU arbiter pause flag was stored.</param>
     private void ReleaseGpuVram(string pauseFlagPath)
     {
         try

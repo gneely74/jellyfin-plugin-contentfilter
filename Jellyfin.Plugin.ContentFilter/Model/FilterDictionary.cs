@@ -376,8 +376,10 @@ public static class FilterDictionary
         ],
     };
 
-    // Only Language.* and SexualReferences.ExplicitWords are subtitle word-match categories.
-    // Everything else (including ContextualDialogue and Substances.Usage) is sent to Ollama.
+    /// <summary>
+    /// Set of category keys whose filter criteria are evaluated via word and phrase matching on subtitle streams.
+    /// Everything else (including contextual dialogue and substance usage) is sent to Ollama for multimodal/vision inspection.
+    /// </summary>
     private static readonly HashSet<string> WordListKeys =
     [
         "Language.GeneralProfanity",
@@ -402,6 +404,9 @@ public static class FilterDictionary
         ["Language.CaptionsWithProfanity"] = ["Language.GeneralProfanity"],
     };
 
+    /// <summary>
+    /// Default channel routing ("audio", "video", or "both") for each recognized category key.
+    /// </summary>
     private static readonly IReadOnlyDictionary<string, string> DefaultChannels = new Dictionary<string, string>
     {
         ["Language.GeneralProfanity"]              = "audio",

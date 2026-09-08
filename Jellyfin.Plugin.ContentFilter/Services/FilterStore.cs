@@ -12,14 +12,49 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class FilterStore
 {
+    /// <summary>
+    /// Logger instance for filter store diagnostics.
+    /// </summary>
     private readonly ILogger<FilterStore> _logger;
+
+    /// <summary>
+    /// Subtitle filtering service used to trigger clean subtitle regeneration on filter edits.
+    /// </summary>
     private readonly SubtitleFilter _subtitleFilter;
+
+    /// <summary>
+    /// Jellyfin library manager used to look up media item paths and metadata.
+    /// </summary>
     private readonly ILibraryManager _libraryManager;
+
+    /// <summary>
+    /// SQLite repository backing persistent filter cues and metadata.
+    /// </summary>
     private readonly SqliteFilterRepository _repository;
+
+    /// <summary>
+    /// In-memory cache of parsed filters indexed by item GUID.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, JcfFilter> _cache = new();
+
+    /// <summary>
+    /// Fast set of item GUIDs known to have custom filters in the database.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, bool> _customFilterIds = new();
+
+    /// <summary>
+    /// Cache of resolved sidecar JCF file paths indexed by item GUID.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, string?> _sidecarCache = new();
+
+    /// <summary>
+    /// Flag indicating whether custom filter IDs have been populated from the database.
+    /// </summary>
     private volatile bool _customFiltersIndexed;
+
+    /// <summary>
+    /// Lock object synchronizing index initialization.
+    /// </summary>
     private readonly object _indexLock = new();
 
     /// <summary>
@@ -42,8 +77,15 @@ public class FilterStore
         MigrateLegacyJcfFiles();
     }
 
+    /// <summary>
+    /// Gets the absolute directory path where legacy/custom JCF files are stored.
+    /// </summary>
     private string FiltersPath => Path.Combine(Plugin.Instance!.DataFolderPath, "filters");
 
+    /// <summary>
+    /// Scans the legacy file-based JCF storage folder and migrates all existing JCF files into the SQLite database.
+    /// Migrated files are backed up to a migrated_backup directory.
+    /// </summary>
     private void MigrateLegacyJcfFiles()
     {
         try
@@ -101,6 +143,9 @@ public class FilterStore
         }
     }
 
+    /// <summary>
+    /// Ensures all existing filter item GUIDs are loaded from the database into the memory lookup dictionary.
+    /// </summary>
     private void EnsureCustomFiltersIndexed()
     {
         if (_customFiltersIndexed)
@@ -453,6 +498,12 @@ public class FilterStore
         return (filter, shiftedCount);
     }
 
+    /// <summary>
+    /// Evaluates whether a cue's channel and action match the requested target channel ("video", "audio", or "all").
+    /// </summary>
+    /// <param name="cue">The filter cue to test.</param>
+    /// <param name="targetChannel">Target channel filter name.</param>
+    /// <returns><see langword="true"/> if the cue matches the channel criteria; otherwise <see langword="false"/>.</returns>
     private static bool CueMatchesChannel(FilterCue cue, string targetChannel)
     {
         if (string.IsNullOrWhiteSpace(targetChannel) || targetChannel.Equals("all", StringComparison.OrdinalIgnoreCase))
@@ -509,6 +560,11 @@ public class FilterStore
         return true;
     }
 
+    /// <summary>
+    /// Formats a <see cref="TimeSpan"/> timestamp into standard JCF timecode representation (HH:mm:ss.fff).
+    /// </summary>
+    /// <param name="value">The timestamp to format.</param>
+    /// <returns>A formatted timecode string.</returns>
     private static string FormatTimestamp(TimeSpan value)
     {
         return string.Create(
@@ -635,6 +691,11 @@ public class FilterStore
         return _sidecarCache.GetOrAdd(itemId, ResolveSidecarPath);
     }
 
+    /// <summary>
+    /// Checks candidate locations on disk adjacent to the media file for sidecar JCF files (.jcf or .JCF).
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The path to the existing sidecar file, or <see langword="null"/> if none exists.</returns>
     private string? ResolveSidecarPath(Guid itemId)
     {
         if (_libraryManager.GetItemById(itemId) is not BaseItem item || string.IsNullOrWhiteSpace(item.Path))

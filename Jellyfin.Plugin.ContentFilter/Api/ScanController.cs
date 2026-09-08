@@ -14,7 +14,14 @@ namespace Jellyfin.Plugin.ContentFilter.Api;
 [Authorize]
 public class ScanController : ControllerBase
 {
+    /// <summary>
+    /// The video scanner service handling media scan jobs.
+    /// </summary>
     private readonly VideoScanner _videoScanner;
+
+    /// <summary>
+    /// The logger instance.
+    /// </summary>
     private readonly ILogger<ScanController> _logger;
 
     /// <summary>
@@ -84,6 +91,11 @@ public class ScanController : ControllerBase
         return Ok(new { debugEnabled = isDebug });
     }
 
+    /// <summary>
+    /// Checks whether an environment variable is set to "Debug" (case-insensitive).
+    /// </summary>
+    /// <param name="name">The environment variable name.</param>
+    /// <returns><c>true</c> if the variable is set to "Debug"; otherwise, <c>false</c>.</returns>
     private static bool IsDebugEnvVar(string name)
         => string.Equals(
             Environment.GetEnvironmentVariable(name),

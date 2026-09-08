@@ -9,7 +9,14 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class SubtitleSyncTask : IScheduledTask
 {
+    /// <summary>
+    /// The singleton subtitle sync service executing scan, download, and cleaning operations.
+    /// </summary>
     private readonly SubtitleSyncService _syncService;
+
+    /// <summary>
+    /// Logger instance for scheduled task diagnostic events.
+    /// </summary>
     private readonly ILogger<SubtitleSyncTask> _logger;
 
     /// <summary>
