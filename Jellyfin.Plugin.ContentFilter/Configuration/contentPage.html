@@ -2062,6 +2062,27 @@
                                 <input id="FallbackToSkipOnUnmutableClients" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                                 <span>Skip past profanity cues on players without volume mute control (e.g. Apple TV / Swiftfin)</span>
                             </label>
+
+                            <!-- Remote Mute Latency Calibration -->
+                            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--cf-border); border-radius:6px; padding:12px; margin: 4px 0 12px 0;">
+                                <div style="font-weight:600; font-size:0.85rem; color:var(--cf-text-main); margin-bottom:4px;">⏱️ Remote Player Audio Mute Timing Calibration (Apple TV, Roku, TV Apps)</div>
+                                <div style="font-size:0.75rem; color:var(--cf-text-muted); margin-bottom:10px;">
+                                    Adjusts pre-roll lead and post-roll lag buffers to overcome network latency and client audio buffer ramp-down.
+                                </div>
+                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                                    <div class="cf-field-group" style="margin-bottom:0;">
+                                        <label class="cf-field-label" for="RemoteMuteLeadMs">Mute Pre-Roll / Lead Time (ms)</label>
+                                        <input id="RemoteMuteLeadMs" type="number" class="cf-field-input" min="0" max="5000" step="50" placeholder="1800">
+                                        <div class="cf-field-helper">Time in ms to fire mute before word begins (default: 1800).</div>
+                                    </div>
+                                    <div class="cf-field-group" style="margin-bottom:0;">
+                                        <label class="cf-field-label" for="RemoteMuteLagMs">Mute Post-Roll / Trailing Time (ms)</label>
+                                        <input id="RemoteMuteLagMs" type="number" class="cf-field-input" min="0" max="2000" step="50" placeholder="300">
+                                        <div class="cf-field-helper">Time in ms to hold mute after word ends (default: 300).</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <label class="cf-checkbox-row">
                                 <input id="AutoProcessNewMediaSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                                 <span>Automatically download and clean subtitles when new media is added to library</span>
@@ -2727,6 +2748,8 @@
                 if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
                 if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
                 if (getEl('FallbackToSkipOnUnmutableClients')) getEl('FallbackToSkipOnUnmutableClients').checked = config.FallbackToSkipOnUnmutableClients !== false;
+                if (getEl('RemoteMuteLeadMs')) getEl('RemoteMuteLeadMs').value = config.RemoteMuteLeadMs ?? 1800;
+                if (getEl('RemoteMuteLagMs')) getEl('RemoteMuteLagMs').value = config.RemoteMuteLagMs ?? 300;
                 if (getEl('AutoProcessNewMediaSubtitles')) getEl('AutoProcessNewMediaSubtitles').checked = config.AutoProcessNewMediaSubtitles !== false;
                 if (getEl('EnableLocalTranscription')) getEl('EnableLocalTranscription').checked = !!config.EnableLocalTranscription;
                 if (getEl('LocalTranscriptionAsDefault')) getEl('LocalTranscriptionAsDefault').checked = config.LocalTranscriptionAsDefault !== false;
@@ -2761,6 +2784,8 @@
                 if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
                 if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
                 if (getEl('FallbackToSkipOnUnmutableClients')) config.FallbackToSkipOnUnmutableClients = getEl('FallbackToSkipOnUnmutableClients').checked;
+                if (getEl('RemoteMuteLeadMs')) config.RemoteMuteLeadMs = parseInt(getEl('RemoteMuteLeadMs').value || '1800', 10);
+                if (getEl('RemoteMuteLagMs')) config.RemoteMuteLagMs = parseInt(getEl('RemoteMuteLagMs').value || '300', 10);
                 if (getEl('AutoProcessNewMediaSubtitles')) config.AutoProcessNewMediaSubtitles = getEl('AutoProcessNewMediaSubtitles').checked;
                 if (getEl('EnableLocalTranscription')) config.EnableLocalTranscription = getEl('EnableLocalTranscription').checked;
                 if (getEl('LocalTranscriptionAsDefault')) config.LocalTranscriptionAsDefault = getEl('LocalTranscriptionAsDefault').checked;

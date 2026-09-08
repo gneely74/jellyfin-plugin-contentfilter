@@ -301,12 +301,12 @@ public class PlaybackMonitor : IHostedService
         }
 
         // Mute timing:
-        // 1. muteLeadTime (650ms): Compares ahead of word onset to overcome network latency, WebSocket queueing, and TV audio ramp-down.
-        // 2. muteLagTime (400ms): Keeps mute active past word offset to cover trailing consonants, room reverb, and plosives.
-        // 3. minMuteDuration (1100ms): Prevents audio fluttering/receiver popping on short words by enforcing a stable minimum mute duration.
-        var muteLeadTime = TimeSpan.FromMilliseconds(650);
-        var muteLagTime = TimeSpan.FromMilliseconds(400);
-        var minMuteDuration = TimeSpan.FromMilliseconds(1100);
+        // 1. muteLeadTime: Pre-roll lead window before word onset to overcome player audio buffering, network transmission, and DAC ramp-down (default 1800ms).
+        // 2. muteLagTime: Post-roll trailing window after word completion to cover trailing consonants and room acoustics (default 300ms).
+        // 3. minMuteDuration: Stable floor to prevent AVR/soundbar eARC dropouts or fluttering on short words (1000ms).
+        var muteLeadTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLeadMs ?? 1800);
+        var muteLagTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLagMs ?? 300);
+        var minMuteDuration = TimeSpan.FromMilliseconds(1000);
 
         var isInsideMuteCue = filter.Cues
             .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))

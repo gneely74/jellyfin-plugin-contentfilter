@@ -157,6 +157,18 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool FallbackToSkipOnUnmutableClients { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the pre-roll lead time in milliseconds for remote player audio muting to compensate for network and player latency.
+    /// Default: 1800 ms.
+    /// </summary>
+    public int RemoteMuteLeadMs { get; set; } = 1800;
+
+    /// <summary>
+    /// Gets or sets the post-roll lag time in milliseconds for remote player audio muting.
+    /// Default: 300 ms.
+    /// </summary>
+    public int RemoteMuteLagMs { get; set; } = 300;
+
+    /// <summary>
     /// Gets or sets a value indicating whether newly added media items should be automatically processed for subtitle downloading, profanity scanning, and clean subtitle generation.
     /// </summary>
     public bool AutoProcessNewMediaSubtitles { get; set; } = true;
