@@ -27,6 +27,32 @@ public static class FilterDictionary
 
         var escaped = Regex.Escape(term);
 
+        // Specific root words with irregular or compound inflections
+        if (term.Equals("fuck", StringComparison.OrdinalIgnoreCase))
+        {
+            return @"\b(?:fucks|fucked|fucking|fucker|fuckers|fuckface|fuckfaces|fuckhead|fuckheads|fuckup|fuckups|fuck)\b";
+        }
+
+        if (term.Equals("shit", StringComparison.OrdinalIgnoreCase))
+        {
+            return @"\b(?:shits|shitted|shitting|shitty|shit)\b";
+        }
+
+        if (term.Equals("damn", StringComparison.OrdinalIgnoreCase))
+        {
+            return @"\b(?:damns|damned|damning|goddamn|goddamned|damn)\b";
+        }
+
+        if (term.Equals("screw", StringComparison.OrdinalIgnoreCase))
+        {
+            return @"\b(?:screws|screwed|screwing|screw)\b";
+        }
+
+        if (term.Equals("wank", StringComparison.OrdinalIgnoreCase))
+        {
+            return @"\b(?:wanks|wanked|wanking|wanker|wankers|wank)\b";
+        }
+
         // Words ending in consonant + y: pussy -> pussies | pussy
         if (term.Length > 2 &&
             term.EndsWith("y", StringComparison.OrdinalIgnoreCase) &&
@@ -36,10 +62,10 @@ public static class FilterDictionary
             return $@"\b(?:{stem}ies|{escaped})\b";
         }
 
-        // Sibilant endings ending in ss (ass, piss, jackass) -> asses, pisses
+        // Sibilant endings ending in ss (ass, piss, jackass) -> asses, pisses, pissed, pissing
         if (term.EndsWith("ss", StringComparison.OrdinalIgnoreCase))
         {
-            return $@"\b(?:{escaped}es|{escaped})\b";
+            return $@"\b(?:{escaped}es|{escaped}ed|{escaped}ing|{escaped})\b";
         }
 
         // Words ending in already plural s (bastards, bitches, tits) -> match as-is
@@ -48,13 +74,13 @@ public static class FilterDictionary
             return $@"\b{escaped}\b";
         }
 
-        // Words ending in sh, ch, x, z (bitch -> bitches)
+        // Words ending in sh, ch, x, z (bitch -> bitches, bitched, bitching)
         if (term.EndsWith("sh", StringComparison.OrdinalIgnoreCase) ||
             term.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
             term.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
             term.EndsWith("z", StringComparison.OrdinalIgnoreCase))
         {
-            return $@"\b(?:{escaped}es|{escaped})\b";
+            return $@"\b(?:{escaped}es|{escaped}ed|{escaped}ing|{escaped})\b";
         }
 
         // Standard words (bastard, asshole, cunt, prick, douche, etc.) -> bastard, bastards
@@ -70,17 +96,20 @@ public static class FilterDictionary
         ["Language.GeneralProfanity"] =
         [
             "arse", "arses", "ass", "asses", "asshole", "assholes", "bastard", "bastards",
-            "bitch", "bitches", "bloody", "bollocks", "bugger", "buggers", "bullshit", "bullshits",
-            "crap", "craps", "cunt", "cunts", "damn", "damns", "dick", "dicks", "dickhead", "dickheads",
-            "dipshit", "dipshits", "douche", "douches", "douchebag", "douchebags", "fuck", "fucks",
-            "fucking", "fucker", "fuckers", "hell", "horseshit", "jackass", "jackasses",
-            "motherfucker", "motherfuckers", "motherfucking", "piss", "pisses", "prick", "pricks",
-            "screw", "screws", "shit", "shits", "wank", "wanks", "wanker", "wankers",
+            "bitch", "bitches", "bitched", "bitching", "bloody", "bollocks", "bugger", "buggers",
+            "bullshit", "bullshits", "bullshitted", "bullshitting", "crap", "craps", "crapped", "crapping", "crappy",
+            "cunt", "cunts", "damn", "damns", "damned", "damning", "dick", "dicks", "dickhead", "dickheads",
+            "dipshit", "dipshits", "douche", "douches", "douchebag", "douchebags", "fuck", "fucks", "fucked",
+            "fucking", "fucker", "fuckers", "fuckface", "fuckfaces", "fuckhead", "fuckheads", "fuckup", "fuckups",
+            "goddamn", "goddamned", "hell", "horseshit", "jackass", "jackasses",
+            "motherfucker", "motherfuckers", "motherfucked", "motherfucking", "piss", "pisses", "pissed", "pissing",
+            "prick", "pricks", "screw", "screws", "screwed", "screwing", "shit", "shits", "shitted", "shitting", "shitty",
+            "wank", "wanks", "wanked", "wanking", "wanker", "wankers",
         ],
 
         ["Language.Blasphemy"] =
         [
-            "Jesus Christ", "Oh God", "God damn", "Holy shit",
+            "Jesus Christ", "Oh God", "God damn", "goddamn", "goddamned", "Holy shit",
         ],
 
         ["Language.RacialAndBigotedSlurs"] =

@@ -19,16 +19,30 @@ def build_word_pattern(term: str) -> str:
     term = term.strip()
     if " " in term:
         return rf"\b{re.escape(term)}\b"
+
     escaped = re.escape(term)
-    if len(term) > 2 and term.lower().endswith("y") and term[-2].lower() not in "aeiou":
+    lower = term.lower()
+
+    if lower == "fuck":
+        return r"\b(?:fucks|fucked|fucking|fucker|fuckers|fuckface|fuckfaces|fuckhead|fuckheads|fuckup|fuckups|fuck)\b"
+    if lower == "shit":
+        return r"\b(?:shits|shitted|shitting|shitty|shit)\b"
+    if lower == "damn":
+        return r"\b(?:damns|damned|damning|goddamn|goddamned|damn)\b"
+    if lower == "screw":
+        return r"\b(?:screws|screwed|screwing|screw)\b"
+    if lower == "wank":
+        return r"\b(?:wanks|wanked|wanking|wanker|wankers|wank)\b"
+
+    if len(term) > 2 and lower.endswith("y") and term[-2].lower() not in "aeiou":
         stem = re.escape(term[:-1])
         return rf"\b(?:{stem}ies|{escaped})\b"
-    if term.lower().endswith("ss"):
-        return rf"\b(?:{escaped}es|{escaped})\b"
-    if term.lower().endswith("s"):
+    if lower.endswith("ss"):
+        return rf"\b(?:{escaped}es|{escaped}ed|{escaped}ing|{escaped})\b"
+    if lower.endswith("s"):
         return rf"\b{escaped}\b"
-    if any(term.lower().endswith(suffix) for suffix in ("sh", "ch", "x", "z")):
-        return rf"\b(?:{escaped}es|{escaped})\b"
+    if any(lower.endswith(suffix) for suffix in ("sh", "ch", "x", "z")):
+        return rf"\b(?:{escaped}es|{escaped}ed|{escaped}ing|{escaped})\b"
     return rf"\b(?:{escaped}s|{escaped})\b"
 
 
@@ -58,7 +72,10 @@ def test_mask_leaving_first_letter():
     assert mask_leaving_first_letter("DAMN") == "D***"
     assert mask_leaving_first_letter("hell") == "h***"
     assert mask_leaving_first_letter("piss") == "p***"
+    assert mask_leaving_first_letter("pissed") == "p*****"
     assert mask_leaving_first_letter("bloody") == "b*****"
+    assert mask_leaving_first_letter("fucked") == "f*****"
+    assert mask_leaving_first_letter("fuckface") == "f*******"
     assert mask_leaving_first_letter("a") == "a"
     assert mask_leaving_first_letter("") == ""
 
@@ -87,6 +104,19 @@ def test_redact_phrases_punctuation_and_casing():
     phrases = ["bastard", "bloody", "damn"]
     redacted = redact_phrases(dialogue, phrases)
     assert redacted == "B******! You b***** idiot... D*** IT!"
+
+
+def test_redact_ted_lasso_lines():
+    dialogue = "I want him to feel like he's being fucked in the a** with a splintered cricket bat."
+    # Supplying root "fuck" should mask "fucked"
+    redacted = redact_phrases(dialogue, ["fuck"])
+    assert "f*****" in redacted
+    assert "fucked" not in redacted
+
+    roy_line = "Jesus, Mary and fuckface Joseph!"
+    redacted_roy = redact_phrases(roy_line, ["fuck"])
+    assert "f*******" in redacted_roy
+    assert "fuckface" not in redacted_roy
 
 
 def test_redact_srt_block():

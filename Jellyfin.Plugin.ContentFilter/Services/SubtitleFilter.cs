@@ -683,9 +683,19 @@ public class SubtitleFilter
             .OrderByDescending(p => p.Length)
             .ToList();
 
+        // Core profanities and slurs that should always be redacted in a filtered subtitle track
+        var coreProfanities = FilterDictionary.Categories.TryGetValue("Language.GeneralProfanity", out var prof)
+            ? prof
+            : [];
+        var coreSlurs = FilterDictionary.Categories.TryGetValue("Language.RacialAndBigotedSlurs", out var slurs)
+            ? slurs
+            : [];
+
         // Blanket phrases to redact everywhere even outside cues
         var blanketPhrases = globalBlanketWords
             .Concat(cueWords)
+            .Concat(coreProfanities)
+            .Concat(coreSlurs)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(p => p.Length)
             .ToList();
