@@ -1022,8 +1022,17 @@ public class ContentFilterController : ControllerBase
             var targetStream = v.GetMediaStreams().FirstOrDefault(s => s.Index == streamIdx);
             resolvedLang = targetStream?.Language ?? "eng";
         }
+        var config = Plugin.Instance?.Configuration;
         var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, resolvedLang);
-        var hasSidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
+        var defaultSidecarPath = SubtitleFilter.GetSidecarDefaultSrtPath(item, resolvedLang);
+        var generatedFilteredPath = SubtitleFilter.GetGeneratedFilteredSrtPath(item, resolvedLang, config?.FilteredTrackTitle);
+        var generatedUnfilteredPath = SubtitleFilter.GetGeneratedUnfilteredSrtPath(item, resolvedLang, config?.UnfilteredTrackTitle);
+
+        var hasLegacySidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
+        var hasDefaultSidecar = defaultSidecarPath is not null && System.IO.File.Exists(defaultSidecarPath);
+        var hasAiFiltered = generatedFilteredPath is not null && System.IO.File.Exists(generatedFilteredPath);
+        var hasAiUnfiltered = generatedUnfilteredPath is not null && System.IO.File.Exists(generatedUnfilteredPath);
+        var hasSidecar = hasLegacySidecar || hasDefaultSidecar || hasAiFiltered;
         var hasPluginSubtitle = _subtitleFilter.HasFilteredSubtitle(itemId);
 
         return Ok(new
@@ -1031,8 +1040,13 @@ public class ContentFilterController : ControllerBase
             itemId,
             language = resolvedLang,
             hasSidecar,
-            sidecarPath,
+            sidecarPath = hasAiFiltered ? generatedFilteredPath : (hasDefaultSidecar ? defaultSidecarPath : sidecarPath),
             hasPluginSubtitle,
+            hasAiSubtitles = hasAiFiltered,
+            hasAiFiltered,
+            hasAiUnfiltered,
+            generatedFilteredPath,
+            generatedUnfilteredPath,
             isCleanSubActive = hasSidecar || hasPluginSubtitle
         });
     }

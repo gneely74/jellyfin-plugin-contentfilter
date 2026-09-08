@@ -737,6 +737,11 @@
                 margin-left: 6px;
             }
 
+            .cf-duration-micro {
+                color: #c084fc;
+                font-weight: 700;
+            }
+
             .cf-select-clean {
                 background: rgba(0, 0, 0, 0.3);
                 border: 1px solid var(--cf-border);
@@ -2123,6 +2128,33 @@
                                     <div class="cf-field-helper">Raw verbatim subtitle title (e.g. English - Generated - Unfiltered).</div>
                                 </div>
                             </div>
+
+                            <!-- GPU VRAM Arbitration Sub-Section -->
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--cf-border); border-radius:6px; padding:12px; margin-top:14px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                    <div style="font-weight:600; font-size:0.88rem; color:var(--cf-text-main);">🛡️ GPU VRAM Arbitration (Ollama Coexistence)</div>
+                                    <span class="cf-pill cf-pill-cyan" style="font-size:10px;">Zero Contention</span>
+                                </div>
+                                <div style="font-size:0.78rem; color:var(--cf-text-muted); margin-bottom:10px;">
+                                    Pauses background Ollama model preloading and unloads active LLMs to guarantee 100% dedicated VRAM for Whisper, avoiding host RAM/swap spilling.
+                                </div>
+                                <label class="cf-checkbox-row" style="margin-bottom:10px;">
+                                    <input id="EnableGpuArbitration" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span style="font-weight:600;">Enable GPU VRAM Arbitration</span>
+                                </label>
+                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                                    <div class="cf-field-group" style="margin-bottom:0;">
+                                        <label class="cf-field-label" for="OllamaApiUrl">Ollama API URL</label>
+                                        <input id="OllamaApiUrl" type="text" class="cf-field-input" placeholder="http://localhost:11434">
+                                        <div class="cf-field-helper">Ollama base endpoint for eviction commands.</div>
+                                    </div>
+                                    <div class="cf-field-group" style="margin-bottom:0;">
+                                        <label class="cf-field-label" for="GpuArbiterPauseFlagPath">Arbiter Pause Flag Path</label>
+                                        <input id="GpuArbiterPauseFlagPath" type="text" class="cf-field-input" placeholder="/gpu-arbiter/pause-preload">
+                                        <div class="cf-field-helper">File path signaled to openwebui/gpu-arbiter to pause preloads.</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- On-Demand Sync Box -->
@@ -2704,6 +2736,9 @@
                 if (getEl('TranscriptionApiKey')) getEl('TranscriptionApiKey').value = config.TranscriptionApiKey || '';
                 if (getEl('FilteredTrackTitle')) getEl('FilteredTrackTitle').value = config.FilteredTrackTitle || 'Generated - Filtered';
                 if (getEl('UnfilteredTrackTitle')) getEl('UnfilteredTrackTitle').value = config.UnfilteredTrackTitle || 'Generated - Unfiltered';
+                if (getEl('EnableGpuArbitration')) getEl('EnableGpuArbitration').checked = config.EnableGpuArbitration !== false;
+                if (getEl('OllamaApiUrl')) getEl('OllamaApiUrl').value = config.OllamaApiUrl || 'http://localhost:11434';
+                if (getEl('GpuArbiterPauseFlagPath')) getEl('GpuArbiterPauseFlagPath').value = config.GpuArbiterPauseFlagPath || '/gpu-arbiter/pause-preload';
 
                 populateTree(getEl('filterHierarchyContainer'), config.DisabledCategories, config.DisabledFilterItems, config);
             }
@@ -2735,6 +2770,9 @@
                 if (getEl('TranscriptionApiKey')) config.TranscriptionApiKey = getEl('TranscriptionApiKey').value || '';
                 if (getEl('FilteredTrackTitle')) config.FilteredTrackTitle = getEl('FilteredTrackTitle').value || 'Generated - Filtered';
                 if (getEl('UnfilteredTrackTitle')) config.UnfilteredTrackTitle = getEl('UnfilteredTrackTitle').value || 'Generated - Unfiltered';
+                if (getEl('EnableGpuArbitration')) config.EnableGpuArbitration = getEl('EnableGpuArbitration').checked;
+                if (getEl('OllamaApiUrl')) config.OllamaApiUrl = getEl('OllamaApiUrl').value || 'http://localhost:11434';
+                if (getEl('GpuArbiterPauseFlagPath')) config.GpuArbiterPauseFlagPath = getEl('GpuArbiterPauseFlagPath').value || '/gpu-arbiter/pause-preload';
 
                 var data = collectTree(getEl('filterHierarchyContainer'));
                 config.DisabledCategories = data.disabledCategories;
@@ -2967,6 +3005,8 @@
                 var s2 = parseTimestampSeconds(endTs);
                 var diff = Math.max(0, s2 - s1);
                 if (diff <= 0) return '';
+                if (diff < 1.0) return diff.toFixed(2) + 's';
+                if (diff < 10.0) return diff.toFixed(1) + 's';
                 if (diff < 60) return Math.round(diff) + 's';
                 var mins = Math.floor(diff / 60);
                 var remSec = Math.round(diff % 60);
@@ -3426,10 +3466,14 @@
 
                     // Time cell
                     var dur = formatDuration(cue.start, cue.end);
+                    var s1 = parseTimestampSeconds(cue.start);
+                    var s2 = parseTimestampSeconds(cue.end);
+                    var diff = Math.max(0, s2 - s1);
+                    var badgeClass = (diff > 0 && diff < 1.0) ? 'cf-duration-badge cf-duration-micro' : 'cf-duration-badge';
                     var timeTd = document.createElement('td');
                     timeTd.innerHTML = 
                         '<span class="cf-time-badge">' + esc(cue.start) + ' → ' + esc(cue.end) + '</span>' +
-                        (dur ? '<span class="cf-duration-badge">' + dur + '</span>' : '');
+                        (dur ? '<span class="' + badgeClass + '">' + dur + '</span>' : '');
                     tr.appendChild(timeTd);
 
                     // Category cell
@@ -3604,7 +3648,13 @@
                     headers: { "X-Emby-Token": ApiClient.accessToken() }
                 }).then(function (res) { return res.ok ? res.json() : null; })
                 .then(function (data) {
-                    if (data && (data.hasSidecar || data.HasSidecar)) {
+                    if (data && (data.hasAiSubtitles || data.HasAiSubtitles)) {
+                        banner.style.display = "block";
+                        banner.style.color = "#c084fc";
+                        banner.style.borderColor = "rgba(168, 85, 247, 0.4)";
+                        banner.style.background = "rgba(168, 85, 247, 0.15)";
+                        banner.innerHTML = "🎙️ <strong>AI Subtitles Active</strong> — Dual tailored streams (Filtered Default + Unfiltered) generated via local Whisper and indexed by Jellyfin.";
+                    } else if (data && (data.hasSidecar || data.HasSidecar)) {
                         banner.style.display = "block";
                         banner.style.color = "#34d399";
                         banner.style.borderColor = "rgba(52, 211, 153, 0.4)";

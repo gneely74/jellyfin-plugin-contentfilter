@@ -172,21 +172,17 @@ public class PlaybackMonitor : IHostedService
 
         var positionTicks = session.PlayState?.PositionTicks ?? 0;
         var position = positionTicks > 0 ? TimeSpan.FromTicks(positionTicks) : TimeSpan.Zero;
-        var windowEnd = position + TimeSpan.FromSeconds(3.5);
-
-        var activeCues = filter.Cues
-            .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
-            .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
-            .Where(c => (c.Start <= windowEnd && c.End > position) ||
-                        (position >= c.Start - TimeSpan.FromSeconds(1) && position < c.End))
-            .ToArray();
-
         var config = Plugin.Instance?.Configuration;
         var fallbackToSkip = config?.FallbackToSkipOnUnmutableClients ?? true;
         var canMute = CanSessionMute(session);
 
-        // Video/both-channel skip cues trigger a seek; audio mute/skip cues also trigger seek if client cannot mute
-        var seekCue = activeCues
+        // Video/both-channel skip cues trigger a seek with 3.5s lookahead to give players time to jump
+        var seekWindowEnd = position + TimeSpan.FromSeconds(3.5);
+        var seekCue = filter.Cues
+            .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
+            .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
+            .Where(c => (c.Start <= seekWindowEnd && c.End > position) ||
+                        (position >= c.Start - TimeSpan.FromSeconds(1) && position < c.End))
             .Where(c =>
                 (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
                  !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)) ||
@@ -276,11 +272,15 @@ public class PlaybackMonitor : IHostedService
             }
         }
 
-        // Mute when: client can mute AND (explicit mute-action cue, OR audio-channel skip cue).
-        var shouldMute = canMute && activeCues.Any(c =>
-            string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
-            (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)));
+        // Mute when: client can mute AND current playback position is within an active audio cue (with 250ms lead buffer).
+        var shouldMute = canMute && filter.Cues
+            .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
+            .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
+            .Where(c =>
+                string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
+                (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)))
+            .Any(c => position >= (c.Start - TimeSpan.FromMilliseconds(250)) && position < (c.End + TimeSpan.FromMilliseconds(100)));
 
         if (shouldMute && !state.IsMuted)
         {

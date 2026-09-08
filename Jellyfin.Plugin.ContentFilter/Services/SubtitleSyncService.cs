@@ -877,33 +877,51 @@ public class SubtitleSyncService : IHostedService, IDisposable
                         var start = TimeSpan.FromSeconds(startSeconds);
                         var end = TimeSpan.FromSeconds(endSeconds);
 
-                        if (existingCues.Any(c =>
-                            (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
-                             c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
-                            start < c.End && end > c.Start))
+                        // Merge with any overlapping cue in current batch (e.g. multi-word phrases)
+                        var existingInBatch = cuesToAdd.FirstOrDefault(c => start < c.End && end > c.Start);
+                        if (existingInBatch != null)
                         {
-                            continue;
+                            if (start < existingInBatch.Start) existingInBatch.Start = start;
+                            if (end > existingInBatch.End) existingInBatch.End = end;
+                            existingInBatch.Description = $"{existingInBatch.Description} {cleanWord}";
                         }
-
-                        if (cuesToAdd.Any(c => start < c.End && end > c.Start))
+                        else
                         {
-                            continue;
+                            cuesToAdd.Add(new FilterCue
+                            {
+                                Start = start,
+                                End = end,
+                                Category = category,
+                                Channel = channel,
+                                Action = action,
+                                Description = $"Spoken: \"{cleanWord}\""
+                            });
                         }
-
-                        cuesToAdd.Add(new FilterCue
-                        {
-                            Start = start,
-                            End = end,
-                            Category = category,
-                            Channel = channel,
-                            Action = action,
-                            Description = $"Spoken: \"{cleanWord}\""
-                        });
 
                         break;
                     }
                 }
             }
+
+            // Fine-tuned Whisper word timestamps supersede previous coarse spoken profanity cues
+            filter ??= new JcfFilter
+            {
+                Title = _libraryManager.GetItemById(itemId)?.Name ?? "Filtered Item"
+            };
+
+            filter.Cues.RemoveAll(c =>
+                (c.Description != null && c.Description.StartsWith("Spoken:", StringComparison.OrdinalIgnoreCase)) ||
+                (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) &&
+                 (c.Category.StartsWith("Language.", StringComparison.OrdinalIgnoreCase) ||
+                  c.Category.Equals("Custom.BlanketWord", StringComparison.OrdinalIgnoreCase) ||
+                  c.Category.StartsWith("SexualReferences.", StringComparison.OrdinalIgnoreCase))));
+
+            filter.Cues.AddRange(cuesToAdd);
+            filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
+            await _filterStore.SaveFilterAsync(itemId, filter, ct).ConfigureAwait(false);
+            _logger.LogInformation("Persisted {Count} fine-tuned profanity mute cues from Whisper transcription for item {ItemId}",
+                cuesToAdd.Count, itemId);
+            return cuesToAdd.Count;
         }
         else
         {
@@ -946,16 +964,16 @@ public class SubtitleSyncService : IHostedService, IDisposable
                     }
                 }
             }
-        }
 
-        if (cuesToAdd.Count > 0)
-        {
-            await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
-            _logger.LogInformation("Generated {Count} profanity mute cues from Whisper transcription for item {ItemId}",
-                cuesToAdd.Count, itemId);
-        }
+            if (cuesToAdd.Count > 0)
+            {
+                await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
+                _logger.LogInformation("Generated {Count} profanity mute cues from Whisper segment transcription for item {ItemId}",
+                    cuesToAdd.Count, itemId);
+            }
 
-        return cuesToAdd.Count;
+            return cuesToAdd.Count;
+        }
     }
 
     /// <summary>
