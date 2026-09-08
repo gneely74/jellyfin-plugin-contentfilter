@@ -77,17 +77,16 @@ public class WhisperTranscriptionService
         var sw = Stopwatch.StartNew();
 
         // 1. Select optimal audio stream
-        var audioStream = SelectOptimalAudioStream(video, lang2);
-        var audioIndex = audioStream?.Index ?? 1;
+        var (audioStream, audioTrackIndex) = SelectOptimalAudioStream(video, lang2);
 
         // 2. Extract 16kHz mono WAV to temporary file
         var tempWavPath = Path.Combine(Path.GetTempPath(), $"whisper_{video.Id:N}_{Guid.NewGuid():N}.wav");
         try
         {
-            _logger.LogInformation("Extracting 16kHz mono audio from \"{VideoPath}\" stream index {Index} to \"{TempPath}\"...",
-                video.Path, audioIndex, tempWavPath);
+            _logger.LogInformation("Extracting 16kHz mono audio from \"{VideoPath}\" audio track index {Index} ({Lang}) to \"{TempPath}\"...",
+                video.Path, audioTrackIndex, audioStream?.Language ?? "und", tempWavPath);
 
-            var extracted = await ExtractAudioWavAsync(video.Path, audioIndex, tempWavPath, cancellationToken).ConfigureAwait(false);
+            var extracted = await ExtractAudioWavAsync(video.Path, audioTrackIndex, tempWavPath, cancellationToken).ConfigureAwait(false);
             if (!extracted || !File.Exists(tempWavPath) || new FileInfo(tempWavPath).Length == 0)
             {
                 _logger.LogError("Failed to extract audio track from video {ItemId} ({Name})", video.Id, video.Name);
@@ -178,21 +177,21 @@ public class WhisperTranscriptionService
     /// Prefers streams matching the target language, avoiding commentary/descriptive tracks,
     /// and preferring higher channel counts and default tracks.
     /// </summary>
-    public static MediaStream? SelectOptimalAudioStream(Video video, string targetLanguage)
+    public static (MediaStream? Stream, int AudioTrackIndex) SelectOptimalAudioStream(Video video, string targetLanguage)
     {
-        var streams = video.GetMediaStreams()
-            .Where(s => s.Type == MediaStreamType.Audio)
+        var allAudio = video.GetMediaStreams()
+            .Where(s => s.Type == MediaStreamType.Audio && !s.IsExternal)
             .ToList();
 
-        if (streams.Count == 0)
+        if (allAudio.Count == 0)
         {
-            return null;
+            return (null, 0);
         }
 
         var lang2 = SubtitleFilter.ToTwoLetterLanguage(targetLanguage);
 
         // Filter out obvious commentary or descriptive audio
-        var dialogueStreams = streams.Where(s =>
+        var dialogueStreams = allAudio.Where(s =>
         {
             var title = (s.Title ?? string.Empty).ToLowerInvariant();
             var commentKeywords = new[] { "commentary", "director", "description", "descriptive", "dvs" };
@@ -201,7 +200,7 @@ public class WhisperTranscriptionService
 
         if (dialogueStreams.Count == 0)
         {
-            dialogueStreams = streams;
+            dialogueStreams = allAudio;
         }
 
         // 1. Language match
@@ -215,10 +214,15 @@ public class WhisperTranscriptionService
         var candidates = matchingLang.Count > 0 ? matchingLang : dialogueStreams;
 
         // 2. Prefer Default, then highest Channels
-        return candidates
+        var chosen = candidates
             .OrderByDescending(s => s.IsDefault)
             .ThenByDescending(s => s.Channels ?? 0)
-            .FirstOrDefault() ?? streams[0];
+            .FirstOrDefault() ?? allAudio[0];
+
+        var trackIndex = allAudio.IndexOf(chosen);
+        if (trackIndex < 0) trackIndex = 0;
+
+        return (chosen, trackIndex);
     }
 
     /// <summary>
@@ -226,7 +230,7 @@ public class WhisperTranscriptionService
     /// </summary>
     private async Task<bool> ExtractAudioWavAsync(
         string videoPath,
-        int streamIndex,
+        int audioTrackIndex,
         string outputPath,
         CancellationToken ct)
     {
@@ -238,14 +242,14 @@ public class WhisperTranscriptionService
         }
 
         // -vn: ignore video
-        // -map 0:{streamIndex}: pick selected audio track
+        // -map 0:a:{audioTrackIndex}: pick selected audio track safely
         // -ac 1: mono
         // -ar 16000: 16kHz sample rate optimal for Whisper models
         // -c:a pcm_s16le: 16-bit PCM WAV
         var psi = new ProcessStartInfo
         {
             FileName = encoderPath,
-            Arguments = $"-v error -y -i \"{videoPath}\" -map 0:{streamIndex} -vn -ac 1 -ar 16000 -c:a pcm_s16le \"{outputPath}\"",
+            Arguments = $"-v error -y -i \"{videoPath}\" -map 0:a:{audioTrackIndex} -vn -ac 1 -ar 16000 -c:a pcm_s16le \"{outputPath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
