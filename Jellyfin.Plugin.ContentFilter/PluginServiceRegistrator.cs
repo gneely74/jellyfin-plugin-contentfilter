@@ -21,6 +21,11 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
             client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
         });
 
+        serviceCollection.AddHttpClient(nameof(WhisperTranscriptionService), client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(30);
+        });
+
         serviceCollection.AddSingleton<SqliteFilterRepository>(sp =>
         {
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SqliteFilterRepository>>();
@@ -31,6 +36,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<FilterRuleService>();
         serviceCollection.AddSingleton<SubtitleFilter>();
         serviceCollection.AddSingleton<SubtitleWordScanner>();
+        serviceCollection.AddSingleton<WhisperTranscriptionService>();
         serviceCollection.AddSingleton<SubtitleSyncService>();
         serviceCollection.AddHostedService(static sp => sp.GetRequiredService<SubtitleSyncService>());
         serviceCollection.AddSingleton<MediaBrowser.Model.Tasks.IScheduledTask, SubtitleSyncTask>();

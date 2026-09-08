@@ -46,7 +46,7 @@ public class SubtitleFilter
     /// <returns>A 2-letter language code.</returns>
     public static string ToTwoLetterLanguage(string? lang)
     {
-        if (string.IsNullOrWhiteSpace(lang))
+        if (string.IsNullOrWhiteSpace(lang) || int.TryParse(lang, out _))
         {
             return "en";
         }
@@ -82,7 +82,29 @@ public class SubtitleFilter
             return "pt";
         }
 
+        if (!l.All(char.IsLetter))
+        {
+            return "en";
+        }
+
         return l.Length > 2 ? l[..2] : l;
+    }
+
+    /// <summary>
+    /// Resolves a language parameter that might be a numeric stream index to the actual stream language.
+    /// </summary>
+    private static string ResolveLanguage(BaseItem? item, string language)
+    {
+        if (int.TryParse(language, out var streamIdx) && item is Video v)
+        {
+            var targetStream = v.GetMediaStreams().FirstOrDefault(s => s.Index == streamIdx);
+            if (!string.IsNullOrWhiteSpace(targetStream?.Language))
+            {
+                return targetStream.Language;
+            }
+        }
+
+        return language;
     }
 
     /// <summary>
@@ -106,7 +128,7 @@ public class SubtitleFilter
             return null;
         }
 
-        var langCode = ToTwoLetterLanguage(language);
+        var langCode = ToTwoLetterLanguage(ResolveLanguage(item, language));
         return Path.Combine(dir, $"{stem}.{langCode}.filtered.srt");
     }
 
@@ -131,8 +153,64 @@ public class SubtitleFilter
             return null;
         }
 
-        var langCode = ToTwoLetterLanguage(language);
+        var langCode = ToTwoLetterLanguage(ResolveLanguage(item, language));
         return Path.Combine(dir, $"{stem}.{langCode}.default.srt");
+    }
+
+    /// <summary>
+    /// Gets the AI-generated filtered sidecar SRT path adjacent to the media file on disk.
+    /// Example: Movie.mkv -> Movie.en.Generated - Filtered.default.srt
+    /// </summary>
+    public static string? GetGeneratedFilteredSrtPath(BaseItem? item, string language = "en", string? trackTitle = null)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Path))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(item.Path);
+        var stem = Path.GetFileNameWithoutExtension(item.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem))
+        {
+            return null;
+        }
+
+        var langCode = ToTwoLetterLanguage(ResolveLanguage(item, language));
+        var title = !string.IsNullOrWhiteSpace(trackTitle)
+            ? trackTitle.Trim()
+            : (!string.IsNullOrWhiteSpace(Plugin.Instance?.Configuration?.FilteredTrackTitle)
+                ? Plugin.Instance.Configuration.FilteredTrackTitle.Trim()
+                : "Generated - Filtered");
+
+        return Path.Combine(dir, $"{stem}.{langCode}.{title}.default.srt");
+    }
+
+    /// <summary>
+    /// Gets the AI-generated unfiltered sidecar SRT path adjacent to the media file on disk.
+    /// Example: Movie.mkv -> Movie.en.Generated - Unfiltered.srt
+    /// </summary>
+    public static string? GetGeneratedUnfilteredSrtPath(BaseItem? item, string language = "en", string? trackTitle = null)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Path))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(item.Path);
+        var stem = Path.GetFileNameWithoutExtension(item.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem))
+        {
+            return null;
+        }
+
+        var langCode = ToTwoLetterLanguage(ResolveLanguage(item, language));
+        var title = !string.IsNullOrWhiteSpace(trackTitle)
+            ? trackTitle.Trim()
+            : (!string.IsNullOrWhiteSpace(Plugin.Instance?.Configuration?.UnfilteredTrackTitle)
+                ? Plugin.Instance.Configuration.UnfilteredTrackTitle.Trim()
+                : "Generated - Unfiltered");
+
+        return Path.Combine(dir, $"{stem}.{langCode}.{title}.srt");
     }
 
     /// <summary>
@@ -146,8 +224,10 @@ public class SubtitleFilter
         var item = _libraryManager.GetItemById(itemId);
         var defaultPath = GetSidecarDefaultSrtPath(item, language);
         var filteredPath = GetSidecarFilteredSrtPath(item, language);
+        var genFilteredPath = GetGeneratedFilteredSrtPath(item, language);
         return (defaultPath is not null && File.Exists(defaultPath)) ||
-               (filteredPath is not null && File.Exists(filteredPath));
+               (filteredPath is not null && File.Exists(filteredPath)) ||
+               (genFilteredPath is not null && File.Exists(genFilteredPath));
     }
 
     /// <summary>
@@ -242,8 +322,22 @@ public class SubtitleFilter
         await File.WriteAllTextAsync(pluginCachePath, filteredOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
         // 2. Save to adjacent sidecars if media directory is accessible
-        var defaultPath = GetSidecarDefaultSrtPath(item, language);
-        var filteredPath = GetSidecarFilteredSrtPath(item, language);
+        var resolvedLang = language;
+        if (int.TryParse(language, out var streamIdx))
+        {
+            if (item is Video v)
+            {
+                var targetStream = v.GetMediaStreams().FirstOrDefault(s => s.Index == streamIdx);
+                resolvedLang = targetStream?.Language ?? "eng";
+            }
+            else
+            {
+                resolvedLang = "eng";
+            }
+        }
+
+        var defaultPath = GetSidecarDefaultSrtPath(item, resolvedLang);
+        var filteredPath = GetSidecarFilteredSrtPath(item, resolvedLang);
         if (defaultPath is not null)
         {
             try
@@ -419,7 +513,9 @@ public class SubtitleFilter
             var sidecars = new[]
             {
                 GetSidecarDefaultSrtPath(item),
-                GetSidecarFilteredSrtPath(item)
+                GetSidecarFilteredSrtPath(item),
+                GetGeneratedFilteredSrtPath(item),
+                GetGeneratedUnfilteredSrtPath(item)
             };
 
             bool anyDeleted = false;

@@ -160,4 +160,46 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether newly added media items should be automatically processed for subtitle downloading, profanity scanning, and clean subtitle generation.
     /// </summary>
     public bool AutoProcessNewMediaSubtitles { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether local AI / Whisper subtitle generation is enabled.
+    /// </summary>
+    public bool EnableLocalTranscription { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether local Whisper transcription is the default subtitle method (prioritized before remote subtitle downloaders).
+    /// </summary>
+    public bool LocalTranscriptionAsDefault { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the OpenAI-compatible transcription API endpoint URL (e.g. http://192.168.74.101:8000/v1/audio/transcriptions).
+    /// </summary>
+    public string TranscriptionApiUrl { get; set; } = "http://localhost:8000/v1/audio/transcriptions";
+
+    /// <summary>
+    /// Gets or sets the Whisper model to request from the transcription API (e.g. "whisper-1", "Systran/faster-whisper-medium", "base").
+    /// </summary>
+    public string TranscriptionModel { get; set; } = "whisper-1";
+
+    /// <summary>
+    /// Gets or sets an optional API key for the transcription service (if required).
+    /// </summary>
+    public string TranscriptionApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the track title suffix for the filtered subtitle stream.
+    /// Default: "Generated - Filtered".
+    /// </summary>
+    public string FilteredTrackTitle { get; set; } = "Generated - Filtered";
+
+    /// <summary>
+    /// Gets or sets the track title suffix for the unfiltered subtitle stream.
+    /// Default: "Generated - Unfiltered".
+    /// </summary>
+    public string UnfilteredTrackTitle { get; set; } = "Generated - Unfiltered";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to automatically re-transcribe and regenerate subtitles/JCF cues when a newer version or higher quality video file is downloaded/replaced.
+    /// </summary>
+    public bool AutoRegenerateOnMediaUpgrade { get; set; } = true;
 }

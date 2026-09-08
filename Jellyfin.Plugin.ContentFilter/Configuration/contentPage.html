@@ -1643,6 +1643,9 @@
                                             <span id="studioSubLockBadge" class="cf-pill cf-pill-gray" style="display:none; font-size:11px;">🔒 Locked</span>
                                         </div>
                                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button id="studioTranscribeWhisperBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(168, 85, 247, 0.15); border:1px solid rgba(168, 85, 247, 0.4); color:#c084fc; font-weight:600;">
+                                                🎙️ Generate AI Subtitles (Whisper)
+                                            </button>
                                             <button id="studioSearchRemoteSubsBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.4); color:#38bdf8; font-weight:600;">
                                                 🌐 Search Remote Subtitles...
                                             </button>
@@ -2062,6 +2065,64 @@
                                 <input id="OverwriteExistingCleanSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                                 <span>Force overwrite existing clean subtitles during automated runs (skips locked items)</span>
                             </label>
+                        </div>
+
+                        <!-- Local AI / Whisper Subtitle Generation Card -->
+                        <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div style="font-weight:600; font-size:0.95rem; color:var(--cf-text-main);">🎙️ Local AI / Whisper Subtitle Generation</div>
+                                <span class="cf-pill cf-pill-purple" style="font-size:11px;">Local AI</span>
+                            </div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-muted); margin-bottom:12px;">
+                                Extract audio directly using Jellyfin ffmpeg and transcribe dual tailored subtitle streams (Filtered default + Unfiltered) via local Whisper without external rate limits.
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+                                <label class="cf-checkbox-row">
+                                    <input id="EnableLocalTranscription" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span style="font-weight:600;">Enable Local AI / Whisper Subtitle Generation</span>
+                                </label>
+                                <label class="cf-checkbox-row">
+                                    <input id="LocalTranscriptionAsDefault" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span>Make Local Whisper the Default Subtitle Method (Prioritize over OpenSubtitles)</span>
+                                </label>
+                                <label class="cf-checkbox-row">
+                                    <input id="AutoRegenerateOnMediaUpgrade" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span>Automatically re-transcribe and update subtitles when a newer or higher quality video file is downloaded</span>
+                                </label>
+                            </div>
+
+                            <div class="cf-field-group" style="margin-bottom:12px;">
+                                <label class="cf-field-label" for="TranscriptionApiUrl">Whisper API URL</label>
+                                <input id="TranscriptionApiUrl" type="text" class="cf-field-input" placeholder="http://localhost:8000/v1/audio/transcriptions" style="width:100%;">
+                                <div class="cf-field-helper">OpenAI-compatible transcription endpoint (e.g. faster-whisper-server, speaches, whisper-asr-webservice).</div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:12px;">
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="TranscriptionModel">Whisper Model</label>
+                                    <input id="TranscriptionModel" type="text" class="cf-field-input" placeholder="whisper-1">
+                                    <div class="cf-field-helper">Model identifier (e.g. whisper-1, Systran/faster-whisper-medium).</div>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="TranscriptionApiKey">API Key (Optional)</label>
+                                    <input id="TranscriptionApiKey" type="password" class="cf-field-input" placeholder="Optional Bearer token">
+                                    <div class="cf-field-helper">Leave empty for local servers without authentication.</div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="FilteredTrackTitle">Filtered Track Title</label>
+                                    <input id="FilteredTrackTitle" type="text" class="cf-field-input" placeholder="Generated - Filtered">
+                                    <div class="cf-field-helper">Default subtitle title (e.g. English - Generated - Filtered).</div>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="UnfilteredTrackTitle">Unfiltered Track Title</label>
+                                    <input id="UnfilteredTrackTitle" type="text" class="cf-field-input" placeholder="Generated - Unfiltered">
+                                    <div class="cf-field-helper">Raw verbatim subtitle title (e.g. English - Generated - Unfiltered).</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- On-Demand Sync Box -->

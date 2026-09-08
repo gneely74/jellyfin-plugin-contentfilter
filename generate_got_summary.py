@@ -276,6 +276,10 @@ def _build_metrics_lines(
     total_skip_dur = sum(sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "skip") for ep in episodes_data.values())
     total_mute_dur = sum(sum(c["duration_sec"] for c in ep["cues"] if c["action"] == "mute") for ep in episodes_data.values())
 
+    total_deployed = sum(1 for ep in episodes_data.values() if ep["is_deployed"])
+    total_deployed_cues = sum(len(ep["cues"]) for ep in episodes_data.values() if ep["is_deployed"])
+    lib_summary_str = f"✅ All {total_deployed} sidecars deployed in library" if total_deployed == total_eps else f"{total_deployed} deployed / {total_eps - total_deployed} pending MKV"
+
     lines = [
         "## 2. Global Catalog Summary",
         "",
@@ -283,7 +287,7 @@ def _build_metrics_lines(
         f"- **Total Filter Cues:** {total_all_cues} ({total_skip_cues} video skips, {total_mute_cues} audio mutes)",
         f"- **Total Objectionable Video Skipped:** {fmt_duration(total_skip_dur)} ({total_skip_dur / 60:.1f} minutes)",
         f"- **Total Spoken Audio Muted:** {fmt_duration(total_mute_dur)}",
-        "- **Sidecars Deployed in Local Library:** 23 episodes (140 active cues on disk)",
+        f"- **Sidecars Deployed in Local Library:** {total_deployed} episodes ({total_deployed_cues} active cues on disk)",
         "",
         "### Season Breakdown",
         "",
@@ -294,7 +298,7 @@ def _build_metrics_lines(
         row, _, _, _ = _build_season_breakdown_row(s_num, episodes_data, mkv_map, jcf_map)
         lines.append(row)
     lines.extend([
-        f"| **Total** | **73** | **{total_eps}** | **{total_skip_cues}** | **{total_mute_cues}** | **{fmt_duration(total_skip_dur)}** | **23 deployed / 2 pending MKV** |",
+        f"| **Total** | **73** | **{total_eps}** | **{total_skip_cues}** | **{total_mute_cues}** | **{fmt_duration(total_skip_dur)}** | **{lib_summary_str}** |",
         "",
         "---",
         "",

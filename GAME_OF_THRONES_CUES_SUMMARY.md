@@ -37,24 +37,24 @@
 ## 2. Global Catalog Summary
 
 - **Total Episodes Cataloged with Cues:** 25 of 73 series episodes
-- **Total Filter Cues:** 163 (153 video skips, 10 audio mutes)
+- **Total Filter Cues:** 166 (153 video skips, 13 audio mutes)
 - **Total Objectionable Video Skipped:** 49m 29s (49.5 minutes)
-- **Total Spoken Audio Muted:** 6.8s
-- **Sidecars Deployed in Local Library:** 23 episodes (140 active cues on disk)
+- **Total Spoken Audio Muted:** 11.2s
+- **Sidecars Deployed in Local Library:** 25 episodes (166 active cues on disk)
 
 ### Season Breakdown
 
 | Season | Total Episodes | Filtered Episodes | Video Skips | Audio Mutes | Total Cut Time | Local Library Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Season 01** | 10 | 4 | 22 | 10 | 8m 15s | ✅ All 4 sidecars deployed |
+| **Season 01** | 10 | 4 | 22 | 13 | 8m 15s | ✅ All 4 sidecars deployed |
 | **Season 02** | 10 | 4 | 11 | 0 | 7m 48s | ✅ All 4 sidecars deployed |
-| **Season 03** | 10 | 4 | 34 | 0 | 14m 50s | ⚠️ 3/4 deployed (1 missing MKV) |
+| **Season 03** | 10 | 4 | 34 | 0 | 14m 50s | ✅ All 4 sidecars deployed |
 | **Season 04** | 10 | 6 | 41 | 0 | 6m 31s | ✅ All 6 sidecars deployed |
-| **Season 05** | 10 | 5 | 33 | 0 | 10m 16s | ⚠️ 4/5 deployed (1 missing MKV) |
+| **Season 05** | 10 | 5 | 33 | 0 | 10m 16s | ✅ All 5 sidecars deployed |
 | **Season 06** | 10 | 1 | 11 | 0 | 1m 28s | ✅ All 1 sidecars deployed |
 | **Season 07** | 7 | 1 | 1 | 0 | 21s | ✅ All 1 sidecars deployed |
-| **Season 08** | 6 | 0 | 0 | 0 | 0s | 3 MKVs (No cues in post) |
-| **Total** | **73** | **25** | **153** | **10** | **49m 29s** | **23 deployed / 2 pending MKV** |
+| **Season 08** | 6 | 0 | 0 | 0 | 0s | 6 MKVs (No cues in post) |
+| **Total** | **73** | **25** | **153** | **13** | **49m 29s** | **✅ All 25 sidecars deployed in library** |
 
 ---
 
@@ -64,32 +64,35 @@
 
 #### S01E01 — Winter Is Coming
 - **Sidecar File:** `Game of Thrones - S01E01 - Winter Is Coming.jcf` (✅ Deployed on disk)
-- **Cue Statistics:** 21 total (11 skips / 10 mutes)
-- **Objectionable Duration:** 4m 45s skipped, 6.8s muted
+- **Cue Statistics:** 24 total (11 skips / 13 mutes)
+- **Objectionable Duration:** 4m 45s skipped, 11.2s muted
 
 | # | Start Time | End Time | Duration | Category | Channel | Action | Description / Context |
 | :-: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |
-| 01 | `00:29:13.174` | `00:29:13.734` | **0.6s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
-| 02 | `00:29:35.620` | `00:29:36.100` | **0.5s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
-| 03 | `00:29:42.076` | `00:29:42.636` | **0.6s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
-| 04 | `00:30:30.000` | `00:31:15.000` | **45s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 05 | `00:31:30.000` | `00:31:55.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 06 | `00:32:10.000` | `00:32:25.000` | **15s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 07 | `00:34:20.000` | `00:35:40.000` | **1m 20s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 08 | `00:39:10.000` | `00:39:20.000` | **10s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 09 | `00:39:10.122` | `00:39:10.952` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 10 | `00:39:15.249` | `00:39:16.079` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 11 | `00:40:30.632` | `00:40:31.462` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 12 | `00:40:40.415` | `00:40:41.246` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 13 | `00:40:50.896` | `00:40:51.700` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 14 | `00:40:55.919` | `00:40:56.460` | **0.5s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 15 | `00:41:10.953` | `00:41:11.470` | **0.5s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
-| 16 | `00:50:50.000` | `00:51:00.000` | **10s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 17 | `00:51:15.000` | `00:51:40.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 18 | `00:52:10.000` | `00:52:15.000` | **5s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 19 | `00:54:10.000` | `00:54:30.000` | **20s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 20 | `00:56:55.000` | `00:57:20.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
-| 21 | `00:59:25.000` | `00:59:50.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 01 | `00:27:12.300` | `00:27:13.250` | **1.0s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "hell" |
+| 02 | `00:29:13.174` | `00:29:13.734` | **0.6s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
+| 03 | `00:29:35.620` | `00:29:36.100` | **0.5s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
+| 04 | `00:29:42.076` | `00:29:42.636` | **0.6s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "damn" |
+| 05 | `00:30:30.000` | `00:31:15.000` | **45s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 06 | `00:31:30.000` | `00:31:55.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 07 | `00:32:10.000` | `00:32:25.000` | **15s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 08 | `00:34:20.000` | `00:35:40.000` | **1m 20s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 09 | `00:39:10.000` | `00:39:20.000` | **10s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 10 | `00:39:10.122` | `00:39:10.952` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 11 | `00:39:15.249` | `00:39:16.079` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 12 | `00:40:30.632` | `00:40:31.462` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 13 | `00:40:40.415` | `00:40:41.246` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 14 | `00:40:50.896` | `00:40:51.700` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 15 | `00:40:55.919` | `00:40:56.460` | **0.5s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 16 | `00:41:08.600` | `00:41:09.450` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "hell" |
+| 17 | `00:41:09.800` | `00:41:10.550` | **0.8s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastard" |
+| 18 | `00:41:13.600` | `00:41:16.000` | **2.4s** | `Language.GeneralProfanity` | audio | `mute` | Spoken: "bastards" |
+| 19 | `00:50:50.000` | `00:51:00.000` | **10s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 20 | `00:51:15.000` | `00:51:40.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 21 | `00:52:10.000` | `00:52:15.000` | **5s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 22 | `00:54:10.000` | `00:54:30.000` | **20s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 23 | `00:56:55.000` | `00:57:20.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
+| 24 | `00:59:25.000` | `00:59:50.000` | **25s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
 
 #### S01E03 — Lord Snow
 - **Sidecar File:** `Game of Thrones - S01E03 - Lord Snow.jcf` (✅ Deployed on disk)
@@ -219,7 +222,7 @@
 | 09 | `00:39:58.000` | `00:40:05.000` | **7s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
 
 #### S03E08 — Second Sons
-- **Sidecar File:** `S03E08.jcf` (⏳ Catalog only (MKV not in library))
+- **Sidecar File:** `Game of Thrones - S03E08 - Second Sons.jcf` (✅ Deployed on disk)
 - **Cue Statistics:** 13 total (13 skips / 0 mutes)
 - **Objectionable Duration:** 5m 11s skipped
 
@@ -349,7 +352,7 @@
 | 08 | `00:37:12.000` | `00:37:46.000` | **34s** | `SexAndNudity.FullNudity` | video | `skip` | Objectionable scene |
 
 #### S05E03 — High Sparrow
-- **Sidecar File:** `S05E03.jcf` (⏳ Catalog only (MKV not in library))
+- **Sidecar File:** `Game of Thrones - S05E03 - High Sparrow.jcf` (✅ Deployed on disk)
 - **Cue Statistics:** 10 total (10 skips / 0 mutes)
 - **Objectionable Duration:** 1m 18s skipped
 

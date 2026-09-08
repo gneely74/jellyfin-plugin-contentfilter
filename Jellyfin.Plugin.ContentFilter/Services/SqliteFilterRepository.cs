@@ -104,10 +104,21 @@ public sealed class SqliteFilterRepository : IDisposable
                         updated_at TEXT NOT NULL
                     );
 
+                    CREATE TABLE IF NOT EXISTS item_transcription_history (
+                        item_id TEXT PRIMARY KEY,
+                        media_path TEXT NOT NULL,
+                        file_size INTEGER NOT NULL,
+                        last_modified_utc TEXT NOT NULL,
+                        transcribed_at TEXT NOT NULL,
+                        model TEXT,
+                        cue_count INTEGER NOT NULL DEFAULT 0
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_cues_item_id ON cues(item_id);
                     CREATE INDEX IF NOT EXISTS idx_cues_category ON cues(category);
                     CREATE INDEX IF NOT EXISTS idx_subtitle_overrides_locked ON item_subtitle_overrides(is_locked);
                     CREATE INDEX IF NOT EXISTS idx_item_filter_overrides_parent ON item_filter_overrides(parent_id);
+                    CREATE INDEX IF NOT EXISTS idx_transcription_history_media ON item_transcription_history(media_path);
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -612,6 +623,135 @@ public sealed class SqliteFilterRepository : IDisposable
             using var conn = CreateConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM item_filter_overrides WHERE item_id = @itemId;";
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            return cmd.ExecuteNonQuery() > 0;
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the transcription history record for a media item, if one exists.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The <see cref="ItemTranscriptionRecord"/>, or <see langword="null"/> if not recorded.</returns>
+    public ItemTranscriptionRecord? GetTranscriptionHistory(Guid itemId)
+    {
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT media_path, file_size, last_modified_utc, transcribed_at, model, cue_count
+            FROM item_transcription_history
+            WHERE item_id = @itemId;
+            """;
+        cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var mediaPath = reader.GetString(0);
+        var fileSize = reader.GetInt64(1);
+        var lastModifiedStr = reader.GetString(2);
+        var transcribedAtStr = reader.GetString(3);
+        var model = reader.IsDBNull(4) ? null : reader.GetString(4);
+        var cueCount = reader.GetInt32(5);
+
+        _ = DateTime.TryParse(lastModifiedStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var lastModified);
+        _ = DateTime.TryParse(transcribedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var transcribedAt);
+
+        return new ItemTranscriptionRecord
+        {
+            ItemId = itemId,
+            MediaPath = mediaPath,
+            FileSize = fileSize,
+            LastModifiedUtc = lastModified,
+            TranscribedAt = transcribedAt,
+            Model = model,
+            CueCount = cueCount
+        };
+    }
+
+    /// <summary>
+    /// Saves or updates the transcription history record for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="mediaPath">The physical path of the media file.</param>
+    /// <param name="fileSize">The file size in bytes.</param>
+    /// <param name="lastModifiedUtc">The last modified timestamp in UTC.</param>
+    /// <param name="model">The Whisper model used.</param>
+    /// <param name="cueCount">The number of profanity mute cues generated.</param>
+    public void SaveTranscriptionHistory(Guid itemId, string mediaPath, long fileSize, DateTime lastModifiedUtc, string? model, int cueCount)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_transcription_history (item_id, media_path, file_size, last_modified_utc, transcribed_at, model, cue_count)
+                VALUES (@itemId, @mediaPath, @fileSize, @lastModifiedUtc, @transcribedAt, @model, @cueCount)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    media_path = @mediaPath,
+                    file_size = @fileSize,
+                    last_modified_utc = @lastModifiedUtc,
+                    transcribed_at = @transcribedAt,
+                    model = @model,
+                    cue_count = @cueCount;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@mediaPath", mediaPath);
+            cmd.Parameters.AddWithValue("@fileSize", fileSize);
+            cmd.Parameters.AddWithValue("@lastModifiedUtc", lastModifiedUtc.ToString("O", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@transcribedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@model", (object?)model ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@cueCount", cueCount);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a media file has changed since its last transcription (different path, file size, or modified timestamp).
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="currentMediaPath">The current physical media file path.</param>
+    /// <param name="currentFileSize">The current physical file size in bytes.</param>
+    /// <param name="currentLastModifiedUtc">The current physical last write timestamp in UTC.</param>
+    /// <returns><see langword="true"/> if media has changed or was never transcribed; otherwise <see langword="false"/>.</returns>
+    public bool HasMediaChangedSinceTranscription(Guid itemId, string currentMediaPath, long currentFileSize, DateTime currentLastModifiedUtc)
+    {
+        var record = GetTranscriptionHistory(itemId);
+        if (record is null)
+        {
+            return true;
+        }
+
+        if (!string.Equals(record.MediaPath, currentMediaPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (record.FileSize != currentFileSize)
+        {
+            return true;
+        }
+
+        // Check last modified timestamp with a 2-second tolerance for filesystem timestamp truncation
+        var diff = Math.Abs((record.LastModifiedUtc - currentLastModifiedUtc).TotalSeconds);
+        return diff > 2.0;
+    }
+
+    /// <summary>
+    /// Deletes the transcription history record for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns><see langword="true"/> if a record was deleted; otherwise <see langword="false"/>.</returns>
+    public bool DeleteTranscriptionHistory(Guid itemId)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM item_transcription_history WHERE item_id = @itemId;";
             cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
             return cmd.ExecuteNonQuery() > 0;
         }

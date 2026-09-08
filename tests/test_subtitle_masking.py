@@ -101,3 +101,42 @@ None at all, bloody shame.
     redacted = redact_phrases(srt_block, ["bastard", "bloody"])
     assert "The b******* have no honor!" in redacted
     assert "None at all, b***** shame." in redacted
+
+
+def to_two_letter_language(lang: str | None) -> str:
+    if not lang or not lang.strip() or lang.strip().isdigit():
+        return "en"
+    l = lang.strip().lower()
+    if l in ("eng", "en-us", "en-gb", "english"):
+        return "en"
+    if l in ("spa", "es-es", "es-mx", "spanish"):
+        return "es"
+    if l in ("fra", "fre", "french"):
+        return "fr"
+    if l in ("deu", "ger", "german"):
+        return "de"
+    if l in ("ita", "italian"):
+        return "it"
+    if l in ("jpn", "japanese"):
+        return "ja"
+    if l in ("zho", "chi", "chinese"):
+        return "zh"
+    if l in ("por", "portuguese"):
+        return "pt"
+    if not l.isalpha():
+        return "en"
+    return l[:2] if len(l) > 2 else l
+
+
+def test_language_tag_guard_prevents_numeric_sidecars():
+    assert to_two_letter_language("3") == "en"
+    assert to_two_letter_language("12") == "en"
+    assert to_two_letter_language("0") == "en"
+    assert to_two_letter_language("") == "en"
+    assert to_two_letter_language(None) == "en"
+    assert to_two_letter_language("3a") == "en"
+    assert to_two_letter_language("eng") == "en"
+    assert to_two_letter_language("spa") == "es"
+    assert to_two_letter_language("french") == "fr"
+    assert to_two_letter_language("de") == "de"
+

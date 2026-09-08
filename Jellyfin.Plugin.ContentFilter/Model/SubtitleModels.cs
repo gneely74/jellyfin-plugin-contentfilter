@@ -89,11 +89,23 @@ public sealed class SingleSubtitleProcessResult
     /// <summary>Gets or sets a value indicating whether a remote subtitle was downloaded.</summary>
     public bool Downloaded { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether audio was transcribed via local AI / Whisper.</summary>
+    public bool Transcribed { get; set; }
+
     /// <summary>Gets or sets a value indicating whether clean subtitles were generated.</summary>
     public bool Cleaned { get; set; }
 
     /// <summary>Gets or sets a value indicating whether the item was skipped (e.g. locked or already clean).</summary>
     public bool Skipped { get; set; }
+
+    /// <summary>Gets or sets the path of the generated filtered subtitle stream.</summary>
+    public string? FilteredPath { get; set; }
+
+    /// <summary>Gets or sets the path of the generated unfiltered subtitle stream.</summary>
+    public string? UnfilteredPath { get; set; }
+
+    /// <summary>Gets or sets the count of profanity mute cues generated.</summary>
+    public int CuesAdded { get; set; }
 
     /// <summary>Gets or sets an error message if processing failed.</summary>
     public string? ErrorMessage { get; set; }
@@ -196,4 +208,136 @@ public sealed class StartSubtitleSyncRequest
 
     /// <summary>Gets or sets an optional language override.</summary>
     public string? Language { get; set; }
+}
+
+/// <summary>
+/// Record of a completed local transcription for a media item.
+/// Used to detect media file upgrades, replacements, and avoid redundant re-transcriptions.
+/// </summary>
+public sealed class ItemTranscriptionRecord
+{
+    /// <summary>Gets or sets the item identifier.</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Gets or sets the physical file path of the media file at the time of transcription.</summary>
+    public string MediaPath { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the file size in bytes at the time of transcription.</summary>
+    public long FileSize { get; set; }
+
+    /// <summary>Gets or sets the UTC last write time of the media file at the time of transcription.</summary>
+    public DateTime LastModifiedUtc { get; set; }
+
+    /// <summary>Gets or sets the UTC timestamp when transcription completed.</summary>
+    public DateTime TranscribedAt { get; set; }
+
+    /// <summary>Gets or sets the Whisper model used.</summary>
+    public string? Model { get; set; }
+
+    /// <summary>Gets or sets the count of profanity mute cues generated.</summary>
+    public int CueCount { get; set; }
+}
+
+/// <summary>
+/// Result of an audio transcription operation.
+/// </summary>
+public sealed class TranscriptionResult
+{
+    /// <summary>Gets or sets the item identifier.</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Gets or sets the unfilitered raw subtitle content (SRT format).</summary>
+    public string UnfilteredSrt { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the filtered/cleaned subtitle content (SRT format).</summary>
+    public string FilteredSrt { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the detected spoken language code.</summary>
+    public string Language { get; set; } = "en";
+
+    /// <summary>Gets or sets the audio duration in seconds.</summary>
+    public double DurationSeconds { get; set; }
+
+    /// <summary>Gets or sets the word-level timestamp entries (if available from verbose_json).</summary>
+    public List<WhisperWordDto> Words { get; set; } = [];
+
+    /// <summary>Gets or sets the transcribed segments.</summary>
+    public List<WhisperSegmentDto> Segments { get; set; } = [];
+
+    /// <summary>Gets or sets the execution time in milliseconds.</summary>
+    public long ExecutionTimeMs { get; set; }
+}
+
+/// <summary>
+/// DTO representing the response from an OpenAI-compatible Whisper /v1/audio/transcriptions endpoint.
+/// </summary>
+public sealed class WhisperResponseDto
+{
+    /// <summary>Gets or sets the full transcribed text.</summary>
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the detected language.</summary>
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    /// <summary>Gets or sets the duration in seconds.</summary>
+    [JsonPropertyName("duration")]
+    public double? Duration { get; set; }
+
+    /// <summary>Gets or sets the segments.</summary>
+    [JsonPropertyName("segments")]
+    public List<WhisperSegmentDto>? Segments { get; set; }
+
+    /// <summary>Gets or sets word-level timestamps if returned at top-level.</summary>
+    [JsonPropertyName("words")]
+    public List<WhisperWordDto>? Words { get; set; }
+}
+
+/// <summary>
+/// DTO representing a transcribed segment with start/end timestamps.
+/// </summary>
+public sealed class WhisperSegmentDto
+{
+    /// <summary>Gets or sets the segment identifier.</summary>
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the start time in seconds.</summary>
+    [JsonPropertyName("start")]
+    public double Start { get; set; }
+
+    /// <summary>Gets or sets the end time in seconds.</summary>
+    [JsonPropertyName("end")]
+    public double End { get; set; }
+
+    /// <summary>Gets or sets the segment dialogue text.</summary>
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the word-level timestamps within this segment.</summary>
+    [JsonPropertyName("words")]
+    public List<WhisperWordDto>? Words { get; set; }
+}
+
+/// <summary>
+/// DTO representing an individual transcribed word with exact start/end timestamps.
+/// </summary>
+public sealed class WhisperWordDto
+{
+    /// <summary>Gets or sets the word text.</summary>
+    [JsonPropertyName("word")]
+    public string Word { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the start time in seconds.</summary>
+    [JsonPropertyName("start")]
+    public double Start { get; set; }
+
+    /// <summary>Gets or sets the end time in seconds.</summary>
+    [JsonPropertyName("end")]
+    public double End { get; set; }
+
+    /// <summary>Gets or sets the confidence probability if provided.</summary>
+    [JsonPropertyName("probability")]
+    public double? Probability { get; set; }
 }

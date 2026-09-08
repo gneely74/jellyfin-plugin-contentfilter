@@ -981,7 +981,13 @@ public class ContentFilterController : ControllerBase
         }
 
         var item = _libraryManager.GetItemById(itemId);
-        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, lang);
+        var resolvedLang = lang;
+        if (int.TryParse(lang, out var streamIdx) && item is Video v)
+        {
+            var targetStream = v.GetMediaStreams().FirstOrDefault(s => s.Index == streamIdx);
+            resolvedLang = targetStream?.Language ?? "eng";
+        }
+        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, resolvedLang);
         var hasSidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
 
         return Ok(new
@@ -1010,14 +1016,20 @@ public class ContentFilterController : ControllerBase
     {
         var lang = string.IsNullOrWhiteSpace(language) ? "eng" : language;
         var item = _libraryManager.GetItemById(itemId);
-        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, lang);
+        var resolvedLang = lang;
+        if (int.TryParse(lang, out var streamIdx) && item is Video v)
+        {
+            var targetStream = v.GetMediaStreams().FirstOrDefault(s => s.Index == streamIdx);
+            resolvedLang = targetStream?.Language ?? "eng";
+        }
+        var sidecarPath = SubtitleFilter.GetSidecarFilteredSrtPath(item, resolvedLang);
         var hasSidecar = sidecarPath is not null && System.IO.File.Exists(sidecarPath);
         var hasPluginSubtitle = _subtitleFilter.HasFilteredSubtitle(itemId);
 
         return Ok(new
         {
             itemId,
-            language = lang,
+            language = resolvedLang,
             hasSidecar,
             sidecarPath,
             hasPluginSubtitle,
@@ -1452,6 +1464,26 @@ public class ContentFilterController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _subtitleSyncService.ProcessSingleVideoAsync(itemId, force, language, cancellationToken).ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Transcribes a video using the local AI Whisper engine and generates both filtered (default) and unfiltered subtitle streams.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="force">Whether to overwrite existing clean subtitles.</param>
+    /// <param name="language">Optional language override.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="SingleSubtitleProcessResult"/> with the outcome.</returns>
+    [HttpPost("subtitles/{itemId:guid}/transcribe")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<SingleSubtitleProcessResult>> TranscribeSingleSubtitle(
+        Guid itemId,
+        [FromQuery] bool force = false,
+        [FromQuery] string? language = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _subtitleSyncService.TranscribeSingleVideoAsync(itemId, force, language, cancellationToken).ConfigureAwait(false);
         return Ok(result);
     }
 

@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.ContentFilter.Models;
@@ -20,7 +22,7 @@ namespace Jellyfin.Plugin.ContentFilter.Services;
 /// </summary>
 public class SubtitleSyncService : IHostedService, IDisposable
 {
-    private sealed record NewMediaQueueItem(Guid ItemId, string ItemName, DateTime AvailableAt);
+    private sealed record NewMediaQueueItem(Guid ItemId, string ItemName, DateTime AvailableAt, bool Force = false);
 
     private readonly ILogger<SubtitleSyncService> _logger;
     private readonly ILibraryManager _libraryManager;
@@ -30,6 +32,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
     private readonly SubtitleWordScanner _subtitleWordScanner;
     private readonly FilterStore _filterStore;
     private readonly SqliteFilterRepository _sqliteRepository;
+    private readonly WhisperTranscriptionService _whisperTranscriptionService;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly Channel<NewMediaQueueItem> _newMediaQueue = Channel.CreateBounded<NewMediaQueueItem>(new BoundedChannelOptions(500)
@@ -58,6 +61,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
         SubtitleWordScanner subtitleWordScanner,
         FilterStore filterStore,
         SqliteFilterRepository sqliteRepository,
+        WhisperTranscriptionService whisperTranscriptionService,
         IServiceProvider serviceProvider)
     {
         _logger = logger;
@@ -68,6 +72,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
         _subtitleWordScanner = subtitleWordScanner;
         _filterStore = filterStore;
         _sqliteRepository = sqliteRepository;
+        _whisperTranscriptionService = whisperTranscriptionService;
         _serviceProvider = serviceProvider;
     }
 
@@ -75,9 +80,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _libraryManager.ItemAdded += OnItemAdded;
+        _libraryManager.ItemUpdated += OnItemUpdated;
         _workerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _workerTask = Task.Run(() => ProcessNewMediaQueueAsync(_workerCts.Token), CancellationToken.None);
-        _logger.LogInformation("ContentFilter SubtitleSyncService started and listening for new media additions.");
+        _logger.LogInformation("ContentFilter SubtitleSyncService started and listening for new media additions and upgrades.");
         return Task.CompletedTask;
     }
 
@@ -85,6 +91,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         _libraryManager.ItemAdded -= OnItemAdded;
+        _libraryManager.ItemUpdated -= OnItemUpdated;
         if (_workerCts is not null)
         {
             _workerCts.Cancel();
@@ -119,6 +126,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
         if (disposing)
         {
             _libraryManager.ItemAdded -= OnItemAdded;
+            _libraryManager.ItemUpdated -= OnItemUpdated;
             _workerCts?.Cancel();
             _workerCts?.Dispose();
             _activeSyncCts?.Dispose();
@@ -137,17 +145,45 @@ public class SubtitleSyncService : IHostedService, IDisposable
 
         if (e.Item is Video { IsVirtualItem: false } video && !string.IsNullOrWhiteSpace(video.Path))
         {
-            EnqueueNewMedia(video.Id, video.Name);
+            EnqueueNewMedia(video.Id, video.Name, force: false);
+        }
+    }
+
+    private void OnItemUpdated(object? sender, ItemChangeEventArgs e)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (config?.AutoRegenerateOnMediaUpgrade != true)
+        {
+            return;
+        }
+
+        if (e.Item is Video { IsVirtualItem: false } video && !string.IsNullOrWhiteSpace(video.Path) && File.Exists(video.Path))
+        {
+            try
+            {
+                var fi = new FileInfo(video.Path);
+                if (_sqliteRepository.HasMediaChangedSinceTranscription(video.Id, video.Path, fi.Length, fi.LastWriteTimeUtc))
+                {
+                    _logger.LogInformation("Detected media modification or upgrade for {ItemId} (\"{Name}\"). Enqueuing for re-transcription and sync.",
+                        video.Id, video.Name);
+                    EnqueueNewMedia(video.Id, video.Name, force: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error checking media modification for {ItemId}", video.Id);
+            }
         }
     }
 
     /// <summary>
-    /// Enqueues a newly added video item for automated subtitle downloading and cleaning.
+    /// Enqueues a video item for automated subtitle downloading, transcription, and cleaning.
     /// </summary>
     /// <param name="itemId">The video item ID.</param>
     /// <param name="itemName">The item display name.</param>
+    /// <param name="force">Whether to force reprocessing even if clean subtitles already exist.</param>
     /// <returns><see langword="true"/> if enqueued; <see langword="false"/> if already queued.</returns>
-    public bool EnqueueNewMedia(Guid itemId, string itemName)
+    public bool EnqueueNewMedia(Guid itemId, string itemName, bool force = false)
     {
         var availableAt = DateTime.UtcNow.AddSeconds(15);
         if (!_enqueuedMedia.TryAdd(itemId, availableAt))
@@ -155,7 +191,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
             return false;
         }
 
-        var queueItem = new NewMediaQueueItem(itemId, itemName, availableAt);
+        var queueItem = new NewMediaQueueItem(itemId, itemName, availableAt, force);
         if (!_newMediaQueue.Writer.TryWrite(queueItem))
         {
             _enqueuedMedia.TryRemove(itemId, out _);
@@ -163,8 +199,8 @@ public class SubtitleSyncService : IHostedService, IDisposable
         }
 
         Status.PendingNewMediaQueueCount = _enqueuedMedia.Count;
-        AddLog($"[Auto-Process] Queued newly added media: \"{itemName}\" (settling for 15s)");
-        _logger.LogInformation("Queued newly added video {ItemId} ({Name}) for subtitle processing.", itemId, itemName);
+        AddLog($"[Auto-Process] Queued media: \"{itemName}\" (settling for 15s, force={force})");
+        _logger.LogInformation("Queued video {ItemId} ({Name}) for subtitle processing (force={Force}).", itemId, itemName, force);
         return true;
     }
 
@@ -194,9 +230,13 @@ public class SubtitleSyncService : IHostedService, IDisposable
 
                     // 3. Process video
                     AddLog($"[Auto-Process] Processing subtitles for \"{queueItem.ItemName}\"...");
-                    var result = await ProcessSingleVideoAsync(queueItem.ItemId, force: false, overrideLanguage: null, ct).ConfigureAwait(false);
+                    var result = await ProcessSingleVideoAsync(queueItem.ItemId, force: queueItem.Force, overrideLanguage: null, ct).ConfigureAwait(false);
 
-                    if (result.Cleaned)
+                    if (result.Transcribed)
+                    {
+                        AddLog($"[Auto-Process] Transcribed AI subtitles ({result.CuesAdded} cues) for \"{queueItem.ItemName}\".");
+                    }
+                    else if (result.Cleaned)
                     {
                         AddLog($"[Auto-Process] Cleaned subtitle generated and set default for \"{queueItem.ItemName}\".");
                     }
@@ -439,13 +479,18 @@ public class SubtitleSyncService : IHostedService, IDisposable
             try
             {
                 var res = await ProcessSingleVideoAsync(video.Id, forceAll, overrideLanguage, ct).ConfigureAwait(false);
-                if (res.Downloaded)
+                if (res.Transcribed)
+                {
+                    Status.SubtitlesCleaned++;
+                    AddLog($"Transcribed AI subtitles ({res.CuesAdded} cues) for: {video.Name}");
+                }
+                else if (res.Downloaded)
                 {
                     Status.SubtitlesDownloaded++;
                     AddLog($"Downloaded subtitle for: {video.Name}");
                 }
 
-                if (res.Cleaned)
+                if (!res.Transcribed && res.Cleaned)
                 {
                     Status.SubtitlesCleaned++;
                 }
@@ -516,6 +561,29 @@ public class SubtitleSyncService : IHostedService, IDisposable
         var config = Plugin.Instance?.Configuration;
         bool autoDownloadEnabled = config?.AutoDownloadSubtitles ?? true;
         bool autoMuteProfanity = config?.AutoMuteProfanityFromSubtitles ?? true;
+        bool localAiEnabled = config?.EnableLocalTranscription ?? false;
+        bool localAiAsDefault = config?.LocalTranscriptionAsDefault ?? true;
+
+        FileInfo? fileInfo = null;
+        try
+        {
+            fileInfo = new FileInfo(video.Path);
+        }
+        catch
+        {
+        }
+
+        bool isMediaUpgrade = fileInfo != null && fileInfo.Exists &&
+            _sqliteRepository.HasMediaChangedSinceTranscription(itemId, video.Path, fileInfo.Length, fileInfo.LastWriteTimeUtc);
+
+        if (isMediaUpgrade && config?.AutoRegenerateOnMediaUpgrade == true)
+        {
+            force = true;
+            _logger.LogInformation("Media file for {ItemId} (\"{Name}\") was upgraded or modified. Forcing subtitle and cue regeneration.",
+                itemId, video.Name);
+            _subtitleFilter.DeleteFilteredSubtitle(itemId);
+        }
+
         bool overwriteExisting = force || (config?.OverwriteExistingCleanSubtitles ?? false);
 
         // 2. Skip if already has clean sidecar and not overwriting
@@ -528,8 +596,28 @@ public class SubtitleSyncService : IHostedService, IDisposable
 
         try
         {
-            // 3. Search and download remote subtitle if external subtitle is missing
             bool hasExternalSource = HasExternalSrtFile(video, targetLang2, targetLang3);
+
+            // 3. Attempt Local AI / Whisper Transcription if enabled
+            bool shouldTranscribe = localAiEnabled && (force || isMediaUpgrade || localAiAsDefault || !hasExternalSource);
+            if (shouldTranscribe && fileInfo != null && fileInfo.Exists)
+            {
+                var transResult = await TranscribeAndCleanSingleVideoInternalAsync(video, targetLang3, targetLang2, fileInfo, cancellationToken).ConfigureAwait(false);
+                if (transResult != null)
+                {
+                    result.Transcribed = true;
+                    result.Cleaned = true;
+                    result.FilteredPath = transResult.FilteredPath;
+                    result.UnfilteredPath = transResult.UnfilteredPath;
+                    result.CuesAdded = transResult.CuesAdded;
+                    return result;
+                }
+
+                _logger.LogWarning("Local Whisper transcription was unsuccessful for {ItemId}. Falling back to external providers if enabled.", itemId);
+            }
+
+            // 4. Fallback: Search and download remote subtitle if external subtitle is missing
+            hasExternalSource = HasExternalSrtFile(video, targetLang2, targetLang3);
             if (!hasExternalSource && autoDownloadEnabled)
             {
                 var downloaded = await SearchAndDownloadBestSubtitleAsync(video, targetLang3, cancellationToken).ConfigureAwait(false);
@@ -539,18 +627,19 @@ public class SubtitleSyncService : IHostedService, IDisposable
                 }
             }
 
-            // 4. Auto-generate mute cues from profanity dictionary if enabled
+            // 5. Auto-generate mute cues from profanity dictionary if enabled
             if (autoMuteProfanity)
             {
                 await EnsureItemHasWordFilterAsync(itemId, targetLang3, cancellationToken).ConfigureAwait(false);
             }
 
-            // 5. Generate clean subtitles and set as default
+            // 6. Generate clean subtitles and set as default
             var filter = _filterStore.GetFilter(itemId);
             var generatedPath = await _subtitleFilter.RegenerateAsync(itemId, filter, targetLang3, cancellationToken).ConfigureAwait(false);
             if (generatedPath != null)
             {
                 result.Cleaned = true;
+                result.FilteredPath = generatedPath;
             }
             else
             {
@@ -572,6 +661,304 @@ public class SubtitleSyncService : IHostedService, IDisposable
     }
 
     /// <summary>
+    /// Explicitly transcribes a video using the local AI Whisper engine and generates both filtered (default) and unfiltered subtitle streams.
+    /// </summary>
+    /// <param name="itemId">The video item ID.</param>
+    /// <param name="force">Whether to re-transcribe if subtitles already exist.</param>
+    /// <param name="overrideLanguage">Optional language override.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="SingleSubtitleProcessResult"/> detailing the outcome.</returns>
+    public async Task<SingleSubtitleProcessResult> TranscribeSingleVideoAsync(
+        Guid itemId,
+        bool force = false,
+        string? overrideLanguage = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new SingleSubtitleProcessResult { ItemId = itemId };
+
+        var video = _libraryManager.GetItemById(itemId) as Video;
+        if (video is null || string.IsNullOrWhiteSpace(video.Path) || !File.Exists(video.Path))
+        {
+            result.Skipped = true;
+            result.ErrorMessage = "Media item not found or file does not exist on disk.";
+            return result;
+        }
+
+        var (targetLang3, targetLang2) = ResolveTargetLanguage(overrideLanguage);
+        var fileInfo = new FileInfo(video.Path);
+
+        try
+        {
+            var transResult = await TranscribeAndCleanSingleVideoInternalAsync(video, targetLang3, targetLang2, fileInfo, cancellationToken).ConfigureAwait(false);
+            if (transResult != null)
+            {
+                result.Transcribed = true;
+                result.Cleaned = true;
+                result.FilteredPath = transResult.FilteredPath;
+                result.UnfilteredPath = transResult.UnfilteredPath;
+                result.CuesAdded = transResult.CuesAdded;
+                return result;
+            }
+
+            result.ErrorMessage = "Whisper transcription failed or produced no output.";
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed on-demand transcription for item {ItemId} ({Name})", itemId, video.Name);
+            result.ErrorMessage = ex.Message;
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Transcribes a video using Whisper, saves both unfiltered and filtered tailored streams, creates profanity mute cues, and assigns the filtered track as default.
+    /// </summary>
+    private async Task<SingleSubtitleProcessResult?> TranscribeAndCleanSingleVideoInternalAsync(
+        Video video,
+        string targetLang3,
+        string targetLang2,
+        FileInfo fileInfo,
+        CancellationToken ct)
+    {
+        var config = Plugin.Instance?.Configuration;
+        var filteredTitle = !string.IsNullOrWhiteSpace(config?.FilteredTrackTitle) ? config.FilteredTrackTitle.Trim() : "Generated - Filtered";
+        var unfilteredTitle = !string.IsNullOrWhiteSpace(config?.UnfilteredTrackTitle) ? config.UnfilteredTrackTitle.Trim() : "Generated - Unfiltered";
+
+        AddLog($"[Whisper] Transcribing audio for \"{video.Name}\" via {config?.TranscriptionModel ?? "whisper-1"}...");
+
+        var transcriptionResult = await _whisperTranscriptionService.TranscribeVideoAsync(video, targetLang3, ct).ConfigureAwait(false);
+        if (transcriptionResult == null || string.IsNullOrWhiteSpace(transcriptionResult.UnfilteredSrt))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(video.Path);
+        var stem = Path.GetFileNameWithoutExtension(video.Path);
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(stem) || !Directory.Exists(dir))
+        {
+            return null;
+        }
+
+        // 1. Save Unfiltered Subtitle Stream adjacent to video
+        var unfilteredPath = SubtitleFilter.GetGeneratedUnfilteredSrtPath(video, targetLang2, unfilteredTitle);
+        if (unfilteredPath != null)
+        {
+            await File.WriteAllTextAsync(unfilteredPath, transcriptionResult.UnfilteredSrt, Encoding.UTF8, ct).ConfigureAwait(false);
+            _logger.LogInformation("Saved unfiltered AI subtitle stream: {Path}", unfilteredPath);
+        }
+
+        // 2. Profanity scanning and micro-mute cue creation
+        int cuesAdded = 0;
+        if (config?.AutoMuteProfanityFromSubtitles != false)
+        {
+            cuesAdded = await CreateProfanityMuteCuesFromTranscriptionAsync(video.Id, transcriptionResult, ct).ConfigureAwait(false);
+        }
+
+        // 3. Blank words in dialogue to produce Filtered Subtitle Stream
+        var filter = _filterStore.GetFilter(video.Id);
+        var filteredSrt = SubtitleFilter.ApplyWordBlanking(transcriptionResult.UnfilteredSrt, filter);
+
+        // Save Filtered Subtitle Stream (.default.srt) adjacent to video
+        var filteredPath = SubtitleFilter.GetGeneratedFilteredSrtPath(video, targetLang2, filteredTitle);
+        if (filteredPath != null)
+        {
+            await File.WriteAllTextAsync(filteredPath, filteredSrt, Encoding.UTF8, ct).ConfigureAwait(false);
+            _logger.LogInformation("Saved filtered AI default subtitle stream: {Path}", filteredPath);
+        }
+
+        // Save to plugin cache as well
+        var pluginCachePath = _subtitleFilter.GetFilteredSrtPath(video.Id);
+        try
+        {
+            var cacheDir = Path.GetDirectoryName(pluginCachePath);
+            if (!string.IsNullOrEmpty(cacheDir))
+            {
+                Directory.CreateDirectory(cacheDir);
+            }
+            await File.WriteAllTextAsync(pluginCachePath, filteredSrt, Encoding.UTF8, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed writing to plugin subtitle cache: {Path}", pluginCachePath);
+        }
+
+        // 4. Trigger Jellyfin library metadata refresh for subtitle streams
+        _subtitleFilter.RefreshItemSubtitles(video);
+
+        // 5. Set filtered track as default for users
+        if (config?.SetSubtitlesAsDefault != false && filteredPath != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1500, CancellationToken.None).ConfigureAwait(false);
+                _subtitleFilter.SetDefaultSubtitleForUsers(video, filteredPath);
+            });
+        }
+
+        // 6. Save transcription history fingerprint in SQLite
+        _sqliteRepository.SaveTranscriptionHistory(
+            video.Id,
+            video.Path,
+            fileInfo.Length,
+            fileInfo.LastWriteTimeUtc,
+            config?.TranscriptionModel ?? "whisper-1",
+            cuesAdded);
+
+        AddLog($"[Whisper] Complete for \"{video.Name}\". Dual streams created, {cuesAdded} mute cues synced.");
+
+        return new SingleSubtitleProcessResult
+        {
+            ItemId = video.Id,
+            Transcribed = true,
+            Cleaned = true,
+            FilteredPath = filteredPath,
+            UnfilteredPath = unfilteredPath,
+            CuesAdded = cuesAdded
+        };
+    }
+
+    /// <summary>
+    /// Scans transcribed text and word timestamps to generate profanity mute cues with microsecond accuracy.
+    /// </summary>
+    private async Task<int> CreateProfanityMuteCuesFromTranscriptionAsync(
+        Guid itemId,
+        TranscriptionResult transcription,
+        CancellationToken ct)
+    {
+        var filter = _filterStore.GetFilter(itemId);
+        var existingCues = filter?.Cues ?? [];
+        var config = Plugin.Instance?.Configuration;
+        var action = config?.SubtitleWordAction ?? "mute";
+        var channel = action.Equals("skip", StringComparison.OrdinalIgnoreCase) ? "both" : "audio";
+        var cuesToAdd = new List<FilterCue>();
+
+        // Gather all dictionary word lists and global blanket words
+        var dictionaryWords = FilterDictionary.GetWordLists();
+        var globalBlanketWords = new HashSet<string>(config?.BlanketFilterWords ?? [], StringComparer.OrdinalIgnoreCase);
+
+        var wordsToScan = new Dictionary<string, (string Category, Regex Pattern)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (cat, list) in dictionaryWords)
+        {
+            foreach (var term in list)
+            {
+                if (string.IsNullOrWhiteSpace(term)) continue;
+                if (!wordsToScan.ContainsKey(term))
+                {
+                    var pat = new Regex(FilterDictionary.BuildWordPattern(term), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                    wordsToScan[term] = (cat, pat);
+                }
+            }
+        }
+
+        foreach (var w in globalBlanketWords)
+        {
+            if (!wordsToScan.ContainsKey(w))
+            {
+                var pat = new Regex(FilterDictionary.BuildWordPattern(w), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                wordsToScan[w] = ("Custom.BlanketWord", pat);
+            }
+        }
+
+        // Case A: Word-level timestamps from Whisper
+        if (transcription.Words != null && transcription.Words.Count > 0)
+        {
+            foreach (var wordDto in transcription.Words)
+            {
+                var cleanWord = wordDto.Word.Trim();
+                if (string.IsNullOrWhiteSpace(cleanWord)) continue;
+
+                foreach (var (term, (category, pattern)) in wordsToScan)
+                {
+                    if (pattern.IsMatch(cleanWord))
+                    {
+                        var startSeconds = Math.Max(0, wordDto.Start - 0.05);
+                        var endSeconds = wordDto.End + 0.05;
+                        var start = TimeSpan.FromSeconds(startSeconds);
+                        var end = TimeSpan.FromSeconds(endSeconds);
+
+                        if (existingCues.Any(c =>
+                            (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
+                             c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
+                            start < c.End && end > c.Start))
+                        {
+                            continue;
+                        }
+
+                        if (cuesToAdd.Any(c => start < c.End && end > c.Start))
+                        {
+                            continue;
+                        }
+
+                        cuesToAdd.Add(new FilterCue
+                        {
+                            Start = start,
+                            End = end,
+                            Category = category,
+                            Channel = channel,
+                            Action = action,
+                            Description = $"Spoken: \"{cleanWord}\""
+                        });
+
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Case B: Segment-level fallback
+            foreach (var seg in transcription.Segments)
+            {
+                var text = seg.Text;
+                if (string.IsNullOrWhiteSpace(text)) continue;
+
+                foreach (var (term, (category, pattern)) in wordsToScan)
+                {
+                    var matches = pattern.Matches(text);
+                    if (matches.Count > 0)
+                    {
+                        var start = TimeSpan.FromSeconds(seg.Start);
+                        var end = TimeSpan.FromSeconds(seg.End);
+
+                        if (existingCues.Any(c =>
+                            (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
+                             c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
+                            start < c.End && end > c.Start))
+                        {
+                            continue;
+                        }
+
+                        if (cuesToAdd.Any(c => start < c.End && end > c.Start))
+                        {
+                            continue;
+                        }
+
+                        cuesToAdd.Add(new FilterCue
+                        {
+                            Start = start,
+                            End = end,
+                            Category = category,
+                            Channel = channel,
+                            Action = action,
+                            Description = $"Spoken: \"{matches[0].Value}\""
+                        });
+                    }
+                }
+            }
+        }
+
+        if (cuesToAdd.Count > 0)
+        {
+            await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
+            _logger.LogInformation("Generated {Count} profanity mute cues from Whisper transcription for item {ItemId}",
+                cuesToAdd.Count, itemId);
+        }
+
+        return cuesToAdd.Count;
+    }
+
+    /// <summary>
     /// Checks whether an external SRT file exists adjacent to the media file on disk.
     /// </summary>
     private static bool HasExternalSrtFile(Video video, string lang2, string lang3)
@@ -584,11 +971,18 @@ public class SubtitleSyncService : IHostedService, IDisposable
             return false;
         }
 
+        var config = Plugin.Instance?.Configuration;
+        var unfilteredTitle = !string.IsNullOrWhiteSpace(config?.UnfilteredTrackTitle) ? config.UnfilteredTrackTitle.Trim() : "Generated - Unfiltered";
+
         string[] candidates =
         [
             Path.Combine(dir, $"{stem}.{lang2}.srt"),
             Path.Combine(dir, $"{stem}.{lang3}.srt"),
             Path.Combine(dir, $"{stem}.srt"),
+            Path.Combine(dir, $"{stem}.{lang2}.{unfilteredTitle}.srt"),
+            Path.Combine(dir, $"{stem}.{lang3}.{unfilteredTitle}.srt"),
+            Path.Combine(dir, $"{stem}.{lang2}.Generated - Unfiltered.srt"),
+            Path.Combine(dir, $"{stem}.{lang3}.Generated - Unfiltered.srt"),
             Path.Combine(dir, $"{stem}.{lang2}.WhisperSubs.srt"),
             Path.Combine(dir, $"{stem}.{lang3}.WhisperSubs.srt")
         ];
