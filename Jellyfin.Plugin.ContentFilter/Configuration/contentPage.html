@@ -2696,6 +2696,14 @@
                 if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
                 if (getEl('FallbackToSkipOnUnmutableClients')) getEl('FallbackToSkipOnUnmutableClients').checked = config.FallbackToSkipOnUnmutableClients !== false;
                 if (getEl('AutoProcessNewMediaSubtitles')) getEl('AutoProcessNewMediaSubtitles').checked = config.AutoProcessNewMediaSubtitles !== false;
+                if (getEl('EnableLocalTranscription')) getEl('EnableLocalTranscription').checked = !!config.EnableLocalTranscription;
+                if (getEl('LocalTranscriptionAsDefault')) getEl('LocalTranscriptionAsDefault').checked = config.LocalTranscriptionAsDefault !== false;
+                if (getEl('AutoRegenerateOnMediaUpgrade')) getEl('AutoRegenerateOnMediaUpgrade').checked = config.AutoRegenerateOnMediaUpgrade !== false;
+                if (getEl('TranscriptionApiUrl')) getEl('TranscriptionApiUrl').value = config.TranscriptionApiUrl || 'http://localhost:8000/v1/audio/transcriptions';
+                if (getEl('TranscriptionModel')) getEl('TranscriptionModel').value = config.TranscriptionModel || 'whisper-1';
+                if (getEl('TranscriptionApiKey')) getEl('TranscriptionApiKey').value = config.TranscriptionApiKey || '';
+                if (getEl('FilteredTrackTitle')) getEl('FilteredTrackTitle').value = config.FilteredTrackTitle || 'Generated - Filtered';
+                if (getEl('UnfilteredTrackTitle')) getEl('UnfilteredTrackTitle').value = config.UnfilteredTrackTitle || 'Generated - Unfiltered';
 
                 populateTree(getEl('filterHierarchyContainer'), config.DisabledCategories, config.DisabledFilterItems, config);
             }
@@ -2719,6 +2727,14 @@
                 if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
                 if (getEl('FallbackToSkipOnUnmutableClients')) config.FallbackToSkipOnUnmutableClients = getEl('FallbackToSkipOnUnmutableClients').checked;
                 if (getEl('AutoProcessNewMediaSubtitles')) config.AutoProcessNewMediaSubtitles = getEl('AutoProcessNewMediaSubtitles').checked;
+                if (getEl('EnableLocalTranscription')) config.EnableLocalTranscription = getEl('EnableLocalTranscription').checked;
+                if (getEl('LocalTranscriptionAsDefault')) config.LocalTranscriptionAsDefault = getEl('LocalTranscriptionAsDefault').checked;
+                if (getEl('AutoRegenerateOnMediaUpgrade')) config.AutoRegenerateOnMediaUpgrade = getEl('AutoRegenerateOnMediaUpgrade').checked;
+                if (getEl('TranscriptionApiUrl')) config.TranscriptionApiUrl = getEl('TranscriptionApiUrl').value || '';
+                if (getEl('TranscriptionModel')) config.TranscriptionModel = getEl('TranscriptionModel').value || '';
+                if (getEl('TranscriptionApiKey')) config.TranscriptionApiKey = getEl('TranscriptionApiKey').value || '';
+                if (getEl('FilteredTrackTitle')) config.FilteredTrackTitle = getEl('FilteredTrackTitle').value || 'Generated - Filtered';
+                if (getEl('UnfilteredTrackTitle')) config.UnfilteredTrackTitle = getEl('UnfilteredTrackTitle').value || 'Generated - Unfiltered';
 
                 var data = collectTree(getEl('filterHierarchyContainer'));
                 config.DisabledCategories = data.disabledCategories;
@@ -3935,6 +3951,55 @@
                     };
                     reader.readAsText(file);
                     studioUploadSrtInput.value = '';
+                });
+            }
+
+            // Whisper AI Subtitle Generation Logic
+            var studioTranscribeWhisperBtn = document.getElementById('studioTranscribeWhisperBtn');
+            if (studioTranscribeWhisperBtn) {
+                studioTranscribeWhisperBtn.addEventListener('click', function() {
+                    if (!activeItemId) {
+                        alert('Please select an item first.');
+                        return;
+                    }
+
+                    if (!confirm('Transcribe audio and generate tailored Filtered & Unfiltered subtitles using local AI (Whisper)? This will extract audio and may take a few moments.')) {
+                        return;
+                    }
+
+                    var originalText = studioTranscribeWhisperBtn.textContent;
+                    studioTranscribeWhisperBtn.disabled = true;
+                    studioTranscribeWhisperBtn.textContent = '⏳ Transcribing Audio...';
+
+                    fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/transcribe?force=true'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken()
+                        }
+                    }).then(function(res) {
+                        studioTranscribeWhisperBtn.disabled = false;
+                        studioTranscribeWhisperBtn.textContent = originalText;
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    }).then(function(data) {
+                        if (data.success === false || data.Success === false) {
+                            var errMsg = data.error || data.Error || 'Unknown transcription error';
+                            alert('AI Transcription Failed: ' + errMsg);
+                            return;
+                        }
+                        var cuesCount = data.cuesAdded ?? data.CuesAdded ?? 0;
+                        if (typeof showToast === 'function') {
+                            showToast('AI subtitles generated! Filtered (default) & Unfiltered tracks created (' + cuesCount + ' mute cues generated).');
+                        }
+                        loadFilterDetails(activeItemId);
+                        loadStudioSubtitleWords(true);
+                        checkStudioCleanSubStatus();
+                        loadStudioSubtitleOverride(activeItemId);
+                    }).catch(function(err) {
+                        studioTranscribeWhisperBtn.disabled = false;
+                        studioTranscribeWhisperBtn.textContent = originalText;
+                        alert('AI Transcription request failed: ' + err.message);
+                    });
                 });
             }
 

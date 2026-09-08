@@ -1643,6 +1643,9 @@
                                             <span id="studioSubLockBadge" class="cf-pill cf-pill-gray" style="display:none; font-size:11px;">🔒 Locked</span>
                                         </div>
                                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button id="studioTranscribeWhisperBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(168, 85, 247, 0.15); border:1px solid rgba(168, 85, 247, 0.4); color:#c084fc; font-weight:600;">
+                                                🎙️ Generate AI Subtitles (Whisper)
+                                            </button>
                                             <button id="studioSearchRemoteSubsBtn" class="cf-btn cf-btn-sm" type="button" style="background:rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.4); color:#38bdf8; font-weight:600;">
                                                 🌐 Search Remote Subtitles...
                                             </button>
@@ -3948,6 +3951,55 @@
                     };
                     reader.readAsText(file);
                     studioUploadSrtInput.value = '';
+                });
+            }
+
+            // Whisper AI Subtitle Generation Logic
+            var studioTranscribeWhisperBtn = document.getElementById('studioTranscribeWhisperBtn');
+            if (studioTranscribeWhisperBtn) {
+                studioTranscribeWhisperBtn.addEventListener('click', function() {
+                    if (!activeItemId) {
+                        alert('Please select an item first.');
+                        return;
+                    }
+
+                    if (!confirm('Transcribe audio and generate tailored Filtered & Unfiltered subtitles using local AI (Whisper)? This will extract audio and may take a few moments.')) {
+                        return;
+                    }
+
+                    var originalText = studioTranscribeWhisperBtn.textContent;
+                    studioTranscribeWhisperBtn.disabled = true;
+                    studioTranscribeWhisperBtn.textContent = '⏳ Transcribing Audio...';
+
+                    fetch(apiUrl('ContentFilter/subtitles/' + activeItemId + '/transcribe?force=true'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken()
+                        }
+                    }).then(function(res) {
+                        studioTranscribeWhisperBtn.disabled = false;
+                        studioTranscribeWhisperBtn.textContent = originalText;
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    }).then(function(data) {
+                        if (data.success === false || data.Success === false) {
+                            var errMsg = data.error || data.Error || 'Unknown transcription error';
+                            alert('AI Transcription Failed: ' + errMsg);
+                            return;
+                        }
+                        var cuesCount = data.cuesAdded ?? data.CuesAdded ?? 0;
+                        if (typeof showToast === 'function') {
+                            showToast('AI subtitles generated! Filtered (default) & Unfiltered tracks created (' + cuesCount + ' mute cues generated).');
+                        }
+                        loadFilterDetails(activeItemId);
+                        loadStudioSubtitleWords(true);
+                        checkStudioCleanSubStatus();
+                        loadStudioSubtitleOverride(activeItemId);
+                    }).catch(function(err) {
+                        studioTranscribeWhisperBtn.disabled = false;
+                        studioTranscribeWhisperBtn.textContent = originalText;
+                        alert('AI Transcription request failed: ' + err.message);
+                    });
                 });
             }
 

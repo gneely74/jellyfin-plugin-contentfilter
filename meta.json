@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Automatically search, download, profanity-scan, and clean subtitles on new media (Movie/Episode) addition with an asynchronous settling queue and rate-limiting throttle.",
+  "changelog": "Add local AI / Whisper audio transcription to generate dual filtered (default) and unfiltered subtitle streams, automatic media file upgrade detection, and on-demand Studio transcription.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -8,6 +8,6 @@
   "overview": "Scan and filter objectionable content using a local LLM",
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-09-06T00:00:00Z",
-  "version": "1.0.35.0"
+  "timestamp": "2026-09-08T00:00:00Z",
+  "version": "1.0.36.0"
 }
