@@ -1457,6 +1457,7 @@ public class ContentFilterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<SubtitleSyncStatus> GetSubtitleSyncStatus()
     {
+        _subtitleSyncService.RefreshNextScheduledRun();
         return Ok(_subtitleSyncService.Status);
     }
 
@@ -1469,6 +1470,20 @@ public class ContentFilterController : ControllerBase
     {
         _subtitleSyncService.CancelSync();
         return NoContent();
+    }
+
+    /// <summary>
+    /// Restarts the library-wide automated subtitle download and clean sync job.
+    /// </summary>
+    [HttpPost("subtitles/sync/restart")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SubtitleSyncStatus> RestartSubtitleSync([FromBody] StartSubtitleSyncRequest? request)
+    {
+        _subtitleSyncService.RestartSync(
+            request?.ForceAll ?? false,
+            request?.Language);
+
+        return Ok(_subtitleSyncService.Status);
     }
 
     /// <summary>

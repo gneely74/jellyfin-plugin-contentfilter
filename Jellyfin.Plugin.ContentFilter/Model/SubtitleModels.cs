@@ -76,6 +76,24 @@ public sealed class SubtitleSyncStatus
 
     /// <summary>Gets or sets the number of pending items in the new media processing queue.</summary>
     public int PendingNewMediaQueueCount { get; set; }
+
+    /// <summary>Gets or sets the start timestamp of the last run.</summary>
+    public DateTime? LastRunStartedAt { get; set; }
+
+    /// <summary>Gets or sets the completion timestamp of the last run.</summary>
+    public DateTime? LastRunCompletedAt { get; set; }
+
+    /// <summary>Gets or sets the outcome state of the last run.</summary>
+    public SubtitleSyncState? LastRunStatus { get; set; }
+
+    /// <summary>Gets or sets the total items processed in the last run.</summary>
+    public int? LastRunProcessedCount { get; set; }
+
+    /// <summary>Gets or sets the error count in the last run.</summary>
+    public int? LastRunErrorCount { get; set; }
+
+    /// <summary>Gets or sets the next scheduled automated run timestamp, if scheduled.</summary>
+    public DateTime? NextScheduledRun { get; set; }
 }
 
 /// <summary>

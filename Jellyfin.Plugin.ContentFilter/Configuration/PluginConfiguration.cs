@@ -137,6 +137,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public string SubtitleDownloadLanguage { get; set; } = "default";
 
     /// <summary>
+    /// Gets or sets the time of day (HH:mm format, 24-hour) when the automated daily subtitle sync runs in server local time.
+    /// Default is "03:00" (3:00 AM).
+    /// </summary>
+    public string AutomatedSubtitleSyncTime { get; set; } = "03:00";
+
+    /// <summary>
     /// Gets or sets a value indicating whether to overwrite existing clean subtitle files during sync runs.
     /// </summary>
     public bool OverwriteExistingCleanSubtitles { get; set; } = false;

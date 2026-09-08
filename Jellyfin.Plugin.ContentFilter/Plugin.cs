@@ -34,6 +34,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public static Plugin? Instance { get; private set; }
 
     /// <inheritdoc />
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        base.UpdateConfiguration(configuration);
+    }
+
+    /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
     {
         return

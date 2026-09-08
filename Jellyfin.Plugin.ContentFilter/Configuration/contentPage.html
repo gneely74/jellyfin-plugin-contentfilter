@@ -1250,19 +1250,45 @@
                 box-shadow: 0 0 0 2px var(--cf-primary-glow);
             }
 
+            .emby-checkbox-label.cf-checkbox-row,
             .cf-checkbox-row {
-                display: flex;
-                align-items: center;
+                display: flex !important;
+                align-items: flex-start !important;
+                position: relative !important;
                 gap: 10px;
-                cursor: pointer;
+                cursor: pointer !important;
                 user-select: none;
-                padding: 8px 0;
+                padding: 6px 0 6px 2.4em !important;
+                margin: 4px 0 !important;
+                height: auto !important;
+                min-height: 28px !important;
+                box-sizing: border-box !important;
             }
 
-            .cf-checkbox-row span {
+            .cf-checkbox-row .checkboxOutline {
+                position: absolute !important;
+                top: 4px !important;
+                left: 0 !important;
+                margin: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .cf-checkbox-row span,
+            .cf-checkbox-row .checkboxLabel {
                 font-size: 0.92rem;
                 font-weight: 500;
                 color: #fff;
+                display: inline-block !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                line-height: 1.4 !important;
+            }
+
+            .cf-checkbox-desc {
+                font-size: 0.78rem;
+                color: var(--cf-text-muted);
+                line-height: 1.45;
+                margin: 4px 0 12px 2.4em;
             }
 
             /* Save Action Bar */
@@ -1391,19 +1417,45 @@
                 box-shadow: 0 0 0 2px var(--cf-primary-glow);
             }
 
+            .emby-checkbox-label.cf-checkbox-row,
             .cf-checkbox-row {
-                display: flex;
-                align-items: center;
+                display: flex !important;
+                align-items: flex-start !important;
+                position: relative !important;
                 gap: 10px;
-                cursor: pointer;
+                cursor: pointer !important;
                 user-select: none;
-                padding: 8px 0;
+                padding: 6px 0 6px 2.4em !important;
+                margin: 4px 0 !important;
+                height: auto !important;
+                min-height: 28px !important;
+                box-sizing: border-box !important;
             }
 
-            .cf-checkbox-row span {
+            .cf-checkbox-row .checkboxOutline {
+                position: absolute !important;
+                top: 4px !important;
+                left: 0 !important;
+                margin: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .cf-checkbox-row span,
+            .cf-checkbox-row .checkboxLabel {
                 font-size: 0.92rem;
                 font-weight: 500;
                 color: #fff;
+                display: inline-block !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                line-height: 1.4 !important;
+            }
+
+            .cf-checkbox-desc {
+                font-size: 0.78rem;
+                color: var(--cf-text-muted);
+                line-height: 1.45;
+                margin: 4px 0 12px 2.4em;
             }
 
             /* Save Action Bar */
@@ -2032,11 +2084,11 @@
                             Automatically search, download, clean, and set default subtitles across your media libraries.
                         </div>
 
-                        <label class="cf-checkbox-row" style="margin-top:8px; margin-bottom:6px;">
+                        <label class="cf-checkbox-row" style="margin-top:8px; margin-bottom:4px;">
                             <input id="AutoDownloadSubtitles" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                             <span style="font-weight:600;">Enable Automated Remote Subtitle Downloads</span>
                         </label>
-                        <div class="cf-field-helper" style="margin-bottom:14px;">
+                        <div class="cf-checkbox-desc" style="margin-bottom:14px;">
                             When enabled, queries configured Jellyfin subtitle providers (e.g. OpenSubtitles) for missing subtitles during automated sync. 
                             When disabled, the automated sync will only clean and standardize existing local/embedded subtitles without querying remote providers.
                         </div>
@@ -2046,6 +2098,11 @@
                                 <label class="cf-field-label" for="SubtitleDownloadLanguage">Target Subtitle Language</label>
                                 <input id="SubtitleDownloadLanguage" type="text" class="cf-field-input" placeholder="default (or eng, spa, fre)">
                                 <div class="cf-field-helper">Language code for downloads (leave as "default" to match Jellyfin server language).</div>
+                            </div>
+                            <div class="cf-field-group" style="margin-bottom:0;">
+                                <label class="cf-field-label" for="AutomatedSubtitleSyncTime">Automated Daily Sync Time</label>
+                                <input id="AutomatedSubtitleSyncTime" type="time" class="cf-field-input" value="03:00">
+                                <div class="cf-field-helper">Daily scheduled time (server local time) to run subtitle generation and cleaning.</div>
                             </div>
                         </div>
 
@@ -2066,7 +2123,7 @@
                                 <input id="EnableRemoteWebSocketMuting" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
                                 <span>Enable server-side remote WebSocket muting (legacy / remote control)</span>
                             </label>
-                            <div style="font-size:0.75rem; color:var(--cf-text-muted); margin-left:24px; margin-top:-4px; margin-bottom:8px;">
+                            <div class="cf-checkbox-desc">
                                 When disabled (recommended), client apps like <strong>Swiftfin (Apple TV / iOS)</strong> and <strong>Jellyfin Web</strong> perform instant, zero-latency stream-level muting locally using filter cues.
                             </div>
 
@@ -2185,19 +2242,37 @@
                             </div>
                         </div>
 
-                        <!-- On-Demand Sync Box -->
+                        <!-- Subtitle Generation Job Status & Controls Card -->
                         <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-top:10px;">
-                            <div style="font-weight:600; font-size:0.95rem; margin-bottom:4px; color:var(--cf-text-main);">⚡ On-Demand Library Sync</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <div style="font-weight:600; font-size:0.95rem; color:var(--cf-text-main);">⚡ Subtitle Generation Job Status & Controls</div>
+                                <span id="subSyncStateBadge" class="cf-pill cf-pill-green" style="font-size:11px; font-weight:700; text-transform:uppercase;">IDLE</span>
+                            </div>
                             <div style="font-size:0.82rem; color:var(--cf-text-muted); margin-bottom:12px;">
-                                Kick off subtitle download and cleaning across all movies and TV shows now, or monitor scheduled daily runs.
+                                Monitor automated daily subtitle generation or manually start, cancel, and restart library-wide processing on demand.
+                            </div>
+
+                            <!-- Schedule & Last Run Info Banner -->
+                            <div id="subSyncScheduleInfo" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; background:rgba(255,255,255,0.02); border:1px solid var(--cf-border); border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.82rem;">
+                                <div>
+                                    <div style="color:var(--cf-text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Next Scheduled Run</div>
+                                    <div id="subSyncNextRunText" style="font-weight:600; color:var(--cf-primary); margin-top:2px;">-</div>
+                                </div>
+                                <div>
+                                    <div style="color:var(--cf-text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Last Run Summary</div>
+                                    <div id="subSyncLastRunText" style="font-weight:600; color:var(--cf-text-main); margin-top:2px;">None recorded</div>
+                                </div>
                             </div>
 
                             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
                                 <button id="runSubSyncBtn" class="cf-btn cf-btn-primary" type="button">
-                                    ▶️ Run Subtitle Sync Now
+                                    ▶️ Start Subtitle Sync
                                 </button>
                                 <button id="cancelSubSyncBtn" class="cf-btn" style="display:none; border-color:var(--cf-red); color:var(--cf-red);" type="button">
-                                    ⏹ Cancel Sync
+                                    ⏹ Cancel Job
+                                </button>
+                                <button id="restartSubSyncBtn" class="cf-btn" style="display:none; border-color:var(--cf-amber); color:var(--cf-amber);" type="button">
+                                    🔄 Restart Job
                                 </button>
                                 <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cf-text-muted); cursor:pointer;">
                                     <input id="subSyncForceCheckbox" type="checkbox" style="cursor:pointer;">
@@ -2751,6 +2826,7 @@
                 if (getEl('SaveSidecarsToDisk')) getEl('SaveSidecarsToDisk').checked = !!config.SaveSidecarsToDisk;
                 if (getEl('AutoDownloadSubtitles')) getEl('AutoDownloadSubtitles').checked = config.AutoDownloadSubtitles !== false;
                 if (getEl('SubtitleDownloadLanguage')) getEl('SubtitleDownloadLanguage').value = config.SubtitleDownloadLanguage || 'default';
+                if (getEl('AutomatedSubtitleSyncTime')) getEl('AutomatedSubtitleSyncTime').value = config.AutomatedSubtitleSyncTime || '03:00';
                 if (getEl('OverwriteExistingCleanSubtitles')) getEl('OverwriteExistingCleanSubtitles').checked = !!config.OverwriteExistingCleanSubtitles;
                 if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
                 if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
@@ -2788,6 +2864,7 @@
                 if (getEl('SaveSidecarsToDisk')) config.SaveSidecarsToDisk = getEl('SaveSidecarsToDisk').checked;
                 if (getEl('AutoDownloadSubtitles')) config.AutoDownloadSubtitles = getEl('AutoDownloadSubtitles').checked;
                 if (getEl('SubtitleDownloadLanguage')) config.SubtitleDownloadLanguage = getEl('SubtitleDownloadLanguage').value || 'default';
+                if (getEl('AutomatedSubtitleSyncTime')) config.AutomatedSubtitleSyncTime = getEl('AutomatedSubtitleSyncTime').value || '03:00';
                 if (getEl('OverwriteExistingCleanSubtitles')) config.OverwriteExistingCleanSubtitles = getEl('OverwriteExistingCleanSubtitles').checked;
                 if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
                 if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
@@ -4090,6 +4167,18 @@
             // --- Automated Subtitle Library Sync Controller ---
             var subSyncPollTimer = null;
 
+            function formatSyncDate(isoStr) {
+                if (!isoStr) return null;
+                try {
+                    var d = new Date(isoStr);
+                    if (isNaN(d.getTime())) return null;
+                    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                           d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } catch (e) {
+                    return null;
+                }
+            }
+
             function startSubtitleSync() {
                 var forceAll = !!(document.getElementById('subSyncForceCheckbox') && document.getElementById('subSyncForceCheckbox').checked);
                 var langInput = document.getElementById('SubtitleDownloadLanguage');
@@ -4097,6 +4186,7 @@
 
                 var runBtn = document.getElementById('runSubSyncBtn');
                 var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                var restartBtn = document.getElementById('restartSubSyncBtn');
                 var progContainer = document.getElementById('subSyncProgressContainer');
 
                 if (runBtn) {
@@ -4115,18 +4205,15 @@
                     if (!res.ok && res.status !== 409) throw new Error('Server returned ' + res.status);
                     return res.json();
                 }).then(function(status) {
-                    if (runBtn) {
-                        runBtn.disabled = true;
-                        runBtn.textContent = '▶️ Subtitle Sync Active';
-                    }
                     if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                    if (restartBtn) restartBtn.style.display = 'inline-block';
                     if (progContainer) progContainer.style.display = 'flex';
                     updateSubtitleSyncUI(status);
                     pollSubtitleSyncStatus();
                 }).catch(function(err) {
                     if (runBtn) {
                         runBtn.disabled = false;
-                        runBtn.textContent = '▶️ Run Subtitle Sync Now';
+                        runBtn.textContent = '▶️ Start Subtitle Sync';
                     }
                     alert('Could not start subtitle sync: ' + err.message);
                 });
@@ -4143,9 +4230,50 @@
                     method: 'POST',
                     headers: { 'X-Emby-Token': ApiClient.accessToken() }
                 }).then(function() {
-                    // next poll will report state Cancelled
+                    pollSubtitleSyncStatus();
                 }).catch(function(err) {
                     console.warn('Cancel failed:', err);
+                    if (cancelBtn) {
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = '⏹ Cancel Job';
+                    }
+                });
+            }
+
+            function restartSubtitleSync() {
+                var forceAll = !!(document.getElementById('subSyncForceCheckbox') && document.getElementById('subSyncForceCheckbox').checked);
+                var langInput = document.getElementById('SubtitleDownloadLanguage');
+                var lang = (langInput ? langInput.value.trim() : '') || 'default';
+
+                var restartBtn = document.getElementById('restartSubSyncBtn');
+                if (restartBtn) {
+                    restartBtn.disabled = true;
+                    restartBtn.textContent = '⏳ Restarting...';
+                }
+
+                fetch(apiUrl('ContentFilter/subtitles/sync/restart'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Emby-Token': ApiClient.accessToken()
+                    },
+                    body: JSON.stringify({ forceAll: forceAll, language: lang })
+                }).then(function(res) {
+                    if (!res.ok) throw new Error('Server returned ' + res.status);
+                    return res.json();
+                }).then(function(status) {
+                    if (restartBtn) {
+                        restartBtn.disabled = false;
+                        restartBtn.textContent = '🔄 Restart Job';
+                    }
+                    updateSubtitleSyncUI(status);
+                    pollSubtitleSyncStatus();
+                }).catch(function(err) {
+                    if (restartBtn) {
+                        restartBtn.disabled = false;
+                        restartBtn.textContent = '🔄 Restart Job';
+                    }
+                    alert('Could not restart subtitle sync: ' + err.message);
                 });
             }
 
@@ -4165,13 +4293,6 @@
                     var isRunning = status.isRunning || status.IsRunning || state === 'running';
 
                     if (isRunning) {
-                        var runBtn = document.getElementById('runSubSyncBtn');
-                        var cancelBtn = document.getElementById('cancelSubSyncBtn');
-                        if (runBtn) {
-                            runBtn.disabled = true;
-                            runBtn.textContent = '▶️ Subtitle Sync Active';
-                        }
-                        if (cancelBtn) cancelBtn.style.display = 'inline-block';
                         subSyncPollTimer = setTimeout(pollSubtitleSyncStatus, 1000);
                     } else {
                         onSubtitleSyncFinished(status);
@@ -4183,15 +4304,102 @@
 
             function updateSubtitleSyncUI(status) {
                 if (!status) return;
+                var badge = document.getElementById('subSyncStateBadge');
+                var runBtn = document.getElementById('runSubSyncBtn');
+                var cancelBtn = document.getElementById('cancelSubSyncBtn');
+                var restartBtn = document.getElementById('restartSubSyncBtn');
                 var progContainer = document.getElementById('subSyncProgressContainer');
                 var statusText = document.getElementById('subSyncStatusText');
                 var percentText = document.getElementById('subSyncPercentText');
                 var progBar = document.getElementById('subSyncProgressBar');
                 var statsText = document.getElementById('subSyncStatsText');
                 var logsEl = document.getElementById('subSyncLogs');
+                var nextEl = document.getElementById('subSyncNextRunText');
+                var lastEl = document.getElementById('subSyncLastRunText');
 
-                if (progContainer) progContainer.style.display = 'flex';
+                var rawState = (status.state || status.State || 'Idle');
+                var state = rawState.charAt(0).toUpperCase() + rawState.slice(1).toLowerCase();
+                var isRunning = status.isRunning || status.IsRunning || state === 'Running';
 
+                // Update State Badge
+                if (badge) {
+                    badge.textContent = state.toUpperCase();
+                    badge.className = 'cf-pill ' + (
+                        isRunning ? 'cf-pill-blue' :
+                        state === 'Completed' ? 'cf-pill-green' :
+                        state === 'Cancelled' ? 'cf-pill-amber' :
+                        state === 'Error' ? 'cf-pill-red' :
+                        'cf-pill-green'
+                    );
+                }
+
+                // Button visibility and states
+                if (isRunning) {
+                    if (runBtn) {
+                        runBtn.style.display = 'none';
+                    }
+                    if (cancelBtn) {
+                        cancelBtn.style.display = 'inline-block';
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = '⏹ Cancel Job';
+                    }
+                    if (restartBtn) {
+                        restartBtn.style.display = 'inline-block';
+                        restartBtn.disabled = false;
+                        restartBtn.textContent = '🔄 Restart Job';
+                    }
+                    if (progContainer) progContainer.style.display = 'flex';
+                } else {
+                    if (runBtn) {
+                        runBtn.style.display = 'inline-block';
+                        runBtn.disabled = false;
+                        runBtn.textContent = '▶️ Start Subtitle Sync';
+                    }
+                    if (cancelBtn) {
+                        cancelBtn.style.display = 'none';
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = '⏹ Cancel Job';
+                    }
+                    if (restartBtn) {
+                        restartBtn.style.display = 'inline-block';
+                        restartBtn.disabled = false;
+                        restartBtn.textContent = '🔄 Restart Job';
+                    }
+                    if (state === 'Idle' && (!status.processedItems && !status.ProcessedItems)) {
+                        if (progContainer) progContainer.style.display = 'none';
+                    } else {
+                        if (progContainer) progContainer.style.display = 'flex';
+                    }
+                }
+
+                // Schedule & Last run info
+                if (nextEl) {
+                    var nextTime = formatSyncDate(status.nextScheduledRun || status.NextScheduledRun);
+                    var cfgTimeInput = document.getElementById('AutomatedSubtitleSyncTime');
+                    var cfgTime = cfgTimeInput ? cfgTimeInput.value : '03:00';
+                    nextEl.textContent = nextTime ? nextTime : ('Daily at ' + cfgTime + ' (Local)');
+                }
+
+                if (lastEl) {
+                    var lastComp = status.lastRunCompletedAt || status.LastRunCompletedAt || status.completedAt || status.CompletedAt;
+                    var lastSt = status.lastRunStatus || status.LastRunStatus || (state !== 'Running' ? state : null);
+                    var lastProc = status.lastRunProcessedCount ?? status.LastRunProcessedCount;
+                    var lastErr = status.lastRunErrorCount ?? status.LastRunErrorCount;
+                    if (lastComp) {
+                        var formatted = formatSyncDate(lastComp);
+                        var str = (lastSt ? ('[' + lastSt + '] ') : '') + formatted;
+                        if (lastProc !== undefined && lastProc !== null) {
+                            str += ' (' + lastProc + ' items';
+                            if (lastErr) str += ', ' + lastErr + ' errors';
+                            str += ')';
+                        }
+                        lastEl.textContent = str;
+                    } else {
+                        lastEl.textContent = 'None recorded';
+                    }
+                }
+
+                // Progress metrics
                 var pct = Math.round(status.progressPercentage ?? status.ProgressPercentage ?? 0);
                 var itemName = status.currentItemName || status.CurrentItemName || '';
                 var processed = status.processedItems ?? status.ProcessedItems ?? 0;
@@ -4200,13 +4408,12 @@
                 var cleaned = status.subtitlesCleaned ?? status.SubtitlesCleaned ?? 0;
                 var skipped = status.subtitlesSkipped ?? status.SubtitlesSkipped ?? 0;
                 var errors = status.errorCount ?? status.ErrorCount ?? 0;
-                var state = (status.state || status.State || 'Idle');
 
                 if (progBar) progBar.style.width = pct + '%';
                 if (percentText) percentText.textContent = pct + '%';
 
                 if (statusText) {
-                    if (state === 'Running') {
+                    if (isRunning) {
                         statusText.textContent = itemName ? ('Processing: ' + itemName + ' (' + processed + '/' + total + ')') : 'Scanning libraries...';
                         statusText.style.color = 'var(--cf-accent)';
                     } else if (state === 'Completed') {
@@ -4218,6 +4425,9 @@
                     } else if (state === 'Error') {
                         statusText.textContent = '❌ Subtitle sync encountered errors';
                         statusText.style.color = '#f87171';
+                    } else {
+                        statusText.textContent = 'Idle';
+                        statusText.style.color = 'var(--cf-text-muted)';
                     }
                 }
 
@@ -4237,17 +4447,7 @@
             }
 
             function onSubtitleSyncFinished(status) {
-                var runBtn = document.getElementById('runSubSyncBtn');
-                var cancelBtn = document.getElementById('cancelSubSyncBtn');
-                if (runBtn) {
-                    runBtn.disabled = false;
-                    runBtn.textContent = '▶️ Run Subtitle Sync Now';
-                }
-                if (cancelBtn) {
-                    cancelBtn.disabled = false;
-                    cancelBtn.style.display = 'none';
-                    cancelBtn.textContent = '⏹ Cancel Sync';
-                }
+                updateSubtitleSyncUI(status);
             }
 
             var runSubSyncBtn = document.getElementById('runSubSyncBtn');
@@ -4255,6 +4455,9 @@
 
             var cancelSubSyncBtn = document.getElementById('cancelSubSyncBtn');
             if (cancelSubSyncBtn) cancelSubSyncBtn.addEventListener('click', cancelSubtitleSync);
+
+            var restartSubSyncBtn = document.getElementById('restartSubSyncBtn');
+            if (restartSubSyncBtn) restartSubSyncBtn.addEventListener('click', restartSubtitleSync);
 
 
             document.getElementById('studioSearchWordsInput').addEventListener('input', function() {

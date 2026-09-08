@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.ContentFilter.Configuration;
 using Jellyfin.Plugin.ContentFilter.Models;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
@@ -81,9 +82,14 @@ public class SubtitleSyncService : IHostedService, IDisposable
     {
         _libraryManager.ItemAdded += OnItemAdded;
         _libraryManager.ItemUpdated += OnItemUpdated;
+        if (Plugin.Instance != null)
+        {
+            Plugin.Instance.ConfigurationChanged += OnConfigurationChanged;
+        }
         _workerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _workerTask = Task.Run(() => ProcessNewMediaQueueAsync(_workerCts.Token), CancellationToken.None);
         _logger.LogInformation("ContentFilter SubtitleSyncService started and listening for new media additions and upgrades.");
+        RefreshNextScheduledRun();
         return Task.CompletedTask;
     }
 
@@ -92,6 +98,10 @@ public class SubtitleSyncService : IHostedService, IDisposable
     {
         _libraryManager.ItemAdded -= OnItemAdded;
         _libraryManager.ItemUpdated -= OnItemUpdated;
+        if (Plugin.Instance != null)
+        {
+            Plugin.Instance.ConfigurationChanged -= OnConfigurationChanged;
+        }
         if (_workerCts is not null)
         {
             _workerCts.Cancel();
@@ -103,6 +113,16 @@ public class SubtitleSyncService : IHostedService, IDisposable
             await Task.WhenAny(_workerTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
         }
         _logger.LogInformation("ContentFilter SubtitleSyncService stopped.");
+    }
+
+    private void OnConfigurationChanged(object? sender, MediaBrowser.Model.Plugins.BasePluginConfiguration config)
+    {
+        if (config is PluginConfiguration pluginConfig &&
+            !string.IsNullOrWhiteSpace(pluginConfig.AutomatedSubtitleSyncTime) &&
+            TimeSpan.TryParse(pluginConfig.AutomatedSubtitleSyncTime, out var timeOfDay))
+        {
+            UpdateScheduledTrigger(timeOfDay);
+        }
     }
 
     /// <inheritdoc/>
@@ -410,6 +430,15 @@ public class SubtitleSyncService : IHostedService, IDisposable
             _logger.LogError(ex, "Automated subtitle sync encountered a fatal error.");
             throw;
         }
+        finally
+        {
+            Status.LastRunStartedAt = Status.StartedAt;
+            Status.LastRunCompletedAt = Status.CompletedAt ?? DateTime.UtcNow;
+            Status.LastRunStatus = Status.State;
+            Status.LastRunProcessedCount = Status.ProcessedItems;
+            Status.LastRunErrorCount = Status.ErrorCount;
+            RefreshNextScheduledRun();
+        }
     }
 
     /// <summary>
@@ -424,6 +453,84 @@ public class SubtitleSyncService : IHostedService, IDisposable
                 _activeSyncCts?.Cancel();
             }
         }
+    }
+
+    /// <summary>
+    /// Restarts the library-wide automated subtitle download and clean sync job, cancelling any active run and launching anew.
+    /// </summary>
+    /// <param name="forceAll">Whether to reprocess items that already have clean subtitles.</param>
+    /// <param name="overrideLanguage">Optional language override.</param>
+    /// <param name="progress">Progress reporter (0-100%).</param>
+    /// <returns><see langword="true"/> if restart initiated.</returns>
+    public bool RestartSync(bool forceAll, string? overrideLanguage = null, IProgress<double>? progress = null)
+    {
+        CancelSync();
+        Task.Run(async () =>
+        {
+            // Allow up to 10 seconds for running execution to unwind
+            for (int i = 0; i < 20 && Status.IsRunning; i++)
+            {
+                await Task.Delay(500).ConfigureAwait(false);
+            }
+
+            StartSync(forceAll, overrideLanguage, progress);
+        }, CancellationToken.None);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Updates the scheduled daily trigger for the SubtitleSyncTask in Jellyfin's TaskManager.
+    /// </summary>
+    /// <param name="timeOfDay">The new time of day to trigger the daily run.</param>
+    /// <returns><see langword="true"/> if updated successfully; otherwise, <see langword="false"/>.</returns>
+    public bool UpdateScheduledTrigger(TimeSpan timeOfDay)
+    {
+        try
+        {
+            var taskManager = _serviceProvider.GetService<MediaBrowser.Model.Tasks.ITaskManager>();
+            if (taskManager == null)
+            {
+                return false;
+            }
+
+            var worker = taskManager.ScheduledTasks.FirstOrDefault(t =>
+                t.ScheduledTask is SubtitleSyncTask ||
+                string.Equals(t.ScheduledTask?.Key, "ContentFilterSubtitleSyncTask", StringComparison.OrdinalIgnoreCase));
+
+            if (worker != null)
+            {
+                worker.Triggers =
+                [
+                    new MediaBrowser.Model.Tasks.TaskTriggerInfo
+                    {
+                        Type = MediaBrowser.Model.Tasks.TaskTriggerInfoType.DailyTrigger,
+                        TimeOfDayTicks = timeOfDay.Ticks
+                    }
+                ];
+                _logger.LogInformation("Updated daily trigger for SubtitleSyncTask to {TimeOfDay} server local time", timeOfDay);
+                RefreshNextScheduledRun();
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update scheduled trigger for SubtitleSyncTask");
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Refreshes the next scheduled automated run timestamp on <see cref="Status"/>.
+    /// </summary>
+    public void RefreshNextScheduledRun()
+    {
+        var scheduledTime = SubtitleSyncTask.ResolveScheduledTime();
+        var now = DateTime.Now;
+        var nextDate = now.TimeOfDay > scheduledTime ? now.Date.AddDays(1) : now.Date;
+        nextDate = nextDate.Add(scheduledTime);
+        Status.NextScheduledRun = nextDate.ToUniversalTime();
     }
 
     /// <summary>

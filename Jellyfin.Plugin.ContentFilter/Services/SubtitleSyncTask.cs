@@ -58,13 +58,29 @@ public class SubtitleSyncTask : IScheduledTask
     /// <inheritdoc/>
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
+        var timeOfDay = ResolveScheduledTime();
         return
         [
             new TaskTriggerInfo
             {
                 Type = TaskTriggerInfoType.DailyTrigger,
-                TimeOfDayTicks = TimeSpan.FromHours(3).Ticks // Runs daily at 3:00 AM server time
+                TimeOfDayTicks = timeOfDay.Ticks
             }
         ];
+    }
+
+    /// <summary>
+    /// Resolves the configured time of day for the daily scheduled sync. Defaults to 3:00 AM server local time.
+    /// </summary>
+    /// <returns>The resolved <see cref="TimeSpan"/> time of day.</returns>
+    public static TimeSpan ResolveScheduledTime()
+    {
+        var configTime = Plugin.Instance?.Configuration?.AutomatedSubtitleSyncTime;
+        if (!string.IsNullOrWhiteSpace(configTime) && TimeSpan.TryParse(configTime, out var parsed))
+        {
+            return parsed;
+        }
+
+        return TimeSpan.FromHours(3);
     }
 }
