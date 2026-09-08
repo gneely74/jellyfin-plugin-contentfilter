@@ -73,7 +73,7 @@ public class PlaybackMonitor : IHostedService
 
     private async Task MonitorLoopAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
         while (!ct.IsCancellationRequested)
         {
             try
@@ -139,11 +139,11 @@ public class PlaybackMonitor : IHostedService
 
         var itemId = session.NowPlayingItem.Id;
         var sessionId = session.Id;
-        var state = _sessionState.GetOrAdd(sessionId, _ => new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue));
+        var state = _sessionState.GetOrAdd(sessionId, _ => new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue, 0, DateTime.MinValue, DateTime.MinValue));
         var isNewItem = state.ItemId != itemId;
         if (isNewItem)
         {
-            state = new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue);
+            state = new SessionState(itemId, false, 0, DateTime.MinValue, 0, int.MinValue, 0, DateTime.MinValue, DateTime.MinValue);
             _sessionState[sessionId] = state;
         }
 
@@ -170,8 +170,37 @@ public class PlaybackMonitor : IHostedService
             return;
         }
 
-        var positionTicks = session.PlayState?.PositionTicks ?? 0;
-        var position = positionTicks > 0 ? TimeSpan.FromTicks(positionTicks) : TimeSpan.Zero;
+        var rawTicks = session.PlayState?.PositionTicks ?? 0;
+        var now = DateTime.UtcNow;
+
+        if (state.LastReportedTicks != rawTicks || state.LastReportedUtc == DateTime.MinValue)
+        {
+            state = state with { LastReportedTicks = rawTicks, LastReportedUtc = now };
+            _sessionState[sessionId] = state;
+        }
+
+        // Extrapolate current playback position to overcome client 1-second reporting latency
+        TimeSpan position;
+        if (session.PlayState?.IsPaused == true || state.LastReportedTicks <= 0)
+        {
+            position = state.LastReportedTicks > 0 ? TimeSpan.FromTicks(state.LastReportedTicks) : TimeSpan.Zero;
+        }
+        else
+        {
+            var elapsed = now - state.LastReportedUtc;
+            if (elapsed < TimeSpan.Zero)
+            {
+                elapsed = TimeSpan.Zero;
+            }
+            else if (elapsed > TimeSpan.FromSeconds(3.0))
+            {
+                elapsed = TimeSpan.FromSeconds(3.0);
+            }
+
+            var extrapolatedTicks = state.LastReportedTicks + (long)(elapsed.TotalSeconds * 10_000_000);
+            position = TimeSpan.FromTicks(extrapolatedTicks);
+        }
+
         var config = Plugin.Instance?.Configuration;
         var fallbackToSkip = config?.FallbackToSkipOnUnmutableClients ?? true;
         var canMute = CanSessionMute(session);
@@ -195,11 +224,10 @@ public class PlaybackMonitor : IHostedService
         if (seekCue is not null)
         {
             var seekTarget = seekCue.End.Ticks;
-            var now = DateTime.UtcNow;
             var isNewTarget = state.LastSeekTarget != seekTarget;
 
             // If we already sent a seek to this target and the player reported position near or past target, skip
-            if (!isNewTarget && positionTicks >= seekTarget - TimeSpan.FromMilliseconds(500).Ticks)
+            if (!isNewTarget && position.Ticks >= seekTarget - TimeSpan.FromMilliseconds(500).Ticks)
             {
                 return;
             }
@@ -207,7 +235,7 @@ public class PlaybackMonitor : IHostedService
             var shouldRetry = !isNewTarget &&
                               (now - state.LastSeekTime) >= TimeSpan.FromSeconds(7.0) &&
                               state.SeekRetryCount < 3 &&
-                              positionTicks < seekTarget - TimeSpan.FromMilliseconds(500).Ticks;
+                              position.Ticks < seekTarget - TimeSpan.FromMilliseconds(500).Ticks;
 
             if (isNewTarget || shouldRetry)
             {
@@ -264,37 +292,46 @@ public class PlaybackMonitor : IHostedService
         // When not inside any active seek cue, reset LastSeekTarget when playback moves safely past target or rewinds.
         if (state.LastSeekTarget != 0)
         {
-            if (positionTicks >= state.LastSeekTarget - TimeSpan.FromMilliseconds(500).Ticks ||
-                positionTicks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
+            if (position.Ticks >= state.LastSeekTarget - TimeSpan.FromMilliseconds(500).Ticks ||
+                position.Ticks < state.LastSeekTarget - TimeSpan.FromSeconds(30).Ticks)
             {
                 state = state with { LastSeekTarget = 0, LastSeekTime = DateTime.MinValue, SeekRetryCount = 0 };
                 _sessionState[sessionId] = state;
             }
         }
 
-        // Mute when: client can mute AND current playback position is within an active audio cue (with 250ms lead buffer).
-        var shouldMute = canMute && filter.Cues
+        // Mute timing:
+        // 1. muteLeadTime (650ms): Compares ahead of word onset to overcome network latency, WebSocket queueing, and TV audio ramp-down.
+        // 2. muteLagTime (400ms): Keeps mute active past word offset to cover trailing consonants, room reverb, and plosives.
+        // 3. minMuteDuration (1100ms): Prevents audio fluttering/receiver popping on short words by enforcing a stable minimum mute duration.
+        var muteLeadTime = TimeSpan.FromMilliseconds(650);
+        var muteLagTime = TimeSpan.FromMilliseconds(400);
+        var minMuteDuration = TimeSpan.FromMilliseconds(1100);
+
+        var isInsideMuteCue = filter.Cues
             .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
             .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
             .Where(c =>
                 string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
                 (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
                  string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)))
-            .Any(c => position >= (c.Start - TimeSpan.FromMilliseconds(250)) && position < (c.End + TimeSpan.FromMilliseconds(100)));
+            .Any(c => position >= (c.Start - muteLeadTime) && position < (c.End + muteLagTime));
+
+        var shouldMute = canMute && (isInsideMuteCue || (state.IsMuted && (now - state.LastMuteTimeUtc) < minMuteDuration));
 
         if (shouldMute && !state.IsMuted)
         {
             _logger.LogInformation(
-                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: muting for active cue(s)",
+                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: muting for active cue(s)",
                 sessionId, session.UserName, session.DeviceName, position);
             await SendMuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
-            _sessionState[sessionId] = state with { IsMuted = true };
+            _sessionState[sessionId] = state with { IsMuted = true, LastMuteTimeUtc = now };
         }
         else if (!shouldMute && state.IsMuted)
         {
             _logger.LogInformation(
-                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss}: unmuting — no active mute cues",
-                sessionId, session.UserName, session.DeviceName, position);
+                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: unmuting — cue ended (muted for {Duration:0.00}s)",
+                sessionId, session.UserName, session.DeviceName, position, (now - state.LastMuteTimeUtc).TotalSeconds);
             await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
             _sessionState[sessionId] = state with { IsMuted = false };
         }
@@ -445,5 +482,8 @@ public class PlaybackMonitor : IHostedService
         long LastSeekTarget,
         DateTime LastSeekTime,
         int SeekRetryCount,
-        int FilteredSubtitleIndex);
+        int FilteredSubtitleIndex,
+        long LastReportedTicks,
+        DateTime LastReportedUtc,
+        DateTime LastMuteTimeUtc);
 }

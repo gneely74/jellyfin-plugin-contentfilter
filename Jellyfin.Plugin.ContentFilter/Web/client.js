@@ -485,7 +485,7 @@
 
             // 2. Mute check (mute action or audio-channel skip)
             if (cue.action === 'mute' || (cue.action === 'skip' && cue.channel === 'audio')) {
-                if (cur >= (cue.start - 0.2) && cur < cue.end) {
+                if (cur >= (cue.start - 0.25) && cur < (cue.end + 0.35)) {
                     shouldMute = true;
                     muteDescription = cue.description || cue.category.split('.').pop() || 'Audio Filtered';
                 }
