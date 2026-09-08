@@ -203,6 +203,7 @@ public class PlaybackMonitor : IHostedService
 
         var config = Plugin.Instance?.Configuration;
         var fallbackToSkip = config?.FallbackToSkipOnUnmutableClients ?? true;
+        var isAutonomousClient = IsClientAutonomousFilterClient(session);
         var canMute = CanSessionMute(session);
 
         // Video/both-channel skip cues trigger a seek with 3.5s lookahead to give players time to jump
@@ -215,7 +216,7 @@ public class PlaybackMonitor : IHostedService
             .Where(c =>
                 (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
                  !string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)) ||
-                (!canMute && fallbackToSkip &&
+                (!isAutonomousClient && !canMute && fallbackToSkip &&
                  (string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
                   string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase))))
             .OrderByDescending(c => c.End)
@@ -300,41 +301,63 @@ public class PlaybackMonitor : IHostedService
             }
         }
 
-        // Mute timing:
-        // 1. muteLeadTime: Pre-roll lead window before word onset to overcome player audio buffering, network transmission, and DAC ramp-down (default 1800ms).
-        // 2. muteLagTime: Post-roll trailing window after word completion to cover trailing consonants and room acoustics (default 300ms).
-        // 3. minMuteDuration: Stable floor to prevent AVR/soundbar eARC dropouts or fluttering on short words (1000ms).
-        var muteLeadTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLeadMs ?? 1800);
-        var muteLagTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLagMs ?? 300);
-        var minMuteDuration = TimeSpan.FromMilliseconds(1000);
+        var enableRemoteMute = (config?.EnableRemoteWebSocketMuting ?? false) && !isAutonomousClient;
 
-        var isInsideMuteCue = filter.Cues
-            .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
-            .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
-            .Where(c =>
-                string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
-                (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)))
-            .Any(c => position >= (c.Start - muteLeadTime) && position < (c.End + muteLagTime));
-
-        var shouldMute = canMute && (isInsideMuteCue || (state.IsMuted && (now - state.LastMuteTimeUtc) < minMuteDuration));
-
-        if (shouldMute && !state.IsMuted)
+        if (enableRemoteMute)
         {
-            _logger.LogInformation(
-                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: muting for active cue(s)",
-                sessionId, session.UserName, session.DeviceName, position);
-            await SendMuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
-            _sessionState[sessionId] = state with { IsMuted = true, LastMuteTimeUtc = now };
+            // Mute timing:
+            // 1. muteLeadTime: Pre-roll lead window before word onset to overcome player audio buffering, network transmission, and DAC ramp-down (default 1800ms).
+            // 2. muteLagTime: Post-roll trailing window after word completion to cover trailing consonants and room acoustics (default 300ms).
+            // 3. minMuteDuration: Stable floor to prevent AVR/soundbar eARC dropouts or fluttering on short words (1000ms).
+            var muteLeadTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLeadMs ?? 1800);
+            var muteLagTime = TimeSpan.FromMilliseconds(config?.RemoteMuteLagMs ?? 300);
+            var minMuteDuration = TimeSpan.FromMilliseconds(1000);
+
+            var isInsideMuteCue = filter.Cues
+                .Where(c => !string.Equals(c.Action, "none", StringComparison.OrdinalIgnoreCase))
+                .Where(c => _filterRuleService.IsCueEnabled(c, itemId))
+                .Where(c =>
+                    string.Equals(c.Action, "mute", StringComparison.OrdinalIgnoreCase) ||
+                    (string.Equals(c.Action, "skip", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(c.Channel, "audio", StringComparison.OrdinalIgnoreCase)))
+                .Any(c => position >= (c.Start - muteLeadTime) && position < (c.End + muteLagTime));
+
+            var shouldMute = canMute && (isInsideMuteCue || (state.IsMuted && (now - state.LastMuteTimeUtc) < minMuteDuration));
+
+            if (shouldMute && !state.IsMuted)
+            {
+                _logger.LogInformation(
+                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: muting for active cue(s)",
+                    sessionId, session.UserName, session.DeviceName, position);
+                await SendMuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
+                _sessionState[sessionId] = state with { IsMuted = true, LastMuteTimeUtc = now };
+            }
+            else if (!shouldMute && state.IsMuted)
+            {
+                _logger.LogInformation(
+                    "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: unmuting — cue ended (muted for {Duration:0.00}s)",
+                    sessionId, session.UserName, session.DeviceName, position, (now - state.LastMuteTimeUtc).TotalSeconds);
+                await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
+                _sessionState[sessionId] = state with { IsMuted = false };
+            }
         }
-        else if (!shouldMute && state.IsMuted)
+        else if (state.IsMuted)
         {
             _logger.LogInformation(
-                "ContentFilter: Session {SessionId} ({User}/{Device}) at {Position:mm\\:ss\\.ff}: unmuting — cue ended (muted for {Duration:0.00}s)",
-                sessionId, session.UserName, session.DeviceName, position, (now - state.LastMuteTimeUtc).TotalSeconds);
+                "ContentFilter: Session {SessionId} ({User}/{Device}): clearing remote muted state (autonomous client or remote mute disabled)",
+                sessionId, session.UserName, session.DeviceName);
             await SendUnmuteToSessionOrGroupAsync(session, ct).ConfigureAwait(false);
             _sessionState[sessionId] = state with { IsMuted = false };
         }
+    }
+
+    private static bool IsClientAutonomousFilterClient(SessionInfo session)
+    {
+        var client = session.Client ?? string.Empty;
+        var deviceName = session.DeviceName ?? string.Empty;
+        return client.Contains("Swiftfin", StringComparison.OrdinalIgnoreCase) ||
+               client.Contains("Jellyfin Web", StringComparison.OrdinalIgnoreCase) ||
+               deviceName.Contains("AppleTV", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool CanSessionMute(SessionInfo session)

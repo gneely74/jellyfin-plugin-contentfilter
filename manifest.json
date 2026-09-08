@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.42.0",
+        "changelog": "Add EnableRemoteWebSocketMuting setting (default false) and bypass server-side WebSocket muting and fallback-to-skip for autonomous ContentFilter clients like Swiftfin to allow instant client-side audio muting without network latency.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.42/Jellyfin.Plugin.ContentFilter_1.0.42.0.zip",
+        "checksum": "5fa9f157f00bb566c1f7969931ae4b54",
+        "timestamp": "2026-09-08T00:00:00Z"
+      },
+      {
         "version": "1.0.41.0",
         "changelog": "Calibrate remote audio mute pre-roll lead time to 1800ms to eliminate Apple TV/Swiftfin hardware playback latency, and add configurable RemoteMuteLeadMs and RemoteMuteLagMs settings.",
         "targetAbi": "10.11.0.0",

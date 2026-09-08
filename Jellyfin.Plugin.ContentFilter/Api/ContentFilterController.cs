@@ -8,6 +8,7 @@ using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ContentFilter.Api;
 
@@ -26,6 +27,7 @@ public class ContentFilterController : ControllerBase
     private readonly SqliteFilterRepository _sqliteRepository;
     private readonly ILibraryManager _libraryManager;
     private readonly FilterRuleService _filterRuleService;
+    private readonly ILogger<ContentFilterController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ContentFilterController"/> class.
@@ -37,6 +39,7 @@ public class ContentFilterController : ControllerBase
     /// <param name="sqliteRepository">The SQLite repository.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
     /// <param name="filterRuleService">The filter rule evaluation service.</param>
+    /// <param name="logger">The controller logger.</param>
     public ContentFilterController(
         FilterStore filterStore,
         SubtitleFilter subtitleFilter,
@@ -44,7 +47,8 @@ public class ContentFilterController : ControllerBase
         SubtitleSyncService subtitleSyncService,
         SqliteFilterRepository sqliteRepository,
         ILibraryManager libraryManager,
-        FilterRuleService filterRuleService)
+        FilterRuleService filterRuleService,
+        ILogger<ContentFilterController> logger)
     {
         _filterStore = filterStore;
         _subtitleFilter = subtitleFilter;
@@ -53,6 +57,7 @@ public class ContentFilterController : ControllerBase
         _sqliteRepository = sqliteRepository;
         _libraryManager = libraryManager;
         _filterRuleService = filterRuleService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -70,6 +75,7 @@ public class ContentFilterController : ControllerBase
         var filter = _filterStore.GetFilter(itemId);
         if (filter is null)
         {
+            _logger.LogInformation("ContentFilter: Client requested filter cues for item {ItemId} but none were found", itemId);
             return NotFound();
         }
 
@@ -88,6 +94,10 @@ public class ContentFilterController : ControllerBase
                 enabled = _filterRuleService.IsCueEnabled(cue, itemId)
             })
             .ToList();
+
+        _logger.LogInformation(
+            "ContentFilter: Client requested filter cues for item {ItemId} ('{Title}') - returning {Count} cues",
+            itemId, filter.Title, cues.Count);
 
         return Ok(new
         {

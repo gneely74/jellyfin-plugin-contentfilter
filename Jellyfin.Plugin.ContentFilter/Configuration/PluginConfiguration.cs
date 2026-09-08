@@ -152,6 +152,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool SetSubtitlesAsDefault { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether server-side remote WebSocket muting is enabled.
+    /// Default is false. When false (recommended), client players like Swiftfin (Apple TV / iOS) and Jellyfin Web handle zero-latency muting locally using the filter cues API.
+    /// </summary>
+    public bool EnableRemoteWebSocketMuting { get; set; } = false;
+
+    /// <summary>
     /// Gets or sets a value indicating whether to fallback to skipping past profanity/mute cues on clients that do not support volume muting (such as Swiftfin on tvOS/iOS).
     /// </summary>
     public bool FallbackToSkipOnUnmutableClients { get; set; } = true;

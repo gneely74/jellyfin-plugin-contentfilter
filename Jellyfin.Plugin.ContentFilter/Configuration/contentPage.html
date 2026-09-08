@@ -2060,8 +2060,15 @@
                             </label>
                             <label class="cf-checkbox-row">
                                 <input id="FallbackToSkipOnUnmutableClients" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
-                                <span>Skip past profanity cues on players without volume mute control (e.g. Apple TV / Swiftfin)</span>
+                                <span>Skip past profanity cues on players without volume mute control</span>
                             </label>
+                            <label class="cf-checkbox-row">
+                                <input id="EnableRemoteWebSocketMuting" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                <span>Enable server-side remote WebSocket muting (legacy / remote control)</span>
+                            </label>
+                            <div style="font-size:0.75rem; color:var(--cf-text-muted); margin-left:24px; margin-top:-4px; margin-bottom:8px;">
+                                When disabled (recommended), client apps like <strong>Swiftfin (Apple TV / iOS)</strong> and <strong>Jellyfin Web</strong> perform instant, zero-latency stream-level muting locally using filter cues.
+                            </div>
 
                             <!-- Remote Mute Latency Calibration -->
                             <div style="background:rgba(255,255,255,0.02); border:1px solid var(--cf-border); border-radius:6px; padding:12px; margin: 4px 0 12px 0;">
@@ -2748,6 +2755,7 @@
                 if (getEl('AutoMuteProfanityFromSubtitles')) getEl('AutoMuteProfanityFromSubtitles').checked = config.AutoMuteProfanityFromSubtitles !== false;
                 if (getEl('SetSubtitlesAsDefault')) getEl('SetSubtitlesAsDefault').checked = config.SetSubtitlesAsDefault !== false;
                 if (getEl('FallbackToSkipOnUnmutableClients')) getEl('FallbackToSkipOnUnmutableClients').checked = config.FallbackToSkipOnUnmutableClients !== false;
+                if (getEl('EnableRemoteWebSocketMuting')) getEl('EnableRemoteWebSocketMuting').checked = !!config.EnableRemoteWebSocketMuting;
                 if (getEl('RemoteMuteLeadMs')) getEl('RemoteMuteLeadMs').value = config.RemoteMuteLeadMs ?? 1800;
                 if (getEl('RemoteMuteLagMs')) getEl('RemoteMuteLagMs').value = config.RemoteMuteLagMs ?? 300;
                 if (getEl('AutoProcessNewMediaSubtitles')) getEl('AutoProcessNewMediaSubtitles').checked = config.AutoProcessNewMediaSubtitles !== false;
@@ -2784,6 +2792,7 @@
                 if (getEl('AutoMuteProfanityFromSubtitles')) config.AutoMuteProfanityFromSubtitles = getEl('AutoMuteProfanityFromSubtitles').checked;
                 if (getEl('SetSubtitlesAsDefault')) config.SetSubtitlesAsDefault = getEl('SetSubtitlesAsDefault').checked;
                 if (getEl('FallbackToSkipOnUnmutableClients')) config.FallbackToSkipOnUnmutableClients = getEl('FallbackToSkipOnUnmutableClients').checked;
+                if (getEl('EnableRemoteWebSocketMuting')) config.EnableRemoteWebSocketMuting = getEl('EnableRemoteWebSocketMuting').checked;
                 if (getEl('RemoteMuteLeadMs')) config.RemoteMuteLeadMs = parseInt(getEl('RemoteMuteLeadMs').value || '1800', 10);
                 if (getEl('RemoteMuteLagMs')) config.RemoteMuteLagMs = parseInt(getEl('RemoteMuteLagMs').value || '300', 10);
                 if (getEl('AutoProcessNewMediaSubtitles')) config.AutoProcessNewMediaSubtitles = getEl('AutoProcessNewMediaSubtitles').checked;
