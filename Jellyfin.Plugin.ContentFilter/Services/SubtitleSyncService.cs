@@ -725,7 +725,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
         var filteredTitle = !string.IsNullOrWhiteSpace(config?.FilteredTrackTitle) ? config.FilteredTrackTitle.Trim() : "Generated - Filtered";
         var unfilteredTitle = !string.IsNullOrWhiteSpace(config?.UnfilteredTrackTitle) ? config.UnfilteredTrackTitle.Trim() : "Generated - Unfiltered";
 
-        AddLog($"[Whisper] Transcribing audio for \"{video.Name}\" via {config?.TranscriptionModel ?? "whisper-1"}...");
+        AddLog($"[Whisper] Transcribing audio for \"{video.Name}\" via {config?.TranscriptionModel ?? "deepdml/faster-whisper-large-v3-turbo-ct2"}...");
 
         var transcriptionResult = await _whisperTranscriptionService.TranscribeVideoAsync(video, targetLang3, ct).ConfigureAwait(false);
         if (transcriptionResult == null || string.IsNullOrWhiteSpace(transcriptionResult.UnfilteredSrt))
@@ -802,7 +802,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
             video.Path,
             fileInfo.Length,
             fileInfo.LastWriteTimeUtc,
-            config?.TranscriptionModel ?? "whisper-1",
+            config?.TranscriptionModel ?? "deepdml/faster-whisper-large-v3-turbo-ct2",
             cuesAdded);
 
         AddLog($"[Whisper] Complete for \"{video.Name}\". Dual streams created, {cuesAdded} mute cues synced.");

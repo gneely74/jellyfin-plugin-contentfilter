@@ -716,13 +716,13 @@ public sealed class SqliteFilterRepository : IDisposable
     /// <param name="currentMediaPath">The current physical media file path.</param>
     /// <param name="currentFileSize">The current physical file size in bytes.</param>
     /// <param name="currentLastModifiedUtc">The current physical last write timestamp in UTC.</param>
-    /// <returns><see langword="true"/> if media has changed or was never transcribed; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if media was previously transcribed and has changed; otherwise <see langword="false"/>.</returns>
     public bool HasMediaChangedSinceTranscription(Guid itemId, string currentMediaPath, long currentFileSize, DateTime currentLastModifiedUtc)
     {
         var record = GetTranscriptionHistory(itemId);
         if (record is null)
         {
-            return true;
+            return false;
         }
 
         if (!string.Equals(record.MediaPath, currentMediaPath, StringComparison.OrdinalIgnoreCase))

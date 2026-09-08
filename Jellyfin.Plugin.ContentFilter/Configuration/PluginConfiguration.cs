@@ -177,9 +177,9 @@ public class PluginConfiguration : BasePluginConfiguration
     public string TranscriptionApiUrl { get; set; } = "http://localhost:8000/v1/audio/transcriptions";
 
     /// <summary>
-    /// Gets or sets the Whisper model to request from the transcription API (e.g. "whisper-1", "Systran/faster-whisper-medium", "base").
+    /// Gets or sets the Whisper model to request from the transcription API (e.g. "deepdml/faster-whisper-large-v3-turbo-ct2", "Systran/faster-whisper-small.en").
     /// </summary>
-    public string TranscriptionModel { get; set; } = "whisper-1";
+    public string TranscriptionModel { get; set; } = "deepdml/faster-whisper-large-v3-turbo-ct2";
 
     /// <summary>
     /// Gets or sets an optional API key for the transcription service (if required).

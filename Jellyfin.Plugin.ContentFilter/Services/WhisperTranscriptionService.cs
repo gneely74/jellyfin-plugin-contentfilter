@@ -69,9 +69,9 @@ public class WhisperTranscriptionService
             return null;
         }
 
-        var model = !string.IsNullOrWhiteSpace(config?.TranscriptionModel)
+        var model = !string.IsNullOrWhiteSpace(config?.TranscriptionModel) && config.TranscriptionModel != "whisper-1"
             ? config.TranscriptionModel
-            : "whisper-1";
+            : "deepdml/faster-whisper-large-v3-turbo-ct2";
 
         var lang2 = SubtitleFilter.ToTwoLetterLanguage(targetLanguage);
         var sw = Stopwatch.StartNew();
@@ -334,6 +334,8 @@ public class WhisperTranscriptionService
             content.Add(new StringContent(language), "language");
         }
 
+        content.Add(new StringContent("0.0"), "temperature");
+        content.Add(new StringContent("true"), "vad_filter");
         content.Add(new StringContent("word"), "timestamp_granularities[]");
         content.Add(new StringContent("segment"), "timestamp_granularities[]");
 
@@ -448,42 +450,52 @@ public class WhisperTranscriptionService
 
             try
             {
-                using var psReq = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/ps");
-                using var psResp = await client.SendAsync(psReq, ct).ConfigureAwait(false);
-                if (psResp.IsSuccessStatusCode)
+                // Loop up to 3 times to ensure all models (even queued ones) are completely evicted
+                for (int attempt = 0; attempt < 3; attempt++)
                 {
+                    using var psReq = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/ps");
+                    using var psResp = await client.SendAsync(psReq, ct).ConfigureAwait(false);
+                    if (!psResp.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+
                     var psBody = await psResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     using var doc = JsonDocument.Parse(psBody);
-                    if (doc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
+                    if (!doc.RootElement.TryGetProperty("models", out var modelsProp) ||
+                        modelsProp.ValueKind != JsonValueKind.Array ||
+                        modelsProp.GetArrayLength() == 0)
                     {
-                        foreach (var m in modelsProp.EnumerateArray())
-                        {
-                            string? modelName = null;
-                            if (m.TryGetProperty("name", out var n))
-                            {
-                                modelName = n.GetString();
-                            }
-                            else if (m.TryGetProperty("model", out var mdl))
-                            {
-                                modelName = mdl.GetString();
-                            }
+                        // All models are fully unloaded
+                        break;
+                    }
 
-                            if (!string.IsNullOrWhiteSpace(modelName))
+                    foreach (var m in modelsProp.EnumerateArray())
+                    {
+                        string? modelName = null;
+                        if (m.TryGetProperty("name", out var n))
+                        {
+                            modelName = n.GetString();
+                        }
+                        else if (m.TryGetProperty("model", out var mdl))
+                        {
+                            modelName = mdl.GetString();
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(modelName))
+                        {
+                            _logger.LogInformation("Unloading Ollama model \"{Model}\" to free GPU VRAM for Whisper (attempt {Attempt})...", modelName, attempt + 1);
+                            var unloadPayload = JsonSerializer.Serialize(new { model = modelName, keep_alive = 0 });
+                            using var unloadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/generate")
                             {
-                                _logger.LogInformation("Unloading Ollama model \"{Model}\" to free GPU VRAM for Whisper...", modelName);
-                                var unloadPayload = JsonSerializer.Serialize(new { model = modelName, keep_alive = 0 });
-                                using var unloadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/generate")
-                                {
-                                    Content = new StringContent(unloadPayload, Encoding.UTF8, "application/json")
-                                };
-                                using var unloadResp = await client.SendAsync(unloadReq, ct).ConfigureAwait(false);
-                            }
+                                Content = new StringContent(unloadPayload, Encoding.UTF8, "application/json")
+                            };
+                            using var unloadResp = await client.SendAsync(unloadReq, ct).ConfigureAwait(false);
                         }
                     }
-                }
 
-                // Short settling delay for GPU VRAM release
-                await Task.Delay(1000, ct).ConfigureAwait(false);
+                    await Task.Delay(500, ct).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

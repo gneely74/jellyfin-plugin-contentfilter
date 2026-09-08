@@ -2101,8 +2101,8 @@
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:12px;">
                                 <div class="cf-field-group" style="margin-bottom:0;">
                                     <label class="cf-field-label" for="TranscriptionModel">Whisper Model</label>
-                                    <input id="TranscriptionModel" type="text" class="cf-field-input" placeholder="whisper-1">
-                                    <div class="cf-field-helper">Model identifier (e.g. whisper-1, Systran/faster-whisper-medium).</div>
+                                    <input id="TranscriptionModel" type="text" class="cf-field-input" placeholder="deepdml/faster-whisper-large-v3-turbo-ct2">
+                                    <div class="cf-field-helper">Model identifier (e.g. deepdml/faster-whisper-large-v3-turbo-ct2, Systran/faster-whisper-small.en).</div>
                                 </div>
                                 <div class="cf-field-group" style="margin-bottom:0;">
                                     <label class="cf-field-label" for="TranscriptionApiKey">API Key (Optional)</label>
@@ -2700,7 +2700,7 @@
                 if (getEl('LocalTranscriptionAsDefault')) getEl('LocalTranscriptionAsDefault').checked = config.LocalTranscriptionAsDefault !== false;
                 if (getEl('AutoRegenerateOnMediaUpgrade')) getEl('AutoRegenerateOnMediaUpgrade').checked = config.AutoRegenerateOnMediaUpgrade !== false;
                 if (getEl('TranscriptionApiUrl')) getEl('TranscriptionApiUrl').value = config.TranscriptionApiUrl || 'http://localhost:8000/v1/audio/transcriptions';
-                if (getEl('TranscriptionModel')) getEl('TranscriptionModel').value = config.TranscriptionModel || 'whisper-1';
+                if (getEl('TranscriptionModel')) getEl('TranscriptionModel').value = config.TranscriptionModel || 'deepdml/faster-whisper-large-v3-turbo-ct2';
                 if (getEl('TranscriptionApiKey')) getEl('TranscriptionApiKey').value = config.TranscriptionApiKey || '';
                 if (getEl('FilteredTrackTitle')) getEl('FilteredTrackTitle').value = config.FilteredTrackTitle || 'Generated - Filtered';
                 if (getEl('UnfilteredTrackTitle')) getEl('UnfilteredTrackTitle').value = config.UnfilteredTrackTitle || 'Generated - Unfiltered';
