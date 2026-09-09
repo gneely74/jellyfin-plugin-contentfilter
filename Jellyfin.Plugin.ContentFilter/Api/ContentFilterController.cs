@@ -1352,12 +1352,8 @@ public class ContentFilterController : ControllerBase
         {
             foreach (var occ in group.Occurrences)
             {
-                if (!ParseFlexibleTimestamp(occ.CueStart, out var startTs) ||
-                    !ParseFlexibleTimestamp(occ.CueEnd, out var endTs))
-                {
-                    startTs = TimeSpan.FromSeconds(occ.StartSeconds);
-                    endTs = TimeSpan.FromSeconds(occ.EndSeconds);
-                }
+                var startTs = TimeSpan.FromSeconds(occ.StartSeconds);
+                var endTs = TimeSpan.FromSeconds(occ.EndSeconds);
 
                 cuesToAdd.Add(new FilterCue
                 {

@@ -1128,120 +1128,54 @@ public class SubtitleSyncService : IHostedService, IDisposable
             }
         }
 
-        // Case A: Word-level timestamps from Whisper
-        if (transcription.Words != null && transcription.Words.Count > 0)
+        // Coarse segment-level profanity muting from Whisper transcription
+        foreach (var seg in transcription.Segments)
         {
-            foreach (var wordDto in transcription.Words)
+            var text = seg.Text;
+            if (string.IsNullOrWhiteSpace(text)) continue;
+
+            foreach (var (term, (category, pattern)) in wordsToScan)
             {
-                var cleanWord = wordDto.Word.Trim();
-                if (string.IsNullOrWhiteSpace(cleanWord)) continue;
-
-                foreach (var (term, (category, pattern)) in wordsToScan)
+                var matches = pattern.Matches(text);
+                if (matches.Count > 0)
                 {
-                    if (pattern.IsMatch(cleanWord))
+                    var start = TimeSpan.FromSeconds(seg.Start);
+                    var end = TimeSpan.FromSeconds(seg.End);
+
+                    if (existingCues.Any(c =>
+                        (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
+                         c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
+                        start < c.End && end > c.Start))
                     {
-                        var startSeconds = Math.Max(0, wordDto.Start - 0.05);
-                        var endSeconds = wordDto.End + 0.05;
-                        var start = TimeSpan.FromSeconds(startSeconds);
-                        var end = TimeSpan.FromSeconds(endSeconds);
-
-                        // Merge with any overlapping cue in current batch (e.g. multi-word phrases)
-                        var existingInBatch = cuesToAdd.FirstOrDefault(c => start < c.End && end > c.Start);
-                        if (existingInBatch != null)
-                        {
-                            if (start < existingInBatch.Start) existingInBatch.Start = start;
-                            if (end > existingInBatch.End) existingInBatch.End = end;
-                            existingInBatch.Description = $"{existingInBatch.Description} {cleanWord}";
-                        }
-                        else
-                        {
-                            cuesToAdd.Add(new FilterCue
-                            {
-                                Start = start,
-                                End = end,
-                                Category = category,
-                                Channel = channel,
-                                Action = action,
-                                Description = $"Spoken: \"{cleanWord}\""
-                            });
-                        }
-
-                        break;
+                        continue;
                     }
+
+                    if (cuesToAdd.Any(c => start < c.End && end > c.Start))
+                    {
+                        continue;
+                    }
+
+                    cuesToAdd.Add(new FilterCue
+                    {
+                        Start = start,
+                        End = end,
+                        Category = category,
+                        Channel = channel,
+                        Action = action,
+                        Description = $"Spoken: \"{matches[0].Value}\""
+                    });
                 }
             }
+        }
 
-            // Fine-tuned Whisper word timestamps supersede previous coarse spoken profanity cues
-            filter ??= new JcfFilter
-            {
-                Title = _libraryManager.GetItemById(itemId)?.Name ?? "Filtered Item"
-            };
-
-            filter.Cues.RemoveAll(c =>
-                (c.Description != null && c.Description.StartsWith("Spoken:", StringComparison.OrdinalIgnoreCase)) ||
-                (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) &&
-                 (c.Category.StartsWith("Language.", StringComparison.OrdinalIgnoreCase) ||
-                  c.Category.Equals("Custom.BlanketWord", StringComparison.OrdinalIgnoreCase) ||
-                  c.Category.StartsWith("SexualReferences.", StringComparison.OrdinalIgnoreCase))));
-
-            filter.Cues.AddRange(cuesToAdd);
-            filter.Cues.Sort((a, b) => a.Start.CompareTo(b.Start));
-            await _filterStore.SaveFilterAsync(itemId, filter, ct).ConfigureAwait(false);
-            _logger.LogInformation("Persisted {Count} fine-tuned profanity mute cues from Whisper transcription for item {ItemId}",
+        if (cuesToAdd.Count > 0)
+        {
+            await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
+            _logger.LogInformation("Generated {Count} coarse profanity mute cues from Whisper segment transcription for item {ItemId}",
                 cuesToAdd.Count, itemId);
-            return cuesToAdd.Count;
         }
-        else
-        {
-            // Case B: Segment-level fallback
-            foreach (var seg in transcription.Segments)
-            {
-                var text = seg.Text;
-                if (string.IsNullOrWhiteSpace(text)) continue;
 
-                foreach (var (term, (category, pattern)) in wordsToScan)
-                {
-                    var matches = pattern.Matches(text);
-                    if (matches.Count > 0)
-                    {
-                        var start = TimeSpan.FromSeconds(seg.Start);
-                        var end = TimeSpan.FromSeconds(seg.End);
-
-                        if (existingCues.Any(c =>
-                            (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
-                             c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
-                            start < c.End && end > c.Start))
-                        {
-                            continue;
-                        }
-
-                        if (cuesToAdd.Any(c => start < c.End && end > c.Start))
-                        {
-                            continue;
-                        }
-
-                        cuesToAdd.Add(new FilterCue
-                        {
-                            Start = start,
-                            End = end,
-                            Category = category,
-                            Channel = channel,
-                            Action = action,
-                            Description = $"Spoken: \"{matches[0].Value}\""
-                        });
-                    }
-                }
-            }
-
-            if (cuesToAdd.Count > 0)
-            {
-                await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
-                _logger.LogInformation("Generated {Count} profanity mute cues from Whisper segment transcription for item {ItemId}",
-                    cuesToAdd.Count, itemId);
-            }
-
-            return cuesToAdd.Count;
-        }
+        return cuesToAdd.Count;
     }
 
     /// <summary>
