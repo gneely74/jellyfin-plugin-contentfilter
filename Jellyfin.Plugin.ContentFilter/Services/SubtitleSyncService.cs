@@ -1128,29 +1128,52 @@ public class SubtitleSyncService : IHostedService, IDisposable
             }
         }
 
-        // Coarse segment-level profanity muting from Whisper transcription
+        // Smart clause-bounded profanity muting from Whisper transcription
         foreach (var seg in transcription.Segments)
         {
             var text = seg.Text;
             if (string.IsNullOrWhiteSpace(text)) continue;
 
+            var segStart = TimeSpan.FromSeconds(seg.Start);
+            var segEnd = TimeSpan.FromSeconds(seg.End);
+
             foreach (var (term, (category, pattern)) in wordsToScan)
             {
                 var matches = pattern.Matches(text);
-                if (matches.Count > 0)
+                foreach (Match match in matches)
                 {
-                    var start = TimeSpan.FromSeconds(seg.Start);
-                    var end = TimeSpan.FromSeconds(seg.End);
+                    SubtitleWordScanner.ComputeSmartClauseWindow(
+                        segStart,
+                        segEnd,
+                        text,
+                        match.Index,
+                        match.Length,
+                        out var start,
+                        out var end);
+
+                    // If Whisper word-level timestamps exist for this word, ensure the clause window
+                    // encompasses the acoustic word bounds with at least 350ms lead-in and trail-out.
+                    if (seg.Words is { Count: > 0 })
+                    {
+                        foreach (var w in seg.Words)
+                        {
+                            if (!string.IsNullOrWhiteSpace(w.Word) && pattern.IsMatch(w.Word))
+                            {
+                                var acousticStart = TimeSpan.FromSeconds(Math.Max(seg.Start, w.Start - 0.35));
+                                var acousticEnd = TimeSpan.FromSeconds(Math.Min(seg.End, w.End + 0.35));
+                                if (Math.Abs((acousticStart - start).TotalSeconds) < 1.8)
+                                {
+                                    start = TimeSpan.FromTicks(Math.Min(start.Ticks, acousticStart.Ticks));
+                                    end = TimeSpan.FromTicks(Math.Max(end.Ticks, acousticEnd.Ticks));
+                                }
+                            }
+                        }
+                    }
 
                     if (existingCues.Any(c =>
                         (c.Action.Equals("mute", StringComparison.OrdinalIgnoreCase) ||
                          c.Action.Equals("skip", StringComparison.OrdinalIgnoreCase)) &&
                         start < c.End && end > c.Start))
-                    {
-                        continue;
-                    }
-
-                    if (cuesToAdd.Any(c => start < c.End && end > c.Start))
                     {
                         continue;
                     }
@@ -1162,20 +1185,69 @@ public class SubtitleSyncService : IHostedService, IDisposable
                         Category = category,
                         Channel = channel,
                         Action = action,
-                        Description = $"Spoken: \"{matches[0].Value}\""
+                        Description = $"Spoken: \"{match.Value}\""
                     });
                 }
             }
         }
 
+        cuesToAdd = MergeOverlappingCues(cuesToAdd);
+
         if (cuesToAdd.Count > 0)
         {
             await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
-            _logger.LogInformation("Generated {Count} coarse profanity mute cues from Whisper segment transcription for item {ItemId}",
+            _logger.LogInformation("Generated {Count} smart-clause profanity mute cues from Whisper transcription for item {ItemId}",
                 cuesToAdd.Count, itemId);
         }
 
         return cuesToAdd.Count;
+    }
+
+    /// <summary>
+    /// Merges overlapping or closely adjacent (within 150ms) mute cues so back-to-back profanity
+    /// within the same clause produces a single continuous mute interval without audio flutter.
+    /// </summary>
+    /// <param name="cues">The candidate list of filter cues.</param>
+    /// <returns>A sorted, coalesced list of <see cref="FilterCue"/> instances.</returns>
+    private static List<FilterCue> MergeOverlappingCues(List<FilterCue> cues)
+    {
+        if (cues.Count <= 1)
+        {
+            return cues;
+        }
+
+        var sorted = cues.OrderBy(c => c.Start).ThenBy(c => c.End).ToList();
+        var merged = new List<FilterCue> { sorted[0] };
+        var bridgeThreshold = TimeSpan.FromMilliseconds(150);
+
+        for (int i = 1; i < sorted.Count; i++)
+        {
+            var current = sorted[i];
+            var last = merged[^1];
+
+            if (current.Action.Equals(last.Action, StringComparison.OrdinalIgnoreCase) &&
+                current.Start <= last.End + bridgeThreshold)
+            {
+                if (current.End > last.End)
+                {
+                    last.End = current.End;
+                }
+
+                if (!string.IsNullOrWhiteSpace(current.Description) &&
+                    (last.Description == null || !last.Description.Contains(current.Description, StringComparison.OrdinalIgnoreCase)))
+                {
+                    last.Description = string.IsNullOrWhiteSpace(last.Description)
+                        ? current.Description
+                        : $"{last.Description}, {current.Description.Replace("Spoken: ", string.Empty, StringComparison.OrdinalIgnoreCase)}";
+                }
+            }
+            else
+            {
+                merged.Add(current);
+            }
+        }
+
+        return merged;
     }
 
     /// <summary>
@@ -1309,10 +1381,12 @@ public class SubtitleSyncService : IHostedService, IDisposable
             }
         }
 
+        cuesToAdd = MergeOverlappingCues(cuesToAdd);
+
         if (cuesToAdd.Count > 0)
         {
             await _filterStore.AddCuesAsync(itemId, cuesToAdd, ct).ConfigureAwait(false);
-            _logger.LogDebug("Auto-generated {Count} profanity mute cues for item {ItemId}", cuesToAdd.Count, itemId);
+            _logger.LogDebug("Auto-generated {Count} smart-clause profanity mute cues for item {ItemId}", cuesToAdd.Count, itemId);
         }
     }
 

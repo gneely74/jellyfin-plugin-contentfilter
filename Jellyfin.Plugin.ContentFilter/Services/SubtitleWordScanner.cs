@@ -128,6 +128,11 @@ public class SubtitleWordScanner
     private static readonly Regex HtmlTagRegex = new(@"<[^>]+>|\{[^}]+\}", RegexOptions.Compiled);
 
     /// <summary>
+    /// Regular expression matching sentence, speaker-turn, and clause boundaries within multi-clause subtitle blocks.
+    /// </summary>
+    private static readonly Regex ClauseBoundaryRegex = new(@"(?<=[.?!;])\s+|\s*(?:—|--)\s*|(?<=\s)-\s+", RegexOptions.Compiled);
+
+    /// <summary>
     /// Logger instance for subtitle word scanning diagnostics.
     /// </summary>
     private readonly ILogger<SubtitleWordScanner> _logger;
@@ -457,14 +462,7 @@ public class SubtitleWordScanner
                     }
 
                     occCounter++;
-                    var blockDur = (end - start).TotalSeconds;
-                    var ratio = cleanDialogue.Length <= 1 ? 0.0 : (double)m.Index / cleanDialogue.Length;
-                    var wordStart = start + TimeSpan.FromSeconds(ratio * blockDur);
-                    var wordEnd = wordStart + TimeSpan.FromMilliseconds(Math.Max(350, m.Length * 90));
-
-                    // Mute window padding: 80ms before, 120ms after
-                    var muteStart = TimeSpan.FromTicks(Math.Max((wordStart - TimeSpan.FromMilliseconds(80)).Ticks, start.Ticks));
-                    var muteEnd = TimeSpan.FromTicks(Math.Min((wordEnd + TimeSpan.FromMilliseconds(120)).Ticks, end.Ticks));
+                    ComputeSmartClauseWindow(start, end, cleanDialogue, m.Index, m.Length, out var muteStart, out var muteEnd);
 
                     // Check if already filtered by existing mute/skip cue
                     var isFiltered = activeFilter?.Cues != null && activeFilter.Cues.Any(c =>
@@ -476,8 +474,8 @@ public class SubtitleWordScanner
                         Id = $"occ_{occCounter}",
                         Start = FormatTimecode(start),
                         End = FormatTimecode(end),
-                        StartSeconds = start.TotalSeconds,
-                        EndSeconds = end.TotalSeconds,
+                        StartSeconds = muteStart.TotalSeconds,
+                        EndSeconds = muteEnd.TotalSeconds,
                         Text = cleanDialogue,
                         CueStart = FormatTimecode(muteStart),
                         CueEnd = FormatTimecode(muteEnd),
@@ -506,6 +504,96 @@ public class SubtitleWordScanner
         result.TotalOccurrences = result.Words.Sum(w => w.Count);
 
         return result;
+    }
+
+    /// <summary>
+    /// Computes a smart clause-bounded mute window within a subtitle or transcription segment.
+    /// Splits multi-sentence or multi-speaker blocks at clause boundaries (sentence punctuation,
+    /// speaker dashes, em-dashes) so adjacent clean sentences in the same block are not muted,
+    /// while enforcing a generous safety margin and minimum duration floor (1.25s) to guarantee
+    /// complete profanity suppression without clipping leading consonants.
+    /// </summary>
+    /// <param name="blockStart">The start timestamp of the full subtitle block or segment.</param>
+    /// <param name="blockEnd">The end timestamp of the full subtitle block or segment.</param>
+    /// <param name="cleanDialogue">The stripped plain-text dialogue of the block.</param>
+    /// <param name="matchIndex">The character start index of the matched profanity within <paramref name="cleanDialogue"/>.</param>
+    /// <param name="matchLength">The character length of the matched profanity.</param>
+    /// <param name="clauseStart">When returning, receives the computed smart clause mute start timestamp.</param>
+    /// <param name="clauseEnd">When returning, receives the computed smart clause mute end timestamp.</param>
+    public static void ComputeSmartClauseWindow(
+        TimeSpan blockStart,
+        TimeSpan blockEnd,
+        string cleanDialogue,
+        int matchIndex,
+        int matchLength,
+        out TimeSpan clauseStart,
+        out TimeSpan clauseEnd)
+    {
+        var blockDur = (blockEnd - blockStart).TotalSeconds;
+        if (blockDur <= 2.2 || string.IsNullOrWhiteSpace(cleanDialogue) || cleanDialogue.Length <= 1)
+        {
+            clauseStart = blockStart;
+            clauseEnd = blockEnd;
+            return;
+        }
+
+        int totalLen = cleanDialogue.Length;
+        int clauseCharStart = 0;
+        int clauseCharEnd = totalLen;
+
+        // Partition dialogue into clauses along sentence / speaker boundaries
+        var splits = ClauseBoundaryRegex.Matches(cleanDialogue);
+        if (splits.Count > 0)
+        {
+            int curStart = 0;
+            foreach (Match split in splits)
+            {
+                int curEnd = split.Index;
+                if (matchIndex >= curStart && matchIndex < curEnd + split.Length)
+                {
+                    clauseCharStart = curStart;
+                    clauseCharEnd = curEnd;
+                    break;
+                }
+                curStart = split.Index + split.Length;
+                clauseCharStart = curStart;
+            }
+        }
+
+        double startRatio = Math.Clamp((double)clauseCharStart / totalLen, 0.0, 1.0);
+        double endRatio = Math.Clamp((double)clauseCharEnd / totalLen, startRatio, 1.0);
+
+        var rawStart = blockStart + TimeSpan.FromSeconds(startRatio * blockDur);
+        var rawEnd = blockStart + TimeSpan.FromSeconds(endRatio * blockDur);
+
+        // If a single continuous clause is still very long (> 3.5s), bound around the word's proportional position
+        double wordStartRatio = Math.Clamp((double)matchIndex / totalLen, 0.0, 1.0);
+        double wordEndRatio = Math.Clamp((double)(matchIndex + Math.Max(1, matchLength)) / totalLen, wordStartRatio, 1.0);
+        var wordStart = blockStart + TimeSpan.FromSeconds(wordStartRatio * blockDur);
+        var wordEnd = blockStart + TimeSpan.FromSeconds(wordEndRatio * blockDur);
+
+        if ((rawEnd - rawStart).TotalSeconds > 3.5)
+        {
+            rawStart = TimeSpan.FromTicks(Math.Max(rawStart.Ticks, (wordStart - TimeSpan.FromMilliseconds(900)).Ticks));
+            rawEnd = TimeSpan.FromTicks(Math.Min(rawEnd.Ticks, (wordEnd + TimeSpan.FromMilliseconds(900)).Ticks));
+        }
+
+        // Apply a 200ms safety lead-in and trail-out pad around the clause boundary
+        var paddedStart = rawStart - TimeSpan.FromMilliseconds(200);
+        var paddedEnd = rawEnd + TimeSpan.FromMilliseconds(200);
+
+        // Enforce a 1.25s minimum duration floor centered around the word so short exclamations are never clipped
+        const double minDurationSeconds = 1.25;
+        var currentDur = (paddedEnd - paddedStart).TotalSeconds;
+        if (currentDur < minDurationSeconds)
+        {
+            var halfDeficit = TimeSpan.FromSeconds((minDurationSeconds - currentDur) / 2.0);
+            paddedStart -= halfDeficit;
+            paddedEnd += halfDeficit;
+        }
+
+        clauseStart = TimeSpan.FromTicks(Math.Clamp(paddedStart.Ticks, blockStart.Ticks, blockEnd.Ticks));
+        clauseEnd = TimeSpan.FromTicks(Math.Clamp(paddedEnd.Ticks, clauseStart.Ticks, blockEnd.Ticks));
     }
 
     /// <summary>

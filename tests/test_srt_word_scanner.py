@@ -103,3 +103,61 @@ def test_detect_plurals_common_swear_words():
     # Ensure unrelated word boundaries aren't matched
     assert "assessment" not in matched_tokens
     assert "bastardized" not in matched_tokens
+
+
+def compute_smart_clause_window(block_start: float, block_end: float, dialogue: str, match_idx: int, match_len: int):
+    """Mirror of SubtitleWordScanner.ComputeSmartClauseWindow for unit verification."""
+    block_dur = block_end - block_start
+    if block_dur <= 2.2 or not dialogue or len(dialogue) <= 1:
+        return block_start, block_end
+
+    total_len = len(dialogue)
+    clause_char_start = 0
+    clause_char_end = total_len
+
+    clause_re = re.compile(r"(?<=[.?!;])\s+|\s*(?:—|--)\s*|(?<=\s)-\s+")
+    splits = list(clause_re.finditer(dialogue))
+    if splits:
+        cur_start = 0
+        for split in splits:
+            cur_end = split.start()
+            if cur_start <= match_idx < cur_end + len(split.group(0)):
+                clause_char_start = cur_start
+                clause_char_end = cur_end
+                break
+            cur_start = split.end()
+            clause_char_start = cur_start
+
+    start_ratio = max(0.0, min(1.0, clause_char_start / total_len))
+    end_ratio = max(start_ratio, min(1.0, clause_char_end / total_len))
+    raw_start = block_start + start_ratio * block_dur
+    raw_end = block_start + end_ratio * block_dur
+
+    word_start = block_start + (match_idx / total_len) * block_dur
+    word_end = block_start + ((match_idx + max(1, match_len)) / total_len) * block_dur
+    if (raw_end - raw_start) > 3.5:
+        raw_start = max(raw_start, word_start - 0.9)
+        raw_end = min(raw_end, word_end + 0.9)
+
+    padded_start = raw_start - 0.2
+    padded_end = raw_end + 0.2
+    if (padded_end - padded_start) < 1.25:
+        half_def = (1.25 - (padded_end - padded_start)) / 2.0
+        padded_start -= half_def
+        padded_end += half_def
+
+    c_start = max(block_start, min(block_end, padded_start))
+    c_end = max(c_start, min(block_end, padded_end))
+    return c_start, c_end
+
+
+def test_smart_clause_window_splits_multi_sentence_block():
+    # 5-second block with a clean first sentence and profane second sentence
+    dialogue = "Wait right here for a moment. What the hell are you doing?"
+    idx = dialogue.index("hell")
+    c_start, c_end = compute_smart_clause_window(10.0, 15.0, dialogue, idx, 4)
+    # First sentence ("Wait right here for a moment.") should NOT be muted at 10.0s
+    assert c_start > 12.0
+    assert c_end == pytest.approx(15.0)
+    assert (c_end - c_start) >= 1.25
+
