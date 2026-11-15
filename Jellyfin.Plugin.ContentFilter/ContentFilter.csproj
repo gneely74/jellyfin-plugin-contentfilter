@@ -27,9 +27,15 @@
     <None Remove="Configuration\configPage.html" />
     <None Remove="Configuration\contentPage.html" />
     <None Remove="Web\client.js" />
+    <None Remove="Web\studio\index.html" />
+    <None Remove="Web\studio\styles.css" />
+    <None Remove="Web\studio\app.js" />
     <EmbeddedResource Include="Configuration\configPage.html" />
     <EmbeddedResource Include="Configuration\contentPage.html" />
     <EmbeddedResource Include="Web\client.js" />
+    <EmbeddedResource Include="Web\studio\index.html" />
+    <EmbeddedResource Include="Web\studio\styles.css" />
+    <EmbeddedResource Include="Web\studio\app.js" />
   </ItemGroup>
 
 </Project>

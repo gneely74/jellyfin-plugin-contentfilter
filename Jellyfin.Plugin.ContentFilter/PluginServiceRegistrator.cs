@@ -26,6 +26,11 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
             client.Timeout = TimeSpan.FromMinutes(30);
         });
 
+        serviceCollection.AddHttpClient(nameof(NudityDetectionService), client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(10);
+        });
+
         serviceCollection.AddSingleton<SqliteFilterRepository>(sp =>
         {
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SqliteFilterRepository>>();
@@ -41,6 +46,10 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHostedService(static sp => sp.GetRequiredService<SubtitleSyncService>());
         serviceCollection.AddSingleton<MediaBrowser.Model.Tasks.IScheduledTask, SubtitleSyncTask>();
         serviceCollection.AddSingleton<SubtitleSyncTask>();
+        serviceCollection.AddSingleton<NudityDetectionService>();
+        serviceCollection.AddSingleton<NudityScanService>();
+        serviceCollection.AddSingleton<MediaBrowser.Model.Tasks.IScheduledTask, NudityScanTask>();
+        serviceCollection.AddSingleton<NudityScanTask>();
         serviceCollection.AddSingleton<OllamaClient>();
         // Register VideoScanner as a concrete singleton so ScanController can resolve it directly,
         // then also wire it up as a hosted service using the same instance.

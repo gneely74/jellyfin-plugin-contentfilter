@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JCF Studio — Video Scrubber &amp; ContentFilter Editor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">JCF</span>
+      <span class="brand-title">ContentFilter Studio</span>
+    </div>
+
+    <div class="connection-bar">
+      <input id="serverUrl" type="text" placeholder="Jellyfin URL (e.g. http://localhost:8096)" title="Jellyfin Server URL" />
+      <input id="apiKey" type="password" placeholder="API Key / Token" title="Jellyfin API Key" />
+      <label class="checkbox-pill" title="Route API &amp; stream requests through local server.py proxy to avoid CORS">
+        <input id="useProxy" type="checkbox" checked />
+        <span>Proxy</span>
+      </label>
+      <button id="btnBrowseLibrary" class="btn btn-primary">Browse Library</button>
+      <input id="itemIdInput" type="text" class="item-id-input" placeholder="Item GUID..." title="Jellyfin Item GUID" />
+      <button id="btnPullAll" class="btn btn-accent" title="Pull JCF cues, SRT subtitles, and detected words from Jellyfin">Pull JCF/SRT</button>
+    </div>
+
+    <div class="file-actions">
+      <label class="btn btn-secondary file-btn" title="Load local video file (MP4/WebM/MOV)">
+        Video
+        <input id="localVideoInput" type="file" accept="video/*,.mkv,.mp4,.webm,.mov" hidden />
+      </label>
+      <label class="btn btn-secondary file-btn" title="Load local .srt subtitle file">
+        .SRT
+        <input id="localSrtInput" type="file" accept=".srt,.vtt" hidden />
+      </label>
+      <label class="btn btn-secondary file-btn" title="Import local .jcf file">
+        .JCF
+        <input id="localJcfInput" type="file" accept=".jcf,.vtt,.txt" hidden />
+      </label>
+      <button id="btnExportJcf" class="btn btn-success" title="Download WEBVTT JCF file">Export .JCF</button>
+    </div>
+  </header>
+
+  <div id="statusBanner" class="status-banner hidden">
+    <span id="statusText">Ready</span>
+    <button id="btnCloseStatus" class="btn-icon" title="Dismiss">&times;</button>
+  </div>
+
+  <main class="workspace">
+    <!-- Left / Main Column: Video + Timeline + Cue Editor -->
+    <section class="editor-column">
+      <div class="player-card">
+        <div class="video-wrapper">
+          <video id="videoPlayer" controls preload="metadata" crossorigin="anonymous"></video>
+          <div id="filterOverlay" class="filter-overlay hidden">
+            <span id="filterOverlayText">FILTER ACTIVE</span>
+          </div>
+          <div id="subtitleOverlay" class="subtitle-overlay hidden"></div>
+        </div>
+
+        <div class="transport-bar">
+          <div class="transport-group">
+            <button id="btnPlayPause" class="btn btn-primary" title="Play / Pause (Space)">Play</button>
+            <button id="btnStepBackSec" class="btn btn-secondary" title="Back 1s (Shift+Left)">-1s</button>
+            <button id="btnStepBackFrame" class="btn btn-secondary" title="Back 1 frame (Left)">-1f</button>
+            <button id="btnStepFwdFrame" class="btn btn-secondary" title="Forward 1 frame (Right)">+1f</button>
+            <button id="btnStepFwdSec" class="btn btn-secondary" title="Forward 1s (Shift+Right)">+1s</button>
+          </div>
+
+          <div class="timecode-readout">
+            <span id="currentTimecode" class="mono">00:00:00.000</span>
+            <span class="sep">/</span>
+            <span id="durationTimecode" class="mono">00:00:00.000</span>
+          </div>
+
+          <div class="transport-group">
+            <select id="playbackRate" title="Playback speed">
+              <option value="0.25">0.25x</option>
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2.0x</option>
+            </select>
+            <label class="checkbox-pill" title="Simulate mute &amp; skip cues during playback">
+              <input id="previewFilters" type="checkbox" checked />
+              <span>Preview Filters</span>
+            </label>
+            <button id="btnSetIn" class="btn btn-in" title="Mark In at playhead (I)">[ In (I)</button>
+            <button id="btnSetOut" class="btn btn-out" title="Mark Out at playhead (O)">Out (O) ]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-track Scrubbable Timeline -->
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <div class="timeline-legend">
+            <span class="legend-item"><i class="dot dot-nudity"></i>Nudity/Sex</span>
+            <span class="legend-item"><i class="dot dot-violence"></i>Violence</span>
+            <span class="legend-item"><i class="dot dot-profanity"></i>Profanity/Words</span>
+            <span class="legend-item"><i class="dot dot-other"></i>Other</span>
+          </div>
+          <div class="timeline-controls">
+            <button id="btnRunNudeNet" class="btn btn-warning btn-sm" title="Trigger NudeNet visual scan on Jellyfin and reload cues">Run NudeNet Scan</button>
+            <button id="btnTranscribeSrt" class="btn btn-secondary btn-sm" title="Run Whisper transcription on Jellyfin if SRT is missing">Whisper SRT</button>
+            <label class="zoom-label">
+              Zoom
+              <input id="timelineZoom" type="range" min="1" max="20" step="0.5" value="1" />
+              <span id="timelineZoomVal" class="mono">1x</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="timelineScroll" class="timeline-scroll">
+          <div id="timelineCanvas" class="timeline-canvas">
+            <div id="timelineRuler" class="timeline-ruler"></div>
+            <div id="inOutRange" class="in-out-range hidden"></div>
+            <div class="timeline-track" data-track="video">
+              <span class="track-label">Video / Visual</span>
+              <div id="trackVideoCues" class="track-cues"></div>
+            </div>
+            <div class="timeline-track" data-track="audio">
+              <span class="track-label">Audio / Words</span>
+              <div id="trackAudioCues" class="track-cues"></div>
+            </div>
+            <div id="timelinePlayhead" class="timeline-playhead"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cue Creator / Inspector -->
+      <div class="cue-editor-card">
+        <div class="cue-editor-header">
+          <h3 id="cueFormTitle">New Objectionable / Profanity Cue</h3>
+          <div class="cue-editor-actions">
+            <span id="editingCueBadge" class="badge hidden">Editing Existing Cue</span>
+            <button id="btnClearForm" class="btn btn-secondary btn-sm">Reset</button>
+          </div>
+        </div>
+
+        <form id="cueForm" class="cue-form">
+          <div class="form-row">
+            <div class="form-field">
+              <label for="cueStart">Start (HH:MM:SS.mmm)</label>
+              <div class="nudge-group">
+                <button type="button" class="btn-nudge" data-target="cueStart" data-delta="-0.1">-0.1s</button>
+                <input id="cueStart" type="text" class="mono" value="00:00:00.000" required />
+                <button type="button" class="btn-nudge" data-target="cueStart" data-delta="0.1">+0.1s</button>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="cueEnd">End (HH:MM:SS.mmm)</label>
+              <div class="nudge-group">
+                <button type="button" class="btn-nudge" data-target="cueEnd" data-delta="-0.1">-0.1s</button>
+                <input id="cueEnd" type="text" class="mono" value="00:00:02.000" required />
+                <button type="button" class="btn-nudge" data-target="cueEnd" data-delta="0.1">+0.1s</button>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="cueCategory">Category</label>
+              <select id="cueCategory">
+                <optgroup label="Language &amp; Profanity">
+                  <option value="Language.GeneralProfanity">Language.GeneralProfanity</option>
+                  <option value="Language.Blasphemy">Language.Blasphemy</option>
+                  <option value="Language.RacialAndBigotedSlurs">Language.RacialAndBigotedSlurs</option>
+                  <option value="Language.ChildishLanguage">Language.ChildishLanguage</option>
+                  <option value="SexualReferences.ExplicitWords">SexualReferences.ExplicitWords</option>
+                </optgroup>
+                <optgroup label="Sex &amp; Nudity">
+                  <option value="SexAndNudity.FullNudity" selected>SexAndNudity.FullNudity</option>
+                  <option value="SexAndNudity.PartialNudity">SexAndNudity.PartialNudity</option>
+                  <option value="SexAndNudity.Graphic">SexAndNudity.Graphic</option>
+                  <option value="SexAndNudity.ImpliedSex">SexAndNudity.ImpliedSex</option>
+                  <option value="SexAndNudity.SexualAssault">SexAndNudity.SexualAssault</option>
+                  <option value="SexAndNudity.PhysicalIntimacy">SexAndNudity.PhysicalIntimacy</option>
+                  <option value="SexualReferences.ContextualDialogue">SexualReferences.ContextualDialogue</option>
+                  <option value="SexualReferences.Visuals">SexualReferences.Visuals</option>
+                </optgroup>
+                <optgroup label="Violence">
+                  <option value="Violence.Mild">Violence.Mild</option>
+                  <option value="Violence.Moderate">Violence.Moderate</option>
+                  <option value="Violence.Graphic">Violence.Graphic</option>
+                  <option value="Violence.Gore">Violence.Gore</option>
+                  <option value="Violence.JumpScares">Violence.JumpScares</option>
+                  <option value="Violence.Disturbing">Violence.Disturbing</option>
+                </optgroup>
+                <optgroup label="Substances &amp; Medical">
+                  <option value="Substances.Tobacco">Substances.Tobacco</option>
+                  <option value="Substances.Alcohol">Substances.Alcohol</option>
+                  <option value="Substances.IllegalDrugs">Substances.IllegalDrugs</option>
+                  <option value="Medical.Events">Medical.Events</option>
+                  <option value="Medical.BodilyFunctions">Medical.BodilyFunctions</option>
+                </optgroup>
+                <optgroup label="Structural">
+                  <option value="Structural.Credits">Structural.Credits</option>
+                  <option value="Structural.IntroRecap">Structural.IntroRecap</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="form-field form-field-sm">
+              <label for="cueChannel">Channel</label>
+              <select id="cueChannel">
+                <option value="video">video</option>
+                <option value="audio">audio</option>
+                <option value="both">both</option>
+              </select>
+            </div>
+
+            <div class="form-field form-field-sm">
+              <label for="cueAction">Action</label>
+              <select id="cueAction">
+                <option value="skip">skip</option>
+                <option value="mute">mute</option>
+                <option value="blur">blur</option>
+                <option value="none">none</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row form-row-bottom">
+            <div class="form-field form-field-grow">
+              <label for="cueDescription">Description / Marked Word</label>
+              <input id="cueDescription" type="text" placeholder="e.g. Spoken: &quot;word&quot; or Objectionable scene" />
+            </div>
+            <div class="form-submit-group">
+              <button type="submit" id="btnSaveCue" class="btn btn-accent">Add Cue (M)</button>
+              <button type="button" id="btnDeleteEditingCue" class="btn btn-danger hidden">Delete</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Transcript / Words & Cues -->
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="tabTranscript">Transcript &amp; Words (<span id="srtCount">0</span>)</button>
+        <button class="tab-btn" data-tab="tabCues">Cues (<span id="cueCount">0</span>)</button>
+      </div>
+
+      <!-- Tab 1: Transcript & Profanity/Obj Words -->
+      <div id="tabTranscript" class="tab-panel active">
+        <div class="panel-toolbar">
+          <input id="wordSearchInput" type="text" placeholder="Search transcript or mark word..." />
+          <button id="btnMuteAllMatches" class="btn btn-warning btn-sm" title="Create audio mute cues for all SRT lines/words matching search">Mute All</button>
+        </div>
+
+        <div id="jcfWordsSection" class="jcf-words-section hidden">
+          <div class="section-subtitle">
+            <span>JCF Detected Profanity / Obj Words</span>
+            <button id="btnRefreshWords" class="btn-link">Refresh</button>
+          </div>
+          <div id="jcfWordsChips" class="word-chips"></div>
+        </div>
+
+        <div class="transcript-hint">
+          Click any <strong>word</strong> to seek &amp; mark it for muting; click a timestamp to jump.
+        </div>
+        <div id="transcriptList" class="transcript-list">
+          <div class="empty-state">Load an item from Jellyfin or open a local <code>.srt</code> file to see clickable words and synced subtitles.</div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Cues List -->
+      <div id="tabCues" class="tab-panel">
+        <div class="panel-toolbar">
+          <input id="cueFilterInput" type="text" placeholder="Filter cues..." />
+          <select id="cueFilterChannel">
+            <option value="all">All</option>
+            <option value="video">Video</option>
+            <option value="audio">Audio</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div id="cuesList" class="cues-list">
+          <div class="empty-state">No cues loaded yet.</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Library Browser Modal -->
+  <div id="libraryModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Browse Jellyfin Library</h2>
+        <button id="btnCloseLibraryModal" class="btn-icon">&times;</button>
+      </div>
+      <div class="modal-toolbar">
+        <input id="librarySearchInput" type="text" placeholder="Search movies, shows, episodes..." />
+        <button id="btnSearchLibrary" class="btn btn-primary">Search</button>
+        <button id="btnLoadShows" class="btn btn-secondary">Shows</button>
+        <button id="btnLoadMovies" class="btn btn-secondary">Movies</button>
+      </div>
+      <div id="libraryBreadcrumb" class="library-breadcrumb hidden"></div>
+      <div id="libraryResults" class="library-results">
+        <div class="empty-state">Click Search, Shows, or Movies to browse your Jellyfin library.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word Quick-Mark Popover -->
+  <div id="wordPopover" class="word-popover hidden">
+    <div class="popover-title">Mark Word: <strong id="popoverWordText"></strong></div>
+    <div class="popover-time mono" id="popoverTimeText"></div>
+    <div class="popover-actions">
+      <button id="btnMarkWordOnce" class="btn btn-accent btn-sm">Mute This Occurrence</button>
+      <button id="btnMarkWordBlanket" class="btn btn-warning btn-sm">Mute All Occurrences</button>
+      <button id="btnLoadWordInForm" class="btn btn-secondary btn-sm">Edit in Form</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

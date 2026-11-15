@@ -136,11 +136,23 @@ public sealed class SqliteFilterRepository : IDisposable
                         cue_count INTEGER NOT NULL DEFAULT 0
                     );
 
+                    CREATE TABLE IF NOT EXISTS item_nudity_scan_history (
+                        item_id TEXT PRIMARY KEY,
+                        media_path TEXT NOT NULL,
+                        file_size INTEGER NOT NULL,
+                        last_modified_utc TEXT NOT NULL,
+                        scanned_at TEXT NOT NULL,
+                        fps REAL NOT NULL DEFAULT 0.5,
+                        threshold REAL NOT NULL DEFAULT 0.6,
+                        cue_count INTEGER NOT NULL DEFAULT 0
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_cues_item_id ON cues(item_id);
                     CREATE INDEX IF NOT EXISTS idx_cues_category ON cues(category);
                     CREATE INDEX IF NOT EXISTS idx_subtitle_overrides_locked ON item_subtitle_overrides(is_locked);
                     CREATE INDEX IF NOT EXISTS idx_item_filter_overrides_parent ON item_filter_overrides(parent_id);
                     CREATE INDEX IF NOT EXISTS idx_transcription_history_media ON item_transcription_history(media_path);
+                    CREATE INDEX IF NOT EXISTS idx_nudity_history_media ON item_nudity_scan_history(media_path);
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -774,6 +786,139 @@ public sealed class SqliteFilterRepository : IDisposable
             using var conn = CreateConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM item_transcription_history WHERE item_id = @itemId;";
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            return cmd.ExecuteNonQuery() > 0;
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the NudeNet visual nudity scan history record for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The <see cref="ItemNudityScanRecord"/>, or <see langword="null"/> if not recorded.</returns>
+    public ItemNudityScanRecord? GetNudityScanHistory(Guid itemId)
+    {
+        using var conn = CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT media_path, file_size, last_modified_utc, scanned_at, fps, threshold, cue_count
+            FROM item_nudity_scan_history
+            WHERE item_id = @itemId;
+            """;
+        cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var mediaPath = reader.GetString(0);
+        var fileSize = reader.GetInt64(1);
+        var lastModifiedStr = reader.GetString(2);
+        var scannedAtStr = reader.GetString(3);
+        var fps = reader.GetDouble(4);
+        var threshold = reader.GetDouble(5);
+        var cueCount = reader.GetInt32(6);
+
+        _ = DateTime.TryParse(lastModifiedStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var lastModified);
+        _ = DateTime.TryParse(scannedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var scannedAt);
+
+        return new ItemNudityScanRecord
+        {
+            ItemId = itemId,
+            MediaPath = mediaPath,
+            FileSize = fileSize,
+            LastModifiedUtc = lastModified,
+            ScannedAt = scannedAt,
+            Fps = fps,
+            Threshold = threshold,
+            CueCount = cueCount
+        };
+    }
+
+    /// <summary>
+    /// Saves or updates the NudeNet visual nudity scan history record for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="mediaPath">The physical path of the media file.</param>
+    /// <param name="fileSize">The file size in bytes.</param>
+    /// <param name="lastModifiedUtc">The last modified timestamp in UTC.</param>
+    /// <param name="fps">The frame extraction rate used during scanning.</param>
+    /// <param name="threshold">The confidence threshold used during scanning.</param>
+    /// <param name="cueCount">The number of nudity cues generated.</param>
+    public void SaveNudityScanHistory(Guid itemId, string mediaPath, long fileSize, DateTime lastModifiedUtc, double fps, double threshold, int cueCount)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO item_nudity_scan_history (item_id, media_path, file_size, last_modified_utc, scanned_at, fps, threshold, cue_count)
+                VALUES (@itemId, @mediaPath, @fileSize, @lastModifiedUtc, @scannedAt, @fps, @threshold, @cueCount)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    media_path = @mediaPath,
+                    file_size = @fileSize,
+                    last_modified_utc = @lastModifiedUtc,
+                    scanned_at = @scannedAt,
+                    fps = @fps,
+                    threshold = @threshold,
+                    cue_count = @cueCount;
+                """;
+            cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
+            cmd.Parameters.AddWithValue("@mediaPath", mediaPath);
+            cmd.Parameters.AddWithValue("@fileSize", fileSize);
+            cmd.Parameters.AddWithValue("@lastModifiedUtc", lastModifiedUtc.ToString("O", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@scannedAt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@fps", fps);
+            cmd.Parameters.AddWithValue("@threshold", threshold);
+            cmd.Parameters.AddWithValue("@cueCount", cueCount);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a media file has changed since its last NudeNet scan (different path, file size, or modified timestamp).
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="currentMediaPath">The current physical media file path.</param>
+    /// <param name="currentFileSize">The current physical file size in bytes.</param>
+    /// <param name="currentLastModifiedUtc">The current physical last write timestamp in UTC.</param>
+    /// <returns><see langword="true"/> if media was previously scanned and has changed; otherwise <see langword="false"/>.</returns>
+    public bool HasMediaChangedSinceNudityScan(Guid itemId, string currentMediaPath, long currentFileSize, DateTime currentLastModifiedUtc)
+    {
+        var record = GetNudityScanHistory(itemId);
+        if (record is null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(record.MediaPath, currentMediaPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (record.FileSize != currentFileSize)
+        {
+            return true;
+        }
+
+        var diff = Math.Abs((record.LastModifiedUtc - currentLastModifiedUtc).TotalSeconds);
+        return diff > 2.0;
+    }
+
+    /// <summary>
+    /// Deletes the NudeNet scan history record for a media item.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns><see langword="true"/> if a record was deleted; otherwise <see langword="false"/>.</returns>
+    public bool DeleteNudityScanHistory(Guid itemId)
+    {
+        lock (_writeLock)
+        {
+            using var conn = CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM item_nudity_scan_history WHERE item_id = @itemId;";
             cmd.Parameters.AddWithValue("@itemId", itemId.ToString("N"));
             return cmd.ExecuteNonQuery() > 0;
         }

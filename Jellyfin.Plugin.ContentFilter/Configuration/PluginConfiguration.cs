@@ -244,5 +244,75 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Default: "/gpu-arbiter/pause-preload".
     /// </summary>
     public string GpuArbiterPauseFlagPath { get; set; } = "/gpu-arbiter/pause-preload";
+
+    // --- NudeNet Visual Nudity Scan ---
+
+    /// <summary>
+    /// Gets or sets a value indicating whether automated NudeNet visual nudity scanning is enabled.
+    /// </summary>
+    public bool EnableNudityScan { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the NudeNet HTTP detection endpoint URL (e.g. "http://localhost:8001/detect").
+    /// </summary>
+    public string NudeNetApiUrl { get; set; } = "http://localhost:8001/detect";
+
+    /// <summary>
+    /// Gets or sets an optional Bearer API key for authenticating with the NudeNet detection service.
+    /// </summary>
+    public string NudeNetApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the frame extraction rate (frames per second) used by ffmpeg during NudeNet scanning.
+    /// Default: 0.5 fps (1 frame every 2 seconds).
+    /// </summary>
+    public double NudityScanFps { get; set; } = 0.5;
+
+    /// <summary>
+    /// Gets or sets the minimum NudeNet confidence score (0.0–1.0) required to flag a frame.
+    /// Default: 0.60.
+    /// </summary>
+    public double NudityConfidenceThreshold { get; set; } = 0.60;
+
+    /// <summary>
+    /// Gets or sets the default cue action applied to NudeNet nudity detections ("skip" or "none").
+    /// Default: "skip".
+    /// </summary>
+    public string NudityCueAction { get; set; } = "skip";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether covered/partial nudity labels (e.g. covered breast/buttocks)
+    /// should also be flagged as <c>SexAndNudity.PartialNudity</c>.
+    /// </summary>
+    public bool NudityDetectPartial { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the maximum gap in seconds between adjacent nudity detections of the same category
+    /// to merge into a single continuous cue. Default: 4.0 seconds.
+    /// </summary>
+    public double NudityMergeGapSeconds { get; set; } = 4.0;
+
+    /// <summary>
+    /// Gets or sets the pre-roll padding in seconds added before the start of each detected nudity cue.
+    /// Default: 0.5 seconds.
+    /// </summary>
+    public double NudityPreRollSeconds { get; set; } = 0.5;
+
+    /// <summary>
+    /// Gets or sets the post-roll padding in seconds added after the end of each detected nudity cue.
+    /// Default: 0.5 seconds.
+    /// </summary>
+    public double NudityPostRollSeconds { get; set; } = 0.5;
+
+    /// <summary>
+    /// Gets or sets the time of day (HH:mm format, 24-hour) when the automated daily NudeNet scan runs in server local time.
+    /// Default is "04:00" (4:00 AM).
+    /// </summary>
+    public string AutomatedNudityScanTime { get; set; } = "04:00";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to automatically re-scan an item for nudity when its media file size or modification time changes.
+    /// </summary>
+    public bool AutoRegenerateNudityOnMediaUpgrade { get; set; } = true;
 }
 

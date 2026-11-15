@@ -12,6 +12,7 @@ A comprehensive scraping, parsing, and catalog management tool suite that scours
    - [Database Manager (`tools/jcf_db.py`)](#database-manager-toolsjcf_dbpy)
    - [Reddit Scraper & Harvester (`tools/reddit_scraper.py`)](#reddit-scraper--harvester-toolsreddit_scraperpy)
    - [Timecode Parser & Converter (`tools/reddit_to_jcf.py`)](#timecode-parser--converter-toolsreddit_to_jcfpy)
+   - [VidAngel Downloader (`tools/vidangel_to_jcf.py`)](#vidangel-downloader-toolsvidangel_to_jcfpy)
 5. [Category Mapping Standards](#category-mapping-standards)
 6. [Using with Jellyfin](#using-with-jellyfin)
    - [Media Sidecars (Recommended)](#1-media-sidecars-recommended)
@@ -183,6 +184,47 @@ Python library providing core timecode and category parsing functions:
 - `map_category_and_channel(label, context)`: Maps freeform tags to official Jellyfin plugin categories.
 - `load_jcf_file(file_path)`: Loads any `.jcf` file into a `JcfDocument`.
 - `upgrade_jcf_file(file_path)`: Upgrades legacy category tags in an existing file in-place.
+
+---
+
+### VidAngel Downloader (`tools/vidangel_to_jcf.py`)
+
+A standalone CLI tool to query VidAngel's public REST catalog, download tagged filter sets, map categories to Jellyfin standards, and generate `.jcf` sidecar files:
+
+#### 1. Search Titles
+Search for movies or TV series across VidAngel's database:
+```bash
+python tools/vidangel_to_jcf.py search "Gladiator"
+```
+
+#### 2. Inspect Available Platform Offerings
+Inspect seasons, episodes, and streaming releases (Amazon, Netflix, Paramount+, etc.):
+```bash
+python tools/vidangel_to_jcf.py info gladiator-c2f2e
+python tools/vidangel_to_jcf.py info stranger-things-d221b
+```
+
+#### 3. Download Movie Filters
+Download movie filters with platform preference, time offsets, and custom output path:
+```bash
+# Download Amazon Prime cut with +2.5s offset to sync with local rip
+python tools/vidangel_to_jcf.py download gladiator-c2f2e --platform amazon --offset 2.5 -o "/media/Movies/Gladiator (2000)/Gladiator (2000).jcf"
+```
+
+#### 4. Download TV Episode Filters
+Download episode-specific filter tags:
+```bash
+python tools/vidangel_to_jcf.py download stranger-things-d221b -s 1 -e 1 -o "/media/TV/Stranger Things/Season 01/Stranger Things - S01E01.jcf"
+```
+
+#### Key Options:
+- `--platform / -p`: Preferred streaming service cut (`amazon`, `netflix`, `paramount`, `appletv`).
+- `--season / -s`: Season number (required for TV shows).
+- `--episode / -e`: Episode number (required for TV shows).
+- `--offset`: Time offset in seconds (+/- float) to adjust for studio logo bumper differences.
+- `--min-duration`: Minimum cue duration in seconds for point markers (default: `1.0`).
+- `--no-credits`: Exclude opening and closing credit cues.
+- `--out / -o`: Output `.jcf` file path or directory.
 
 ---
 

@@ -2242,6 +2242,79 @@
                             </div>
                         </div>
 
+                        <!-- NudeNet Visual Nudity Scan Card -->
+                        <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div style="font-weight:600; font-size:0.95rem; color:var(--cf-text-main);">🔞 NudeNet Visual Nudity Scan (FFmpeg + NudeNet)</div>
+                                <span id="nudityScanStateBadge" class="cf-pill cf-pill-purple" style="font-size:11px; font-weight:700; text-transform:uppercase;">IDLE</span>
+                            </div>
+                            <div style="font-size:0.82rem; color:var(--cf-text-muted); margin-bottom:12px;">
+                                Extract video frames with Jellyfin ffmpeg and scan daily for nudity scenes via a local NudeNet ONNX HTTP server, automatically creating skip/none cues under <code>SexAndNudity</code>.
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+                                <label class="cf-checkbox-row">
+                                    <input id="EnableNudityScan" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span style="font-weight:600;">Enable Daily NudeNet Visual Nudity Scan</span>
+                                </label>
+                                <label class="cf-checkbox-row">
+                                    <input id="NudityDetectPartial" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span>Also Flag Covered / Partial Nudity (<code>SexAndNudity.PartialNudity</code>)</span>
+                                </label>
+                                <label class="cf-checkbox-row">
+                                    <input id="AutoRegenerateNudityOnMediaUpgrade" type="checkbox" is="emby-checkbox" style="width:16px; height:16px; cursor:pointer;">
+                                    <span>Automatically re-scan items when a newer or higher quality video file is detected</span>
+                                </label>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:12px;">
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="NudeNetApiUrl">NudeNet API URL</label>
+                                    <input id="NudeNetApiUrl" type="text" class="cf-field-input" placeholder="http://localhost:8001/detect" style="width:100%;">
+                                    <div class="cf-field-helper">Endpoint of <code>tools/nudenet_server/server.py</code> (e.g. <code>http://localhost:8001/detect</code>).</div>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="NudeNetApiKey">API Key (Optional)</label>
+                                    <input id="NudeNetApiKey" type="password" class="cf-field-input" placeholder="Optional Bearer token">
+                                    <div class="cf-field-helper">Leave empty unless <code>NUDENET_API_KEY</code> is set on the server.</div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:12px;">
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="NudityScanFps">Sample FPS</label>
+                                    <input id="NudityScanFps" type="number" step="0.1" min="0.1" max="5" class="cf-field-input" placeholder="0.5">
+                                    <div class="cf-field-helper">0.5 = 1 frame every 2s.</div>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="NudityConfidenceThreshold">Confidence Threshold</label>
+                                    <input id="NudityConfidenceThreshold" type="number" step="0.05" min="0.1" max="0.99" class="cf-field-input" placeholder="0.60">
+                                    <div class="cf-field-helper">Minimum score (0.10–0.99).</div>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="NudityCueAction">Cue Action</label>
+                                    <select id="NudityCueAction" class="cf-field-input">
+                                        <option value="skip">skip (Auto-Skip Scene)</option>
+                                        <option value="none">none (Log / Review Only)</option>
+                                    </select>
+                                </div>
+                                <div class="cf-field-group" style="margin-bottom:0;">
+                                    <label class="cf-field-label" for="AutomatedNudityScanTime">Daily Scan Time</label>
+                                    <input id="AutomatedNudityScanTime" type="time" class="cf-field-input" value="04:00">
+                                    <div class="cf-field-helper">Server local time (HH:mm).</div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; margin-bottom:10px;">
+                                <button type="button" id="btnStartNudityScan" class="raised button-submit emby-button" style="padding:7px 14px; font-size:0.85rem;">▶ Scan New Items Now</button>
+                                <button type="button" id="btnForceNudityScan" class="raised emby-button" style="padding:7px 14px; font-size:0.85rem;">↻ Force Rescan All</button>
+                                <button type="button" id="btnCancelNudityScan" class="raised emby-button" style="padding:7px 14px; font-size:0.85rem;">■ Cancel</button>
+                                <span id="nudityScanProgressText" style="font-size:0.82rem; color:var(--cf-text-muted); margin-left:6px;">Idle</span>
+                            </div>
+
+                            <div id="nudityScanLogs" style="display:none; max-height:140px; overflow-y:auto; background:rgba(0,0,0,0.25); border:1px solid var(--cf-border); border-radius:6px; padding:8px 10px; font-family:monospace; font-size:0.75rem; color:var(--cf-text-muted); white-space:pre-wrap;"></div>
+                        </div>
+
                         <!-- Subtitle Generation Job Status & Controls Card -->
                         <div style="background:var(--cf-surface-elevated); border:1px solid var(--cf-border); border-radius:8px; padding:16px; margin-top:10px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -2846,6 +2919,15 @@
                 if (getEl('EnableGpuArbitration')) getEl('EnableGpuArbitration').checked = config.EnableGpuArbitration !== false;
                 if (getEl('OllamaApiUrl')) getEl('OllamaApiUrl').value = config.OllamaApiUrl || 'http://localhost:11434';
                 if (getEl('GpuArbiterPauseFlagPath')) getEl('GpuArbiterPauseFlagPath').value = config.GpuArbiterPauseFlagPath || '/gpu-arbiter/pause-preload';
+                if (getEl('EnableNudityScan')) getEl('EnableNudityScan').checked = !!config.EnableNudityScan;
+                if (getEl('NudityDetectPartial')) getEl('NudityDetectPartial').checked = !!config.NudityDetectPartial;
+                if (getEl('AutoRegenerateNudityOnMediaUpgrade')) getEl('AutoRegenerateNudityOnMediaUpgrade').checked = config.AutoRegenerateNudityOnMediaUpgrade !== false;
+                if (getEl('NudeNetApiUrl')) getEl('NudeNetApiUrl').value = config.NudeNetApiUrl || 'http://localhost:8001/detect';
+                if (getEl('NudeNetApiKey')) getEl('NudeNetApiKey').value = config.NudeNetApiKey || '';
+                if (getEl('NudityScanFps')) getEl('NudityScanFps').value = config.NudityScanFps ?? 0.5;
+                if (getEl('NudityConfidenceThreshold')) getEl('NudityConfidenceThreshold').value = config.NudityConfidenceThreshold ?? 0.60;
+                if (getEl('NudityCueAction')) getEl('NudityCueAction').value = config.NudityCueAction || 'skip';
+                if (getEl('AutomatedNudityScanTime')) getEl('AutomatedNudityScanTime').value = config.AutomatedNudityScanTime || '04:00';
 
                 populateTree(getEl('filterHierarchyContainer'), config.DisabledCategories, config.DisabledFilterItems, config);
             }
@@ -2884,6 +2966,15 @@
                 if (getEl('EnableGpuArbitration')) config.EnableGpuArbitration = getEl('EnableGpuArbitration').checked;
                 if (getEl('OllamaApiUrl')) config.OllamaApiUrl = getEl('OllamaApiUrl').value || 'http://localhost:11434';
                 if (getEl('GpuArbiterPauseFlagPath')) config.GpuArbiterPauseFlagPath = getEl('GpuArbiterPauseFlagPath').value || '/gpu-arbiter/pause-preload';
+                if (getEl('EnableNudityScan')) config.EnableNudityScan = getEl('EnableNudityScan').checked;
+                if (getEl('NudityDetectPartial')) config.NudityDetectPartial = getEl('NudityDetectPartial').checked;
+                if (getEl('AutoRegenerateNudityOnMediaUpgrade')) config.AutoRegenerateNudityOnMediaUpgrade = getEl('AutoRegenerateNudityOnMediaUpgrade').checked;
+                if (getEl('NudeNetApiUrl')) config.NudeNetApiUrl = getEl('NudeNetApiUrl').value || 'http://localhost:8001/detect';
+                if (getEl('NudeNetApiKey')) config.NudeNetApiKey = getEl('NudeNetApiKey').value || '';
+                if (getEl('NudityScanFps')) config.NudityScanFps = parseFloat(getEl('NudityScanFps').value || '0.5');
+                if (getEl('NudityConfidenceThreshold')) config.NudityConfidenceThreshold = parseFloat(getEl('NudityConfidenceThreshold').value || '0.60');
+                if (getEl('NudityCueAction')) config.NudityCueAction = getEl('NudityCueAction').value || 'skip';
+                if (getEl('AutomatedNudityScanTime')) config.AutomatedNudityScanTime = getEl('AutomatedNudityScanTime').value || '04:00';
 
                 var data = collectTree(getEl('filterHierarchyContainer'));
                 config.DisabledCategories = data.disabledCategories;
@@ -4276,6 +4367,75 @@
                     alert('Could not restart subtitle sync: ' + err.message);
                 });
             }
+
+            var nudityScanPollTimer = null;
+
+            function pollNudityScanStatus() {
+                if (nudityScanPollTimer) clearTimeout(nudityScanPollTimer);
+                fetch(apiUrl('ContentFilter/nudity/scan/status'), {
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function(res) {
+                    return res.ok ? res.json() : null;
+                }).then(function(status) {
+                    if (!status) return;
+                    var badge = document.getElementById('nudityScanStateBadge');
+                    var progText = document.getElementById('nudityScanProgressText');
+                    var logsEl = document.getElementById('nudityScanLogs');
+                    var state = (status.state || status.State || 'Idle');
+                    var isRunning = status.isRunning || status.IsRunning || state.toLowerCase() === 'running';
+
+                    if (badge) {
+                        badge.textContent = String(state).toUpperCase();
+                    }
+                    if (progText) {
+                        var processed = status.processedItems ?? status.ProcessedItems ?? 0;
+                        var total = status.totalItems ?? status.TotalItems ?? 0;
+                        var cues = status.cuesGenerated ?? status.CuesGenerated ?? 0;
+                        var item = status.currentItemName || status.CurrentItemName || '';
+                        progText.textContent = isRunning
+                            ? (processed + '/' + total + ' (' + (status.progressPercentage ?? status.ProgressPercentage ?? 0) + '%) — ' + item + ' [' + cues + ' cues]')
+                            : ('State: ' + state + ' | Scanned: ' + (status.itemsScanned ?? status.ItemsScanned ?? 0) + ' | Skipped: ' + (status.itemsSkipped ?? status.ItemsSkipped ?? 0) + ' | Cues: ' + cues);
+                    }
+                    var logs = status.recentLogs || status.RecentLogs || [];
+                    if (logsEl && logs.length > 0) {
+                        logsEl.style.display = 'block';
+                        logsEl.textContent = logs.slice(-30).join('\n');
+                        logsEl.scrollTop = logsEl.scrollHeight;
+                    }
+                    if (isRunning) {
+                        nudityScanPollTimer = setTimeout(pollNudityScanStatus, 1500);
+                    }
+                }).catch(function(err) {
+                    console.warn('Failed to poll nudity scan status', err);
+                });
+            }
+
+            function triggerNudityScan(forceAll) {
+                fetch(apiUrl('ContentFilter/nudity/scan/start?forceAll=' + (forceAll ? 'true' : 'false')), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                }).then(function() {
+                    pollNudityScanStatus();
+                }).catch(function(err) {
+                    console.error('Failed to start nudity scan', err);
+                });
+            }
+
+            if (document.getElementById('btnStartNudityScan')) {
+                document.getElementById('btnStartNudityScan').addEventListener('click', function() { triggerNudityScan(false); });
+            }
+            if (document.getElementById('btnForceNudityScan')) {
+                document.getElementById('btnForceNudityScan').addEventListener('click', function() { triggerNudityScan(true); });
+            }
+            if (document.getElementById('btnCancelNudityScan')) {
+                document.getElementById('btnCancelNudityScan').addEventListener('click', function() {
+                    fetch(apiUrl('ContentFilter/nudity/scan/cancel'), {
+                        method: 'POST',
+                        headers: { 'X-Emby-Token': ApiClient.accessToken() }
+                    }).then(function() { pollNudityScanStatus(); });
+                });
+            }
+            pollNudityScanStatus();
 
             function pollSubtitleSyncStatus() {
                 if (subSyncPollTimer) clearTimeout(subSyncPollTimer);

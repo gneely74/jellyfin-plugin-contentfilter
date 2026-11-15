@@ -1,0 +1,5 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+nudenet>=3.4.2
+onnxruntime-gpu[cuda,cudnn]>=1.20.0

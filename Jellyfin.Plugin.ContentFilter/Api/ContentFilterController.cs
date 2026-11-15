@@ -41,6 +41,11 @@ public class ContentFilterController : ControllerBase
     private readonly SubtitleSyncService _subtitleSyncService;
 
     /// <summary>
+    /// The NudeNet visual nudity scan orchestration service.
+    /// </summary>
+    private readonly NudityScanService _nudityScanService;
+
+    /// <summary>
     /// The SQLite database repository for tracking subtitle configurations and locks.
     /// </summary>
     private readonly SqliteFilterRepository _sqliteRepository;
@@ -67,6 +72,7 @@ public class ContentFilterController : ControllerBase
     /// <param name="subtitleFilter">The subtitle filter service.</param>
     /// <param name="subtitleWordScanner">The subtitle word scanner service.</param>
     /// <param name="subtitleSyncService">The subtitle sync service.</param>
+    /// <param name="nudityScanService">The NudeNet visual nudity scan service.</param>
     /// <param name="sqliteRepository">The SQLite repository.</param>
     /// <param name="libraryManager">The Jellyfin library manager.</param>
     /// <param name="filterRuleService">The filter rule evaluation service.</param>
@@ -76,6 +82,7 @@ public class ContentFilterController : ControllerBase
         SubtitleFilter subtitleFilter,
         SubtitleWordScanner subtitleWordScanner,
         SubtitleSyncService subtitleSyncService,
+        NudityScanService nudityScanService,
         SqliteFilterRepository sqliteRepository,
         ILibraryManager libraryManager,
         FilterRuleService filterRuleService,
@@ -85,6 +92,7 @@ public class ContentFilterController : ControllerBase
         _subtitleFilter = subtitleFilter;
         _subtitleWordScanner = subtitleWordScanner;
         _subtitleSyncService = subtitleSyncService;
+        _nudityScanService = nudityScanService;
         _sqliteRepository = sqliteRepository;
         _libraryManager = libraryManager;
         _filterRuleService = filterRuleService;
@@ -1271,6 +1279,68 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Serves the standalone JCF Studio HTML interface for video scrubbing and cue marking.
+    /// </summary>
+    /// <returns>The JCF Studio HTML document, or a redirect to ensure a trailing slash.</returns>
+    [HttpGet("studio")]
+    [AllowAnonymous]
+    [Produces("text/html")]
+    public ActionResult GetStudioIndex()
+    {
+        var path = Request.Path.Value ?? string.Empty;
+        if (!path.EndsWith('/'))
+        {
+            return Redirect($"{path}/{Request.QueryString}");
+        }
+
+        return ServeEmbeddedStudioResource("index.html", "text/html; charset=utf-8");
+    }
+
+    /// <summary>
+    /// Serves the stylesheet for JCF Studio.
+    /// </summary>
+    /// <returns>The CSS file content.</returns>
+    [HttpGet("studio/styles.css")]
+    [AllowAnonymous]
+    [Produces("text/css")]
+    public ActionResult GetStudioStyles()
+        => ServeEmbeddedStudioResource("styles.css", "text/css; charset=utf-8");
+
+    /// <summary>
+    /// Serves the client-side application script for JCF Studio.
+    /// </summary>
+    /// <returns>The JavaScript file content.</returns>
+    [HttpGet("studio/app.js")]
+    [AllowAnonymous]
+    [Produces("application/javascript")]
+    public ActionResult GetStudioScript()
+        => ServeEmbeddedStudioResource("app.js", "application/javascript; charset=utf-8");
+
+    /// <summary>
+    /// Reads an embedded resource from <c>Web.studio</c> and returns it with no-cache headers.
+    /// </summary>
+    /// <param name="fileName">The file name inside <c>Web/studio</c>.</param>
+    /// <param name="contentType">The HTTP Content-Type header value.</param>
+    /// <returns>An <see cref="ActionResult"/> containing the resource text or 404 if missing.</returns>
+    private ActionResult ServeEmbeddedStudioResource(string fileName, string contentType)
+    {
+        var assembly = typeof(Plugin).Assembly;
+        var resourceName = $"{typeof(Plugin).Namespace}.Web.studio.{fileName}";
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            return NotFound($"Studio resource '{fileName}' not found.");
+        }
+
+        using var reader = new StreamReader(stream);
+        var content = reader.ReadToEnd();
+        Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+        return Content(content, contentType);
+    }
+
+    /// <summary>
     /// Gets available subtitle tracks for an item.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>
@@ -1556,6 +1626,67 @@ public class ContentFilterController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _subtitleSyncService.ProcessSingleVideoAsync(itemId, force, language, cancellationToken).ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Starts the library-wide NudeNet visual nudity scan job.
+    /// </summary>
+    /// <param name="forceAll">When <see langword="true"/>, rescans all items even if previously scanned.</param>
+    /// <returns>The current <see cref="NudityScanStatus"/>.</returns>
+    [HttpPost("nudity/scan/start")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult<NudityScanStatus> StartNudityScan([FromQuery] bool forceAll = false)
+    {
+        var started = _nudityScanService.StartScan(forceAll);
+        if (!started)
+        {
+            return Conflict(_nudityScanService.Status);
+        }
+
+        return Ok(_nudityScanService.Status);
+    }
+
+    /// <summary>
+    /// Gets the current status and recent logs of the library-wide NudeNet visual nudity scan.
+    /// </summary>
+    /// <returns>The current <see cref="NudityScanStatus"/>.</returns>
+    [HttpGet("nudity/scan/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<NudityScanStatus> GetNudityScanStatus()
+    {
+        _nudityScanService.RefreshNextScheduledRun();
+        return Ok(_nudityScanService.Status);
+    }
+
+    /// <summary>
+    /// Cancels any currently running library-wide NudeNet visual nudity scan.
+    /// </summary>
+    /// <returns>HTTP 204 No Content.</returns>
+    [HttpPost("nudity/scan/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult CancelNudityScan()
+    {
+        _nudityScanService.CancelScan();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Scans a single video item on demand using <c>ffmpeg</c> + NudeNet and persists detected nudity cues.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <param name="force">Whether to rescan even if scan history already exists.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="SingleNudityScanResult"/> describing the outcome.</returns>
+    [HttpPost("nudity/{itemId:guid}/scan")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<SingleNudityScanResult>> ScanSingleItemNudity(
+        Guid itemId,
+        [FromQuery] bool force = true,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _nudityScanService.ScanSingleVideoAsync(itemId, force, cancellationToken).ConfigureAwait(false);
         return Ok(result);
     }
 
