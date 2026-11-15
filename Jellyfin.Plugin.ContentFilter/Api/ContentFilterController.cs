@@ -122,6 +122,7 @@ public class ContentFilterController : ControllerBase
                 category = cue.Category,
                 channel = cue.Channel,
                 action = cue.Action,
+                precision = cue.Precision,
                 enabled = _filterRuleService.IsCueEnabled(cue, itemId)
             })
             .ToList();

@@ -1151,22 +1151,37 @@ public class SubtitleSyncService : IHostedService, IDisposable
                         out var start,
                         out var end);
 
-                    // If Whisper word-level timestamps exist for this word, ensure the clause window
-                    // encompasses the acoustic word bounds with at least 350ms lead-in and trail-out.
+                    // If Whisper word-level timestamps exist for this word, tighten the mute window
+                    // directly to the acoustic word bounds (+100ms margin) so clean surrounding dialogue
+                    // is preserved instead of muting the entire clause.
+                    string? cuePrecision = null;
                     if (seg.Words is { Count: > 0 })
                     {
+                        TimeSpan? wordMinStart = null;
+                        TimeSpan? wordMaxEnd = null;
                         foreach (var w in seg.Words)
                         {
                             if (!string.IsNullOrWhiteSpace(w.Word) && pattern.IsMatch(w.Word))
                             {
-                                var acousticStart = TimeSpan.FromSeconds(Math.Max(seg.Start, w.Start - 0.35));
-                                var acousticEnd = TimeSpan.FromSeconds(Math.Min(seg.End, w.End + 0.35));
-                                if (Math.Abs((acousticStart - start).TotalSeconds) < 1.8)
+                                var acousticStart = TimeSpan.FromSeconds(Math.Max(seg.Start, w.Start - 0.10));
+                                var acousticEnd = TimeSpan.FromSeconds(Math.Min(seg.End, w.End + 0.10));
+                                if (Math.Abs((acousticStart - start).TotalSeconds) < 2.5)
                                 {
-                                    start = TimeSpan.FromTicks(Math.Min(start.Ticks, acousticStart.Ticks));
-                                    end = TimeSpan.FromTicks(Math.Max(end.Ticks, acousticEnd.Ticks));
+                                    wordMinStart = wordMinStart is null
+                                        ? acousticStart
+                                        : TimeSpan.FromTicks(Math.Min(wordMinStart.Value.Ticks, acousticStart.Ticks));
+                                    wordMaxEnd = wordMaxEnd is null
+                                        ? acousticEnd
+                                        : TimeSpan.FromTicks(Math.Max(wordMaxEnd.Value.Ticks, acousticEnd.Ticks));
                                 }
                             }
+                        }
+
+                        if (wordMinStart.HasValue && wordMaxEnd.HasValue && wordMaxEnd.Value > wordMinStart.Value)
+                        {
+                            start = wordMinStart.Value;
+                            end = wordMaxEnd.Value;
+                            cuePrecision = "word";
                         }
                     }
 
@@ -1185,6 +1200,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
                         Category = category,
                         Channel = channel,
                         Action = action,
+                        Precision = cuePrecision,
                         Description = $"Spoken: \"{match.Value}\""
                     });
                 }

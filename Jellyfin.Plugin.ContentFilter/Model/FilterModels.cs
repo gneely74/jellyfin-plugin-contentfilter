@@ -36,6 +36,11 @@ public sealed class FilterCue
     public string Action { get; set; } = "none";
 
     /// <summary>
+    /// Gets or sets the optional timing precision tag (e.g. "word", "clause", "visual").
+    /// </summary>
+    public string? Precision { get; set; }
+
+    /// <summary>
     /// Gets the unique cue key composed of time range and category.
     /// </summary>
     public string Key => $"{(int)Start.TotalHours:00}:{Start.Minutes:00}:{Start.Seconds:00}.{Start.Milliseconds:000}-{(int)End.TotalHours:00}:{End.Minutes:00}:{End.Seconds:00}.{End.Milliseconds:000}-{Category}";
