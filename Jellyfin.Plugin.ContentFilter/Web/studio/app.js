@@ -44,6 +44,7 @@
     virtualTime: 0,
     knownDuration: 0,
     lastActiveSrtIdx: null,
+    undoStack: [],
     recentItems: (() => {
       try {
         return JSON.parse(localStorage.getItem("jcf_recentItems") || "[]");
@@ -117,6 +118,8 @@
     $("localVideoInput").addEventListener("change", handleLocalVideo);
     $("localSrtInput").addEventListener("change", handleLocalSrt);
     $("localJcfInput").addEventListener("change", handleLocalJcf);
+    $("btnUndo").addEventListener("click", undoLastAction);
+    $("btnSaveJcf").addEventListener("click", () => saveAllCuesToJcf(false));
     $("btnExportJcf").addEventListener("click", exportJcfFile);
     $("btnHotkeys").addEventListener("click", () => $("hotkeysModal").classList.toggle("hidden"));
     $("btnCloseHotkeysModal").addEventListener("click", () => $("hotkeysModal").classList.add("hidden"));
@@ -735,7 +738,7 @@
     setStatus(`Imported ${state.cues.length} cues from ${file.name}`);
   }
 
-  function exportJcfFile() {
+  function buildJcfText() {
     const lines = ["WEBVTT JCF", "", "NOTE"];
     lines.push(`TITLE ${state.title || "Untitled"}`);
     if (state.year) lines.push(`YEAR ${state.year}`);
@@ -753,14 +756,60 @@
       if (cue.description) lines.push(`description: ${cue.description}`);
       lines.push("");
     }
+    return lines.join("\n");
+  }
 
-    const blob = new Blob([lines.join("\n")], { type: "text/vtt;charset=utf-8" });
+  function exportJcfFile() {
+    const blob = new Blob([buildJcfText()], { type: "text/vtt;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     const safeName = (state.title || state.itemId || "contentfilter").replace(/[^a-z0-9._-]+/gi, "_");
     a.download = `${safeName}.jcf`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  function pushUndoSnapshot() {
+    state.undoStack.push(state.cues.map((c) => ({ ...c })));
+    if (state.undoStack.length > 25) state.undoStack.shift();
+    $("btnUndo").disabled = state.undoStack.length === 0;
+  }
+
+  async function undoLastAction() {
+    if (!state.undoStack.length) return;
+    state.cues = state.undoStack.pop();
+    $("btnUndo").disabled = state.undoStack.length === 0;
+    resetCueForm();
+    renderTimeline();
+    renderCuesList();
+    renderTranscript();
+    if (state.itemId) {
+      await saveAllCuesToJcf(true);
+      setStatus("Undid last change and synced to JCF server.");
+    } else {
+      setStatus("Undid last change.");
+    }
+  }
+
+  async function saveAllCuesToJcf(quiet = false) {
+    if (!state.itemId) {
+      setStatus("Select a Jellyfin item first to save cues to JCF.", true);
+      return;
+    }
+    try {
+      const res = await apiFetch(`/ContentFilter/filters/${state.itemId}`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: buildJcfText(),
+      });
+      await fetchJcfCues(state.itemId);
+      if (!quiet) {
+        const count = res?.cues ?? state.cues.length;
+        setStatus(`Saved ${count} cues to JCF server.`);
+      }
+    } catch (err) {
+      setStatus(`Failed to save to JCF: ${err.message}`, true);
+    }
   }
 
   // --- Transport & Filter Preview ---
@@ -1029,6 +1078,7 @@
     };
 
     try {
+      pushUndoSnapshot();
       if (state.itemId) {
         if (state.editingCueKey) {
           await apiFetch(`/ContentFilter/filters/${state.itemId}/segments/${encodeURIComponent(state.editingCueKey)}`, {
@@ -1110,6 +1160,7 @@
 
   async function shiftAllCues(offsetSeconds) {
     try {
+      pushUndoSnapshot();
       if (state.itemId) {
         await apiFetch(`/ContentFilter/filters/${state.itemId}/segments/offset`, {
           method: "POST",
@@ -1135,6 +1186,7 @@
 
   async function deleteCueByKey(cueKey) {
     try {
+      pushUndoSnapshot();
       if (state.itemId) {
         await apiFetch(`/ContentFilter/filters/${state.itemId}/segments/${encodeURIComponent(cueKey)}`, {
           method: "DELETE",
@@ -1318,6 +1370,7 @@
     };
 
     try {
+      pushUndoSnapshot();
       if (state.itemId) {
         await apiFetch(`/ContentFilter/filters/${state.itemId}/segments`, {
           method: "POST",
@@ -1352,6 +1405,7 @@
 
   async function applyBlanketWordFilter(word) {
     if (!word) return;
+    pushUndoSnapshot();
     if (state.itemId) {
       try {
         await apiFetch(`/ContentFilter/subtitles/${state.itemId}/blanket-filter`, {
@@ -1385,6 +1439,7 @@
       setStatus(`No SRT matches found for "${term}".`, true);
       return;
     }
+    pushUndoSnapshot();
 
     let added = 0;
     for (const line of matches) {
@@ -1460,6 +1515,11 @@
     if (isInput) return;
 
     const key = e.key.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && key === "z") {
+      e.preventDefault();
+      undoLastAction();
+      return;
+    }
     if (e.code === "Space" || key === "k") {
       e.preventDefault();
       togglePlay();
