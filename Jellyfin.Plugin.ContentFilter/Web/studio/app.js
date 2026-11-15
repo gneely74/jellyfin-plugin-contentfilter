@@ -443,8 +443,21 @@
 
   async function loadEpisodes(seriesId, seriesName) {
     try {
-      const eps = await apiFetch(`/ContentFilter/series/${seriesId}/episodes`);
-      renderLibraryItems(eps || [], `Episodes — ${seriesName}`);
+      const data = await apiFetch(`/ContentFilter/series/${seriesId}/episodes`);
+      const seasons = data?.seasons || [];
+      const flattened = [];
+      seasons.forEach((season) => {
+        (season.episodes || []).forEach((ep) => {
+          const sNum = String(ep.seasonNumber ?? season.seasonNumber ?? 0).padStart(2, "0");
+          const eNum = String(ep.episodeNumber ?? 0).padStart(2, "0");
+          flattened.push({
+            ...ep,
+            name: `S${sNum}E${eNum} — ${ep.name || "Episode"}`,
+            type: ep.cuesCount ? `${ep.cuesCount} cues` : "Episode",
+          });
+        });
+      });
+      renderLibraryItems(flattened, `Episodes — ${data?.seriesName || seriesName}`);
     } catch (err) {
       setStatus(`Failed to load episodes: ${err.message}`, true);
     }

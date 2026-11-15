@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.48.0",
+        "changelog": "Fix JCF Studio episode browser to flatten the hierarchical seasons/episodes response from /ContentFilter/series/{id}/episodes.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.48/Jellyfin.Plugin.ContentFilter_1.0.48.0.zip",
+        "checksum": "e45ab0ca169e3818e1c7052ed89be004",
+        "timestamp": "2026-11-15T00:00:00Z"
+      },
+      {
         "version": "1.0.47.0",
         "changelog": "Auto-detect Jellyfin Web session token from localStorage and add built-in Sign In modal (/Users/AuthenticateByName) to JCF Studio.",
         "targetAbi": "10.11.0.0",
