@@ -60,6 +60,10 @@
           <div id="subtitleOverlay" class="subtitle-overlay hidden"></div>
         </div>
 
+        <div class="scrubber-bar">
+          <input id="scrubberSlider" type="range" min="0" max="1000" step="0.1" value="0" title="Drag to scrub video timeline" />
+        </div>
+
         <div class="transport-bar">
           <div class="transport-group">
             <button id="btnPlayPause" class="btn btn-primary" title="Play / Pause (Space)">Play</button>
@@ -83,10 +87,11 @@
               <option value="1.5">1.5x</option>
               <option value="2">2.0x</option>
             </select>
-            <label class="checkbox-pill" title="Simulate mute &amp; skip cues during playback">
+            <label class="checkbox-pill" title="Simulate mute, blur &amp; skip cues during playback">
               <input id="previewFilters" type="checkbox" checked />
-              <span>Preview Filters</span>
+              <span>Filters Active</span>
             </label>
+            <button id="btnTestFiltered" class="btn btn-success btn-sm" title="Play video from current position with all filters active">Test Play</button>
             <button id="btnSetIn" class="btn btn-in" title="Mark In at playhead (I)">[ In (I)</button>
             <button id="btnSetOut" class="btn btn-out" title="Mark Out at playhead (O)">Out (O) ]</button>
           </div>

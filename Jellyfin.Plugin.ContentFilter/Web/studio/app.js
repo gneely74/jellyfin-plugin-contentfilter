@@ -105,6 +105,15 @@
 
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
+    $("btnTestFiltered").addEventListener("click", () => {
+      $("previewFilters").checked = true;
+      video.play().catch(() => {});
+    });
+    $("scrubberSlider").addEventListener("input", (e) => {
+      const dur = video.duration || getFallbackDuration();
+      const ratio = parseFloat(e.target.value) / 1000;
+      seekTo(ratio * dur);
+    });
     $("btnStepBackSec").addEventListener("click", () => seekBy(-1));
     $("btnStepFwdSec").addEventListener("click", () => seekBy(1));
     $("btnStepBackFrame").addEventListener("click", () => seekBy(-FRAME_STEP));
@@ -126,8 +135,15 @@
       }
       renderTimeline();
     });
-    video.addEventListener("play", () => { $("btnPlayPause").textContent = "Pause"; });
-    video.addEventListener("pause", () => { $("btnPlayPause").textContent = "Play"; });
+    video.addEventListener("play", () => {
+      $("btnPlayPause").textContent = "Pause";
+      startFilterLoop();
+    });
+    video.addEventListener("pause", () => {
+      $("btnPlayPause").textContent = "Play";
+      stopFilterLoop();
+    });
+    video.addEventListener("ended", stopFilterLoop);
     video.addEventListener("error", onVideoError);
 
     // Timeline interactions
@@ -136,7 +152,28 @@
       $("timelineZoomVal").textContent = `${state.zoom}x`;
       renderTimeline();
     });
-    $("timelineCanvas").addEventListener("click", onTimelineClick);
+    // Timeline drag-scrubbing
+    let isDraggingTimeline = false;
+    const scrubFromPointer = (e) => {
+      const rect = $("timelineCanvas").getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      seekTo(ratio * getFallbackDuration());
+    };
+    $("timelineCanvas").addEventListener("pointerdown", (e) => {
+      if (e.target.classList.contains("timeline-cue")) return;
+      isDraggingTimeline = true;
+      $("timelineCanvas").setPointerCapture(e.pointerId);
+      scrubFromPointer(e);
+    });
+    $("timelineCanvas").addEventListener("pointermove", (e) => {
+      if (isDraggingTimeline) scrubFromPointer(e);
+    });
+    $("timelineCanvas").addEventListener("pointerup", (e) => {
+      if (isDraggingTimeline) {
+        isDraggingTimeline = false;
+        $("timelineCanvas").releasePointerCapture(e.pointerId);
+      }
+    });
 
     // NudeNet & Whisper
     $("btnRunNudeNet").addEventListener("click", runNudeNetScan);
@@ -715,6 +752,7 @@
     if (dur > 0) {
       const pct = Math.min(100, Math.max(0, (t / dur) * 100));
       $("timelinePlayhead").style.left = `${pct}%`;
+      $("scrubberSlider").value = String((t / dur) * 1000);
     }
 
     const activeSrt = state.srtLines.find((s) => t >= s.startSec && t <= s.endSec);
@@ -743,36 +781,73 @@
     }
   }
 
+  let filterRafId = null;
+
+  function startFilterLoop() {
+    stopFilterLoop();
+    const tick = () => {
+      if (!video.paused && !video.ended) {
+        const t = video.currentTime || 0;
+        applyActiveFilters(t);
+        filterRafId = requestAnimationFrame(tick);
+      }
+    };
+    filterRafId = requestAnimationFrame(tick);
+  }
+
+  function stopFilterLoop() {
+    if (filterRafId !== null) {
+      cancelAnimationFrame(filterRafId);
+      filterRafId = null;
+    }
+    video.muted = false;
+    video.style.filter = "";
+    $("filterOverlay").classList.add("hidden");
+  }
+
+  function applyActiveFilters(t) {
+    const overlay = $("filterOverlay");
+    if (!$("previewFilters").checked || video.paused) {
+      video.muted = false;
+      video.style.filter = "";
+      overlay.classList.add("hidden");
+      return;
+    }
+
+    const activeCues = state.cues.filter(
+      (c) => c.enabled !== false && t >= c.startSec && t <= c.endSec && c.action !== "none"
+    );
+
+    const skipCue = activeCues.find((c) => c.action === "skip");
+    if (skipCue && skipCue.endSec > t + 0.05) {
+      video.currentTime = skipCue.endSec;
+      $("filterOverlayText").textContent = `SKIPPED: ${skipCue.category}`;
+      overlay.classList.remove("hidden");
+      return;
+    }
+
+    const blurCue = activeCues.find((c) => c.action === "blur");
+    video.style.filter = blurCue ? "blur(28px)" : "";
+
+    const muteCue = activeCues.find((c) => c.action === "mute");
+    video.muted = Boolean(muteCue);
+
+    if (muteCue || blurCue) {
+      const label = muteCue
+        ? `MUTED: ${muteCue.description || muteCue.category}`
+        : `BLURRED: ${blurCue.description || blurCue.category}`;
+      $("filterOverlayText").textContent = label;
+      overlay.classList.remove("hidden");
+    } else {
+      overlay.classList.add("hidden");
+    }
+  }
+
   function onVideoTimeUpdate() {
     const t = video.currentTime || 0;
     state.virtualTime = t;
     updateTimecodeAndPlayhead(t);
-
-    // Live Filter Preview
-    const overlay = $("filterOverlay");
-    if ($("previewFilters").checked && !video.paused) {
-      const activeCues = state.cues.filter(
-        (c) => c.enabled !== false && t >= c.startSec && t <= c.endSec && c.action !== "none"
-      );
-      const skipCue = activeCues.find((c) => c.action === "skip");
-      if (skipCue && skipCue.endSec > t + 0.05) {
-        video.currentTime = skipCue.endSec;
-        $("filterOverlayText").textContent = `SKIPPED: ${skipCue.category}`;
-        overlay.classList.remove("hidden");
-        return;
-      }
-      const muteCue = activeCues.find((c) => c.action === "mute");
-      video.muted = Boolean(muteCue);
-      if (muteCue) {
-        $("filterOverlayText").textContent = `MUTED: ${muteCue.description || muteCue.category}`;
-        overlay.classList.remove("hidden");
-      } else {
-        overlay.classList.add("hidden");
-      }
-    } else {
-      video.muted = false;
-      overlay.classList.add("hidden");
-    }
+    applyActiveFilters(t);
   }
 
   // --- Timeline Rendering ---

@@ -191,7 +191,7 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
 .workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 390px;
+  grid-template-columns: 1fr 420px;
   min-height: 0;
 }
 
@@ -216,12 +216,28 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
 
 .video-wrapper {
   position: relative;
+  width: 100%;
+  height: 42vh;
+  min-height: 240px;
   background: #000;
-  aspect-ratio: 16 / 9;
-  max-height: 44vh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.scrubber-bar {
+  padding: 4px 10px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.scrubber-bar input[type="range"] {
+  width: 100%;
+  accent-color: #facc15;
+  cursor: pointer;
+  margin: 0;
 }
 
 .video-wrapper video {
@@ -449,19 +465,21 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 2px;
+  width: 3px;
+  margin-left: -1px;
   background: #facc15;
   pointer-events: none;
   z-index: 5;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.8);
 }
 
 .timeline-playhead::before {
   content: "";
   position: absolute;
   top: 0;
-  left: -4px;
-  width: 10px;
-  height: 10px;
+  left: -6px;
+  width: 15px;
+  height: 12px;
   background: #facc15;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
