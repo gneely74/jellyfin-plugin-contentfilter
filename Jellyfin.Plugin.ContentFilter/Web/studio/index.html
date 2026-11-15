@@ -290,6 +290,11 @@
             <option value="both">Both</option>
           </select>
         </div>
+        <div class="panel-toolbar" style="background: var(--panel-alt);">
+          <input id="cueOffsetInput" type="text" class="mono" placeholder="Offset sec (e.g. +35 or -12.5)" title="Shift all cues by seconds" />
+          <button id="btnShiftCues" class="btn btn-secondary btn-sm" title="Shift all cues by offset seconds">Shift All</button>
+          <button id="btnAlignCueToPlayhead" class="btn btn-accent btn-sm" title="Shift all cues so the currently edited cue starts at the playhead">Align to Playhead</button>
+        </div>
         <div id="cuesList" class="cues-list">
           <div class="empty-state">No cues loaded yet.</div>
         </div>

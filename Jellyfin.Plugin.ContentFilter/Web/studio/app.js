@@ -42,6 +42,7 @@
     hlsInstance: null,
     pendingSeek: null,
     virtualTime: 0,
+    knownDuration: 0,
     lastActiveSrtIdx: null,
     recentItems: (() => {
       try {
@@ -147,13 +148,23 @@
     // Video events
     video.addEventListener("timeupdate", onVideoTimeUpdate);
     video.addEventListener("loadedmetadata", () => {
-      $("durationTimecode").textContent = formatTimecode(video.duration || 0);
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        state.knownDuration = video.duration;
+        $("durationTimecode").textContent = formatTimecode(video.duration);
+      }
       if (state.pendingSeek !== null) {
         const target = state.pendingSeek;
         state.pendingSeek = null;
         video.currentTime = target;
       }
       renderTimeline();
+    });
+    video.addEventListener("durationchange", () => {
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        state.knownDuration = video.duration;
+        $("durationTimecode").textContent = formatTimecode(video.duration);
+        renderTimeline();
+      }
     });
     video.addEventListener("play", () => {
       $("btnPlayPause").textContent = "Pause";
@@ -230,6 +241,15 @@
     $("btnMuteAllMatches").addEventListener("click", muteAllSearchMatches);
     $("cueFilterInput").addEventListener("input", renderCuesList);
     $("cueFilterChannel").addEventListener("change", renderCuesList);
+    $("btnShiftCues").addEventListener("click", () => {
+      const val = parseFloat($("cueOffsetInput").value);
+      if (Number.isNaN(val) || val === 0) {
+        setStatus("Enter a non-zero offset in seconds (e.g. 35 or -12.5).", true);
+        return;
+      }
+      shiftAllCues(val);
+    });
+    $("btnAlignCueToPlayhead").addEventListener("click", alignSelectedCueToPlayhead);
 
     // Popover actions
     $("btnMarkWordOnce").addEventListener("click", () => markPopoverWord(false));
@@ -388,6 +408,11 @@
         }),
       });
       mediaSource = (pbInfo?.MediaSources || [])[0] || null;
+      if (mediaSource?.RunTimeTicks) {
+        state.knownDuration = mediaSource.RunTimeTicks / 10_000_000;
+        $("durationTimecode").textContent = formatTimecode(state.knownDuration);
+        renderTimeline();
+      }
     } catch {
       mediaSource = null;
     }
@@ -896,7 +921,9 @@
 
   // --- Timeline Rendering ---
   function getFallbackDuration() {
-    let maxT = video.duration || 0;
+    if (Number.isFinite(video.duration) && video.duration > 0) return video.duration;
+    if (state.knownDuration > 0) return state.knownDuration;
+    let maxT = 0;
     for (const c of state.cues) maxT = Math.max(maxT, c.endSec);
     for (const s of state.srtLines) maxT = Math.max(maxT, s.endSec);
     return maxT > 0 ? maxT : 600;
@@ -1062,6 +1089,48 @@
     if (!state.editingCueKey) return;
     await deleteCueByKey(state.editingCueKey);
     resetCueForm();
+  }
+
+  async function alignSelectedCueToPlayhead() {
+    if (!state.editingCueKey) {
+      setStatus("Click a cue first to select it, scrub to where it actually starts, then click Align to Playhead.", true);
+      return;
+    }
+    const cue = state.cues.find((c) => c.key === state.editingCueKey);
+    if (!cue) return;
+    const t = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
+    const offset = Number((t - cue.startSec).toFixed(3));
+    if (Math.abs(offset) < 0.01) {
+      setStatus("Selected cue is already aligned with the playhead.");
+      return;
+    }
+    $("cueOffsetInput").value = offset > 0 ? `+${offset}` : String(offset);
+    await shiftAllCues(offset);
+  }
+
+  async function shiftAllCues(offsetSeconds) {
+    try {
+      if (state.itemId) {
+        await apiFetch(`/ContentFilter/filters/${state.itemId}/segments/offset`, {
+          method: "POST",
+          body: JSON.stringify({ offsetSeconds, channel: "all" }),
+        });
+        await fetchJcfCues(state.itemId);
+      } else {
+        state.cues = state.cues.map((c) => {
+          const s = Math.max(0, c.startSec + offsetSeconds);
+          const e = Math.max(s + 0.1, c.endSec + offsetSeconds);
+          return normalizeCue({ ...c, start: formatTimecode(s), end: formatTimecode(e) });
+        });
+        renderTimeline();
+        renderCuesList();
+        renderTranscript();
+      }
+      resetCueForm();
+      setStatus(`Shifted all cues by ${offsetSeconds > 0 ? "+" : ""}${offsetSeconds}s.`);
+    } catch (err) {
+      setStatus(`Failed to shift cues: ${err.message}`, true);
+    }
   }
 
   async function deleteCueByKey(cueKey) {
