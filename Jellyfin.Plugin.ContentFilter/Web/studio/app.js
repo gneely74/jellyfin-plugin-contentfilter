@@ -39,6 +39,9 @@
     zoom: 1,
     popoverContext: null,
     triedTranscodeFallback: false,
+    hlsInstance: null,
+    pendingSeek: null,
+    virtualTime: 0,
   };
 
   // DOM helpers
@@ -115,6 +118,11 @@
     video.addEventListener("timeupdate", onVideoTimeUpdate);
     video.addEventListener("loadedmetadata", () => {
       $("durationTimecode").textContent = formatTimecode(video.duration || 0);
+      if (state.pendingSeek !== null) {
+        const target = state.pendingSeek;
+        state.pendingSeek = null;
+        video.currentTime = target;
+      }
       renderTimeline();
     });
     video.addEventListener("play", () => { $("btnPlayPause").textContent = "Pause"; });
@@ -258,19 +266,51 @@
     setStatus(summary.length ? `Loaded: ${summary.join(" • ")}` : "Connected, but no JCF/SRT data found yet for this item.");
   }
 
-  function loadJellyfinVideo(itemId, transcode) {
+  function destroyHls() {
+    if (state.hlsInstance) {
+      state.hlsInstance.destroy();
+      state.hlsInstance = null;
+    }
+  }
+
+  function loadJellyfinVideo(itemId, useHls) {
+    destroyHls();
     const key = encodeURIComponent(($("apiKey").value || state.apiKey).trim());
-    const path = transcode
-      ? `/Videos/${itemId}/stream.mp4?VideoCodec=h264&AudioCodec=aac&TranscodingMaxAudioChannels=2&api_key=${key}`
-      : `/Videos/${itemId}/stream?static=true&api_key=${key}`;
-    video.src = buildFetchUrl(path);
-    video.load();
+    if (!useHls) {
+      const path = `/Videos/${itemId}/stream?static=true&api_key=${key}`;
+      video.src = buildFetchUrl(path);
+      video.load();
+      return;
+    }
+
+    const playSessionId = `jcfstudio_${Date.now()}`;
+    const hlsPath = `/Videos/${itemId}/master.m3u8?MediaSourceId=${itemId}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&PlaySessionId=${playSessionId}&api_key=${key}`;
+    const hlsUrl = buildFetchUrl(hlsPath);
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = hlsUrl;
+      video.load();
+    } else if (window.Hls && window.Hls.isSupported()) {
+      const hls = new window.Hls({ enableWorker: true });
+      state.hlsInstance = hls;
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+      hls.on(window.Hls.Events.ERROR, (_ev, data) => {
+        if (data.fatal) {
+          setStatus("HLS transcode stream error. You can also load a local MP4/WebM via the Video button.", true);
+        }
+      });
+    } else {
+      const mp4Path = `/Videos/${itemId}/stream.mp4?Static=false&MediaSourceId=${itemId}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&api_key=${key}`;
+      video.src = buildFetchUrl(mp4Path);
+      video.load();
+    }
   }
 
   function onVideoError() {
     if (state.itemId && !state.triedTranscodeFallback && video.src.includes("/Videos/")) {
       state.triedTranscodeFallback = true;
-      setStatus("Direct stream unsupported by browser; switching to H.264/AAC transcoded stream...");
+      setStatus("Direct stream unsupported by browser; switching to HLS H.264/AAC transcoded stream...");
       loadJellyfinVideo(state.itemId, true);
       return;
     }
@@ -568,12 +608,25 @@
     else video.pause();
   }
 
+  function seekTo(sec) {
+    const dur = video.duration || getFallbackDuration();
+    const clamped = Math.max(0, Math.min(dur || 1e9, sec));
+    state.virtualTime = clamped;
+    if (video.readyState >= 1) {
+      video.currentTime = clamped;
+    } else {
+      state.pendingSeek = clamped;
+      updateTimecodeAndPlayhead(clamped);
+    }
+  }
+
   function seekBy(deltaSec) {
-    video.currentTime = Math.max(0, Math.min(video.duration || 1e9, (video.currentTime || 0) + deltaSec));
+    const current = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
+    seekTo(current + deltaSec);
   }
 
   function markIn() {
-    const t = video.currentTime || 0;
+    const t = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
     state.inTime = t;
     $("cueStart").value = formatTimecode(t);
     if (state.outTime === null || state.outTime <= t) {
@@ -584,7 +637,7 @@
   }
 
   function markOut() {
-    const t = video.currentTime || 0;
+    const t = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
     state.outTime = t;
     $("cueEnd").value = formatTimecode(t);
     if (state.inTime === null || state.inTime >= t) {
@@ -600,8 +653,7 @@
     renderInOutRange();
   }
 
-  function onVideoTimeUpdate() {
-    const t = video.currentTime || 0;
+  function updateTimecodeAndPlayhead(t) {
     $("currentTimecode").textContent = formatTimecode(t);
 
     const dur = video.duration || getFallbackDuration();
@@ -610,7 +662,6 @@
       $("timelinePlayhead").style.left = `${pct}%`;
     }
 
-    // Active subtitle overlay & transcript highlight
     const activeSrt = state.srtLines.find((s) => t >= s.startSec && t <= s.endSec);
     const subOverlay = $("subtitleOverlay");
     if (activeSrt) {
@@ -625,6 +676,12 @@
       const isActive = activeSrt && activeSrt.index === idx;
       el.classList.toggle("active", Boolean(isActive));
     });
+  }
+
+  function onVideoTimeUpdate() {
+    const t = video.currentTime || 0;
+    state.virtualTime = t;
+    updateTimecodeAndPlayhead(t);
 
     // Live Filter Preview
     const overlay = $("filterOverlay");
@@ -695,7 +752,7 @@
       el.textContent = cue.description || cue.category.split(".").pop();
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        video.currentTime = cue.startSec;
+        seekTo(cue.startSec);
         loadCueIntoForm(cue);
       });
 
@@ -727,7 +784,7 @@
     const rect = $("timelineCanvas").getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const dur = getFallbackDuration();
-    video.currentTime = ratio * dur;
+    seekTo(ratio * dur);
   }
 
   // --- Cue CRUD ---
@@ -881,7 +938,7 @@
           deleteCueByKey(cue.key);
           return;
         }
-        video.currentTime = cue.startSec;
+        seekTo(cue.startSec);
         loadCueIntoForm(cue);
       });
       list.appendChild(card);
@@ -937,7 +994,7 @@
       const timeBtn = document.createElement("span");
       timeBtn.className = "srt-time";
       timeBtn.textContent = `${formatTimecode(line.startSec)} → ${formatTimecode(line.endSec)}`;
-      timeBtn.addEventListener("click", () => { video.currentTime = line.startSec; });
+      timeBtn.addEventListener("click", () => { seekTo(line.startSec); });
       row.appendChild(timeBtn);
 
       const wordsDiv = document.createElement("div");
@@ -965,7 +1022,7 @@
         span.textContent = tok;
         span.addEventListener("click", (ev) => {
           ev.stopPropagation();
-          video.currentTime = wStart;
+          seekTo(wStart);
           showWordPopover(ev.currentTarget, clean || tok, wStart, wEnd);
         });
         wordsDiv.appendChild(span);
