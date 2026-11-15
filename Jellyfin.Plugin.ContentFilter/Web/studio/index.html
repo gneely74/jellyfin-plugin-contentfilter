@@ -40,6 +40,7 @@
         <input id="localJcfInput" type="file" accept=".jcf,.vtt,.txt" hidden />
       </label>
       <button id="btnExportJcf" class="btn btn-success" title="Download WEBVTT JCF file">Export .JCF</button>
+      <button id="btnHotkeys" class="btn btn-secondary" title="Keyboard shortcuts (?)">?</button>
     </div>
   </header>
 
@@ -336,6 +337,35 @@
           <button type="submit" class="btn btn-primary">Sign In &amp; Save Token</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Hotkeys Modal -->
+  <div id="hotkeysModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" style="width: min(520px, 92vw);">
+      <div class="modal-header">
+        <h2>Editing Hotkeys</h2>
+        <button id="btnCloseHotkeysModal" class="btn-icon">&times;</button>
+      </div>
+      <div style="padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px;">
+        <div><kbd class="pill mono">Space</kbd> / <kbd class="pill mono">K</kbd> Play / Pause</div>
+        <div><kbd class="pill mono">F</kbd> Toggle Filters Active</div>
+        <div><kbd class="pill mono">&larr;</kbd> / <kbd class="pill mono">&rarr;</kbd> or <kbd class="pill mono">,</kbd> / <kbd class="pill mono">.</kbd> &plusmn;1 Frame</div>
+        <div><kbd class="pill mono">Shift+&larr;</kbd> / <kbd class="pill mono">&rarr;</kbd> &plusmn;1 Second</div>
+        <div><kbd class="pill mono">J</kbd> / <kbd class="pill mono">L</kbd> &plusmn;5 Seconds</div>
+        <div><kbd class="pill mono">[</kbd> / <kbd class="pill mono">]</kbd> Prev / Next Cue</div>
+        <div><kbd class="pill mono">I</kbd> Mark In (Start)</div>
+        <div><kbd class="pill mono">O</kbd> Mark Out (End)</div>
+        <div><kbd class="pill mono">M</kbd> Add / Update Cue</div>
+        <div><kbd class="pill mono">P</kbd> Quick Profanity Mute</div>
+        <div><kbd class="pill mono">N</kbd> Quick Nudity Skip</div>
+        <div><kbd class="pill mono">V</kbd> Quick Violence Skip</div>
+        <div><kbd class="pill mono">1</kbd> / <kbd class="pill mono">2</kbd> Start &minus;0.1s / +0.1s</div>
+        <div><kbd class="pill mono">3</kbd> / <kbd class="pill mono">4</kbd> End &minus;0.1s / +0.1s</div>
+        <div><kbd class="pill mono">Del</kbd> / <kbd class="pill mono">Backspace</kbd> Delete Cue</div>
+        <div><kbd class="pill mono">Esc</kbd> Reset Form / Close</div>
+      </div>
     </div>
   </div>
 

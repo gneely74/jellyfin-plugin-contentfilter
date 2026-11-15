@@ -102,6 +102,11 @@
     $("localSrtInput").addEventListener("change", handleLocalSrt);
     $("localJcfInput").addEventListener("change", handleLocalJcf);
     $("btnExportJcf").addEventListener("click", exportJcfFile);
+    $("btnHotkeys").addEventListener("click", () => $("hotkeysModal").classList.toggle("hidden"));
+    $("btnCloseHotkeysModal").addEventListener("click", () => $("hotkeysModal").classList.add("hidden"));
+    document.querySelector("#hotkeysModal .modal-backdrop").addEventListener("click", () => {
+      $("hotkeysModal").classList.add("hidden");
+    });
 
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
@@ -1304,28 +1309,116 @@
   }
 
   // --- Keyboard Shortcuts ---
+  function nudgeField(fieldId, delta) {
+    const input = $(fieldId);
+    const next = Math.max(0, parseTimecode(input.value) + delta);
+    input.value = formatTimecode(next);
+    syncInOutFromForm();
+  }
+
+  function jumpToAdjacentCue(dir) {
+    if (!state.cues.length) return;
+    const t = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
+    const sorted = [...state.cues].sort((a, b) => a.startSec - b.startSec);
+    const target = dir > 0
+      ? sorted.find((c) => c.startSec > t + 0.15) || sorted[0]
+      : [...sorted].reverse().find((c) => c.startSec < t - 0.15) || sorted[sorted.length - 1];
+    if (target) {
+      seekTo(target.startSec);
+      loadCueIntoForm(target);
+    }
+  }
+
+  function quickMarkCue(category, channel, action, description) {
+    const t = video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime;
+    const hasRange = state.inTime !== null && state.outTime !== null && state.outTime > state.inTime;
+    const startSec = hasRange ? state.inTime : (action === "mute" ? Math.max(0, t - 0.5) : t);
+    const endSec = hasRange ? state.outTime : (action === "mute" ? t + 0.5 : t + 2.0);
+
+    resetCueForm();
+    $("cueStart").value = formatTimecode(startSec);
+    $("cueEnd").value = formatTimecode(endSec);
+    $("cueCategory").value = category;
+    $("cueChannel").value = channel;
+    $("cueAction").value = action;
+    $("cueDescription").value = description;
+    syncInOutFromForm();
+    $("cueForm").requestSubmit();
+  }
+
   function onKeyDown(e) {
     const tag = (e.target?.tagName || "").toLowerCase();
-    if (["input", "textarea", "select"].includes(tag)) return;
+    const isInput = ["input", "textarea", "select"].includes(tag) && e.target?.type !== "checkbox" && e.target?.type !== "range";
+    if (isInput) return;
 
-    if (e.code === "Space") {
+    const key = e.key.toLowerCase();
+    if (e.code === "Space" || key === "k") {
       e.preventDefault();
       togglePlay();
-    } else if (e.code === "ArrowLeft") {
+    } else if (e.code === "ArrowLeft" || key === ",") {
       e.preventDefault();
       seekBy(e.shiftKey ? -1 : -FRAME_STEP);
-    } else if (e.code === "ArrowRight") {
+    } else if (e.code === "ArrowRight" || key === ".") {
       e.preventDefault();
       seekBy(e.shiftKey ? 1 : FRAME_STEP);
-    } else if (e.key === "i" || e.key === "I") {
+    } else if (key === "j") {
+      e.preventDefault();
+      seekBy(-5);
+    } else if (key === "l") {
+      e.preventDefault();
+      seekBy(5);
+    } else if (e.key === "[") {
+      e.preventDefault();
+      jumpToAdjacentCue(-1);
+    } else if (e.key === "]") {
+      e.preventDefault();
+      jumpToAdjacentCue(1);
+    } else if (key === "i") {
       e.preventDefault();
       markIn();
-    } else if (e.key === "o" || e.key === "O") {
+    } else if (key === "o") {
       e.preventDefault();
       markOut();
-    } else if (e.key === "m" || e.key === "M") {
+    } else if (key === "m") {
       e.preventDefault();
       $("cueForm").requestSubmit();
+    } else if (key === "p") {
+      e.preventDefault();
+      quickMarkCue("Language.GeneralProfanity", "audio", "mute", "Profanity");
+    } else if (key === "n") {
+      e.preventDefault();
+      quickMarkCue("SexAndNudity.FullNudity", "video", "skip", "Nudity");
+    } else if (key === "v") {
+      e.preventDefault();
+      quickMarkCue("Violence.Graphic", "video", "skip", "Violence");
+    } else if (key === "f") {
+      e.preventDefault();
+      $("previewFilters").checked = !$("previewFilters").checked;
+      applyActiveFilters(video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime);
+    } else if (e.key === "1") {
+      e.preventDefault();
+      nudgeField("cueStart", -0.1);
+    } else if (e.key === "2") {
+      e.preventDefault();
+      nudgeField("cueStart", 0.1);
+    } else if (e.key === "3") {
+      e.preventDefault();
+      nudgeField("cueEnd", -0.1);
+    } else if (e.key === "4") {
+      e.preventDefault();
+      nudgeField("cueEnd", 0.1);
+    } else if ((e.key === "Delete" || e.key === "Backspace") && state.editingCueKey) {
+      e.preventDefault();
+      deleteEditingCue();
+    } else if (e.key === "Escape") {
+      resetCueForm();
+      $("hotkeysModal").classList.add("hidden");
+      $("libraryModal").classList.add("hidden");
+      $("loginModal").classList.add("hidden");
+      $("wordPopover").classList.add("hidden");
+    } else if (e.key === "?") {
+      e.preventDefault();
+      $("hotkeysModal").classList.toggle("hidden");
     }
   }
 
