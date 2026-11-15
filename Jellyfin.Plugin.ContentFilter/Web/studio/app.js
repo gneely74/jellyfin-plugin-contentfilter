@@ -42,6 +42,7 @@
     hlsInstance: null,
     pendingSeek: null,
     virtualTime: 0,
+    lastActiveSrtIdx: null,
   };
 
   // DOM helpers
@@ -248,8 +249,8 @@
 
     setStatus(`Pulling JCF, SRT, and words for ${itemId}...`);
 
-    // 1. Load Video Stream
-    loadJellyfinVideo(itemId, false);
+    // 1. Load Video Stream via PlaybackInfo (direct play or HLS transcode)
+    loadJellyfinVideo(itemId);
 
     // 2. Pull JCF cues, SRT, and Words in parallel
     const results = await Promise.allSettled([
@@ -273,45 +274,99 @@
     }
   }
 
-  function loadJellyfinVideo(itemId, useHls) {
+  async function loadJellyfinVideo(itemId) {
     destroyHls();
-    const key = encodeURIComponent(($("apiKey").value || state.apiKey).trim());
-    if (!useHls) {
-      const path = `/Videos/${itemId}/stream?static=true&api_key=${key}`;
-      video.src = buildFetchUrl(path);
+    const key = ($("apiKey").value || state.apiKey).trim();
+    const encodedKey = encodeURIComponent(key);
+
+    let mediaSource = null;
+    try {
+      const pbInfo = await apiFetch(`/Items/${itemId}/PlaybackInfo`, {
+        method: "POST",
+        body: JSON.stringify({
+          DeviceProfile: {
+            MaxStreamingBitrate: 20000000,
+            DirectPlayProfiles: [
+              { Container: "mp4,m4v", Type: "Video", VideoCodec: "h264", AudioCodec: "aac,mp3" },
+              { Container: "webm", Type: "Video", VideoCodec: "vp8,vp9", AudioCodec: "vorbis,opus" },
+            ],
+            TranscodingProfiles: [
+              {
+                Container: "ts",
+                Type: "Video",
+                AudioCodec: "aac",
+                VideoCodec: "h264",
+                Context: "Streaming",
+                Protocol: "hls",
+                MaxAudioChannels: "2",
+                MinSegments: "1",
+                BreakOnNonKeyFrames: true,
+              },
+            ],
+          },
+        }),
+      });
+      mediaSource = (pbInfo?.MediaSources || [])[0] || null;
+    } catch {
+      mediaSource = null;
+    }
+
+    if (mediaSource?.SupportsDirectPlay) {
+      const msId = mediaSource.Id || itemId;
+      const directPath = `/Videos/${itemId}/stream?static=true&MediaSourceId=${encodeURIComponent(msId)}&api_key=${encodedKey}`;
+      video.src = buildFetchUrl(directPath);
       video.load();
       return;
     }
 
-    const playSessionId = `jcfstudio_${Date.now()}`;
-    const hlsPath = `/Videos/${itemId}/master.m3u8?MediaSourceId=${itemId}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&PlaySessionId=${playSessionId}&api_key=${key}`;
+    const hlsPath = mediaSource?.TranscodingUrl
+      ? `${mediaSource.TranscodingUrl}${mediaSource.TranscodingUrl.includes("?") ? "&" : "?"}api_key=${encodedKey}`
+      : `/Videos/${itemId}/master.m3u8?MediaSourceId=${encodeURIComponent(mediaSource?.Id || itemId)}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&PlaySessionId=jcfstudio_${Date.now()}&api_key=${encodedKey}`;
     const hlsUrl = buildFetchUrl(hlsPath);
 
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = hlsUrl;
       video.load();
     } else if (window.Hls && window.Hls.isSupported()) {
-      const hls = new window.Hls({ enableWorker: true });
+      const hls = new window.Hls({
+        enableWorker: true,
+        xhrSetup: (xhr) => {
+          if (key) xhr.setRequestHeader("X-Emby-Token", key);
+        },
+      });
       state.hlsInstance = hls;
       hls.loadSource(hlsUrl);
       hls.attachMedia(video);
       hls.on(window.Hls.Events.ERROR, (_ev, data) => {
         if (data.fatal) {
-          setStatus("HLS transcode stream error. You can also load a local MP4/WebM via the Video button.", true);
+          setStatus(`HLS playback error (${data.details}). Try Safari or load a local MP4 via the Video button.`, true);
         }
       });
     } else {
-      const mp4Path = `/Videos/${itemId}/stream.mp4?Static=false&MediaSourceId=${itemId}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&api_key=${key}`;
+      const mp4Path = `/Videos/${itemId}/stream.mp4?Static=false&MediaSourceId=${encodeURIComponent(mediaSource?.Id || itemId)}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&api_key=${encodedKey}`;
       video.src = buildFetchUrl(mp4Path);
       video.load();
     }
   }
 
   function onVideoError() {
-    if (state.itemId && !state.triedTranscodeFallback && video.src.includes("/Videos/")) {
+    if (state.itemId && !state.triedTranscodeFallback && !state.hlsInstance && video.src.includes("/Videos/")) {
       state.triedTranscodeFallback = true;
       setStatus("Direct stream unsupported by browser; switching to HLS H.264/AAC transcoded stream...");
-      loadJellyfinVideo(state.itemId, true);
+      const key = ($("apiKey").value || state.apiKey).trim();
+      const hlsPath = `/Videos/${state.itemId}/master.m3u8?MediaSourceId=${state.itemId}&VideoCodec=h264&AudioCodec=aac&VideoBitrate=8000000&AudioBitrate=192000&MaxStreamingBitrate=8000000&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&PlaySessionId=jcfstudio_${Date.now()}&api_key=${encodeURIComponent(key)}`;
+      if (window.Hls && window.Hls.isSupported()) {
+        const hls = new window.Hls({
+          enableWorker: true,
+          xhrSetup: (xhr) => { if (key) xhr.setRequestHeader("X-Emby-Token", key); },
+        });
+        state.hlsInstance = hls;
+        hls.loadSource(buildFetchUrl(hlsPath));
+        hls.attachMedia(video);
+      } else {
+        video.src = buildFetchUrl(hlsPath);
+        video.load();
+      }
       return;
     }
     if (video.src) {
@@ -671,11 +726,21 @@
       subOverlay.classList.add("hidden");
     }
 
+    let activeEl = null;
     document.querySelectorAll(".srt-line").forEach((el) => {
       const idx = parseInt(el.dataset.idx, 10);
       const isActive = activeSrt && activeSrt.index === idx;
       el.classList.toggle("active", Boolean(isActive));
+      if (isActive) activeEl = el;
     });
+
+    const activeIdx = activeSrt ? activeSrt.index : null;
+    if (activeIdx !== state.lastActiveSrtIdx) {
+      state.lastActiveSrtIdx = activeIdx;
+      if (activeEl && $("autoScrollTranscript")?.checked) {
+        activeEl.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    }
   }
 
   function onVideoTimeUpdate() {
