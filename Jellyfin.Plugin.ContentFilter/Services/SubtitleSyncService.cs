@@ -947,7 +947,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
 
         try
         {
-            var transResult = await TranscribeAndCleanSingleVideoInternalAsync(video, targetLang3, targetLang2, fileInfo, cancellationToken).ConfigureAwait(false);
+            var transResult = await TranscribeAndCleanSingleVideoInternalAsync(video, targetLang3, targetLang2, fileInfo, cancellationToken, force).ConfigureAwait(false);
             if (transResult != null)
             {
                 result.Transcribed = true;
@@ -977,13 +977,15 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <param name="targetLang2">The two-letter ISO language code.</param>
     /// <param name="fileInfo">The file information for the video container.</param>
     /// <param name="ct">A cancellation token for the operation.</param>
+    /// <param name="force">When <c>true</c>, replaces existing auto-generated spoken cues for this item.</param>
     /// <returns>A populated <see cref="SingleSubtitleProcessResult"/> on success, or <c>null</c> on failure.</returns>
     private async Task<SingleSubtitleProcessResult?> TranscribeAndCleanSingleVideoInternalAsync(
         Video video,
         string targetLang3,
         string targetLang2,
         FileInfo fileInfo,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool force = false)
     {
         var config = Plugin.Instance?.Configuration;
         var filteredTitle = !string.IsNullOrWhiteSpace(config?.FilteredTrackTitle) ? config.FilteredTrackTitle.Trim() : "Generated - Filtered";
@@ -1016,7 +1018,7 @@ public class SubtitleSyncService : IHostedService, IDisposable
         int cuesAdded = 0;
         if (config?.AutoMuteProfanityFromSubtitles != false)
         {
-            cuesAdded = await CreateProfanityMuteCuesFromTranscriptionAsync(video.Id, transcriptionResult, ct).ConfigureAwait(false);
+            cuesAdded = await CreateProfanityMuteCuesFromTranscriptionAsync(video.Id, transcriptionResult, ct, force).ConfigureAwait(false);
         }
 
         // 3. Blank words in dialogue to produce Filtered Subtitle Stream
@@ -1088,12 +1090,19 @@ public class SubtitleSyncService : IHostedService, IDisposable
     /// <param name="itemId">The media item identifier.</param>
     /// <param name="transcription">The transcription result containing segments and word timestamps.</param>
     /// <param name="ct">A cancellation token for the operation.</param>
+    /// <param name="force">When <c>true</c>, clears existing auto-generated spoken cues before inserting new ones.</param>
     /// <returns>The number of profanity mute cues added to the item filter.</returns>
     private async Task<int> CreateProfanityMuteCuesFromTranscriptionAsync(
         Guid itemId,
         TranscriptionResult transcription,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool force = false)
     {
+        if (force)
+        {
+            await _filterStore.RemoveAutoSpokenCuesAsync(itemId, ct).ConfigureAwait(false);
+        }
+
         var filter = _filterStore.GetFilter(itemId);
         var existingCues = filter?.Cues ?? [];
         var config = Plugin.Instance?.Configuration;
@@ -1157,31 +1166,26 @@ public class SubtitleSyncService : IHostedService, IDisposable
                     string? cuePrecision = null;
                     if (seg.Words is { Count: > 0 })
                     {
-                        TimeSpan? wordMinStart = null;
-                        TimeSpan? wordMaxEnd = null;
-                        foreach (var w in seg.Words)
-                        {
-                            if (!string.IsNullOrWhiteSpace(w.Word) && pattern.IsMatch(w.Word))
-                            {
-                                var acousticStart = TimeSpan.FromSeconds(Math.Max(seg.Start, w.Start - 0.10));
-                                var acousticEnd = TimeSpan.FromSeconds(Math.Min(seg.End, w.End + 0.10));
-                                if (Math.Abs((acousticStart - start).TotalSeconds) < 2.5)
-                                {
-                                    wordMinStart = wordMinStart is null
-                                        ? acousticStart
-                                        : TimeSpan.FromTicks(Math.Min(wordMinStart.Value.Ticks, acousticStart.Ticks));
-                                    wordMaxEnd = wordMaxEnd is null
-                                        ? acousticEnd
-                                        : TimeSpan.FromTicks(Math.Max(wordMaxEnd.Value.Ticks, acousticEnd.Ticks));
-                                }
-                            }
-                        }
+                        var matchingWords = seg.Words
+                            .Where(w => !string.IsNullOrWhiteSpace(w.Word) && pattern.IsMatch(w.Word))
+                            .ToList();
 
-                        if (wordMinStart.HasValue && wordMaxEnd.HasValue && wordMaxEnd.Value > wordMinStart.Value)
+                        if (matchingWords.Count > 0)
                         {
-                            start = wordMinStart.Value;
-                            end = wordMaxEnd.Value;
-                            cuePrecision = "word";
+                            // If multiple occurrences exist in the same segment, pick the one closest to the
+                            // interpolated clause window; if only one exists, use its exact acoustic bounds.
+                            var chosen = matchingWords.Count == 1
+                                ? matchingWords[0]
+                                : matchingWords.OrderBy(w => Math.Abs(w.Start - start.TotalSeconds)).First();
+
+                            var acousticStart = TimeSpan.FromSeconds(Math.Max(seg.Start, chosen.Start - 0.10));
+                            var acousticEnd = TimeSpan.FromSeconds(Math.Min(seg.End, chosen.End + 0.10));
+                            if (acousticEnd > acousticStart)
+                            {
+                                start = acousticStart;
+                                end = acousticEnd;
+                                cuePrecision = "word";
+                            }
                         }
                     }
 

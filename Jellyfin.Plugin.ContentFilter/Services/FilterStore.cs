@@ -446,6 +446,86 @@ public class FilterStore
     }
 
     /// <summary>
+    /// Removes all automatically generated NudeNet visual nudity cues (<c>Precision == "nudenet"</c>)
+    /// for an item while preserving manually authored, JCF-imported, and Whisper-generated cues.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of cues removed.</returns>
+    public async Task<int> RemoveAutoNudityCuesAsync(Guid itemId, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return 0;
+        }
+
+        var removed = filter.Cues.RemoveAll(c =>
+            string.Equals(c.Precision, "nudenet", StringComparison.OrdinalIgnoreCase)
+            || c.Description?.StartsWith("NudeNet:", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (removed > 0)
+        {
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes auto-generated spoken profanity cues (whose description starts with <c>"Spoken: "</c>)
+    /// for an item while preserving manually authored filter cues.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of cues removed.</returns>
+    public async Task<int> RemoveAutoSpokenCuesAsync(Guid itemId, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return 0;
+        }
+
+        var removed = filter.Cues.RemoveAll(c =>
+            c.Description?.StartsWith("Spoken: ", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (removed > 0)
+        {
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes all automatically generated NudeNet visual nudity cues (<c>Precision == "nudenet"</c>)
+    /// for an item while preserving manually authored, JCF-imported, and Whisper-generated cues.
+    /// </summary>
+    /// <param name="itemId">The item identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of cues removed.</returns>
+    public async Task<int> RemoveAutoNudityCuesAsync(Guid itemId, CancellationToken cancellationToken)
+    {
+        var filter = GetFilter(itemId);
+        if (filter is null)
+        {
+            return 0;
+        }
+
+        var removed = filter.Cues.RemoveAll(c =>
+            string.Equals(c.Precision, "nudenet", StringComparison.OrdinalIgnoreCase)
+            || c.Description?.StartsWith("NudeNet:", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (removed > 0)
+        {
+            await SaveFilterAsync(itemId, filter, cancellationToken).ConfigureAwait(false);
+        }
+
+        return removed;
+    }
+
+    /// <summary>
     /// Shifts cues in an item's filter by the specified offset in seconds, filtered by channel.
     /// </summary>
     /// <param name="itemId">The item identifier.</param>
