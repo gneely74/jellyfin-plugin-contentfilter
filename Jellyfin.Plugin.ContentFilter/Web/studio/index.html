@@ -15,7 +15,8 @@
 
     <div class="connection-bar">
       <input id="serverUrl" type="text" placeholder="Jellyfin URL (e.g. http://localhost:8096)" title="Jellyfin Server URL" />
-      <input id="apiKey" type="password" placeholder="API Key / Token" title="Jellyfin API Key" />
+      <input id="apiKey" type="password" placeholder="API Key / Token" title="Jellyfin API Key or Session Token" />
+      <button id="btnSignIn" class="btn btn-secondary" title="Sign in with Jellyfin username &amp; password">Sign In</button>
       <label class="checkbox-pill" title="Route API &amp; stream requests through local server.py proxy to avoid CORS">
         <input id="useProxy" type="checkbox" checked />
         <span>Proxy</span>
@@ -301,6 +302,31 @@
       <div id="libraryResults" class="library-results">
         <div class="empty-state">Click Search, Shows, or Movies to browse your Jellyfin library.</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Sign In Modal -->
+  <div id="loginModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" style="width: min(400px, 92vw);">
+      <div class="modal-header">
+        <h2>Sign In to Jellyfin</h2>
+        <button id="btnCloseLoginModal" class="btn-icon">&times;</button>
+      </div>
+      <form id="loginForm" class="cue-form" style="padding: 14px;">
+        <div class="form-field">
+          <label for="loginUsername">Username</label>
+          <input id="loginUsername" type="text" autocomplete="username" required />
+        </div>
+        <div class="form-field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" />
+        </div>
+        <div id="loginError" class="hidden" style="color: var(--danger); font-size: 12px;"></div>
+        <div class="form-submit-group" style="justify-content: flex-end; margin-top: 6px;">
+          <button type="submit" class="btn btn-primary">Sign In &amp; Save Token</button>
+        </div>
+      </form>
     </div>
   </div>
 

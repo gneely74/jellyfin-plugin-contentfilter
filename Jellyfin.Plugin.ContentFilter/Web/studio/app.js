@@ -9,9 +9,22 @@
     ? `${window.location.origin}${window.location.pathname.slice(0, studioPathIdx)}`
     : "";
 
+  function readJellyfinWebToken() {
+    try {
+      const raw = localStorage.getItem("jellyfin_credentials");
+      if (!raw) return "";
+      const creds = JSON.parse(raw);
+      const servers = creds?.Servers || [];
+      const match = servers.find((s) => s && s.AccessToken);
+      return match?.AccessToken || "";
+    } catch {
+      return "";
+    }
+  }
+
   const state = {
     serverUrl: localStorage.getItem("jcf_serverUrl") || (isHostedOnJcf ? hostedBaseUrl : "http://localhost:8096"),
-    apiKey: localStorage.getItem("jcf_apiKey") || "",
+    apiKey: localStorage.getItem("jcf_apiKey") || readJellyfinWebToken() || "",
     useProxy: isHostedOnJcf ? false : localStorage.getItem("jcf_useProxy") !== "false",
     itemId: localStorage.getItem("jcf_itemId") || "",
     title: "",
@@ -67,6 +80,11 @@
     $("btnBrowseLibrary").addEventListener("click", openLibraryModal);
     $("btnCloseLibraryModal").addEventListener("click", closeLibraryModal);
     document.querySelector("#libraryModal .modal-backdrop").addEventListener("click", closeLibraryModal);
+
+    $("btnSignIn").addEventListener("click", openLoginModal);
+    $("btnCloseLoginModal").addEventListener("click", closeLoginModal);
+    document.querySelector("#loginModal .modal-backdrop").addEventListener("click", closeLoginModal);
+    $("loginForm").addEventListener("submit", onLoginSubmit);
 
     $("btnSearchLibrary").addEventListener("click", () => searchLibrary($("librarySearchInput").value.trim()));
     $("librarySearchInput").addEventListener("keydown", (e) => {
@@ -196,6 +214,9 @@
     const resp = await fetch(url, { ...options, headers });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
+      if (resp.status === 401) {
+        openLoginModal("Session expired or missing API key. Please sign in to Jellyfin.");
+      }
       throw new Error(`HTTP ${resp.status}: ${txt || resp.statusText}`);
     }
     const ct = resp.headers.get("Content-Type") || "";
@@ -326,6 +347,59 @@
       setStatus("Whisper transcription complete. Subtitles & words refreshed.");
     } catch (err) {
       setStatus(`Whisper transcription failed: ${err.message}`, true);
+    }
+  }
+
+  // --- Sign In Modal ---
+  function openLoginModal(errMsg) {
+    const errEl = $("loginError");
+    if (typeof errMsg === "string" && errMsg) {
+      errEl.textContent = errMsg;
+      errEl.classList.remove("hidden");
+    } else {
+      errEl.classList.add("hidden");
+    }
+    $("loginModal").classList.remove("hidden");
+    $("loginUsername").focus();
+  }
+
+  function closeLoginModal() {
+    $("loginModal").classList.add("hidden");
+  }
+
+  async function onLoginSubmit(e) {
+    e.preventDefault();
+    const errEl = $("loginError");
+    errEl.classList.add("hidden");
+    const username = $("loginUsername").value.trim();
+    const password = $("loginPassword").value;
+
+    try {
+      const url = buildFetchUrl("/Users/AuthenticateByName");
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Emby-Authorization": 'MediaBrowser Client="JCF Studio", Device="Browser", DeviceId="jcf-studio-web", Version="1.0.47"',
+        },
+        body: JSON.stringify({ Username: username, Pw: password }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => "");
+        throw new Error(`HTTP ${resp.status}: ${txt || resp.statusText}`);
+      }
+      const data = await resp.json();
+      const token = data.AccessToken;
+      if (!token) throw new Error("No AccessToken returned by Jellyfin.");
+
+      state.apiKey = token;
+      $("apiKey").value = token;
+      localStorage.setItem("jcf_apiKey", token);
+      closeLoginModal();
+      setStatus(`Signed in as ${data.User?.Name || username}.`);
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove("hidden");
     }
   }
 
