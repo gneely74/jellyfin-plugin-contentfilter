@@ -43,6 +43,13 @@
     pendingSeek: null,
     virtualTime: 0,
     lastActiveSrtIdx: null,
+    recentItems: (() => {
+      try {
+        return JSON.parse(localStorage.getItem("jcf_recentItems") || "[]");
+      } catch {
+        return [];
+      }
+    })(),
   };
 
   // DOM helpers
@@ -56,6 +63,7 @@
     $("itemIdInput").value = state.itemId;
 
     bindEvents();
+    renderRecentItems();
     renderTimeline();
     renderCuesList();
     renderTranscript();
@@ -82,6 +90,13 @@
     $("btnCloseStatus").addEventListener("click", () => $("statusBanner").classList.add("hidden"));
     $("btnPullAll").addEventListener("click", () => pullAllFromJcf());
     $("btnBrowseLibrary").addEventListener("click", openLibraryModal);
+    $("recentItemsSelect").addEventListener("change", (e) => {
+      const id = e.target.value;
+      if (!id) return;
+      const match = state.recentItems.find((r) => r.id === id);
+      if (match) state.title = match.title;
+      pullAllFromJcf(id);
+    });
     $("btnCloseLibraryModal").addEventListener("click", closeLibraryModal);
     document.querySelector("#libraryModal .modal-backdrop").addEventListener("click", closeLibraryModal);
 
@@ -306,7 +321,31 @@
     if (results[1].status === "fulfilled") summary.push(`${state.srtLines.length} SRT lines`);
     if (results[2].status === "fulfilled") summary.push(`${state.jcfWords.length} detected word groups`);
 
+    recordRecentItem(itemId, state.title || itemId);
     setStatus(summary.length ? `Loaded: ${summary.join(" • ")}` : "Connected, but no JCF/SRT data found yet for this item.");
+  }
+
+  function recordRecentItem(id, title) {
+    const cleanTitle = (title || id).trim();
+    state.recentItems = [
+      { id, title: cleanTitle },
+      ...state.recentItems.filter((r) => r.id !== id),
+    ].slice(0, 5);
+    localStorage.setItem("jcf_recentItems", JSON.stringify(state.recentItems));
+    renderRecentItems();
+  }
+
+  function renderRecentItems() {
+    const sel = $("recentItemsSelect");
+    if (!sel) return;
+    sel.innerHTML = `<option value="">Recent (${state.recentItems.length})</option>`;
+    state.recentItems.forEach((item) => {
+      const opt = document.createElement("option");
+      opt.value = item.id;
+      opt.textContent = item.title;
+      if (item.id === state.itemId) opt.selected = true;
+      sel.appendChild(opt);
+    });
   }
 
   function destroyHls() {
@@ -709,11 +748,11 @@
     const dur = video.duration || getFallbackDuration();
     const clamped = Math.max(0, Math.min(dur || 1e9, sec));
     state.virtualTime = clamped;
+    updateTimecodeAndPlayhead(clamped);
     if (video.readyState >= 1) {
       video.currentTime = clamped;
     } else {
       state.pendingSeek = clamped;
-      updateTimecodeAndPlayhead(clamped);
     }
   }
 

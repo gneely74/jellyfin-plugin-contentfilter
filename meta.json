@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Add full NLE editing hotkeys (J/K/L, ,/., [/], I/O, M, P/N/V quick-mark, 1/2/3/4 nudge, F filter toggle, Del/Backspace, ?) and built-in Hotkeys cheat-sheet modal to JCF Studio.",
+  "changelog": "Add Recent (last 5 videos) dropdown in JCF Studio and make seekTo() immediately update the scrubber slider, timeline playhead, and transcript when clicking cues on the right.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,5 +9,5 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-11-15T00:00:00Z",
-  "version": "1.0.52.0"
+  "version": "1.0.53.0"
 }
