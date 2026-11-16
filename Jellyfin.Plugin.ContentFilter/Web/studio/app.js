@@ -127,6 +127,32 @@
       $("hotkeysModal").classList.add("hidden");
     });
 
+    const closeMarkOut = () => $("markOutModal").classList.add("hidden");
+    $("btnCloseMarkOutModal").addEventListener("click", closeMarkOut);
+    $("btnMarkOutCancel").addEventListener("click", closeMarkOut);
+    document.querySelector("#markOutModal .modal-backdrop").addEventListener("click", closeMarkOut);
+    document.querySelectorAll(".markout-preset").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        closeMarkOut();
+        resetCueForm();
+        $("cueStart").value = formatTimecode(state.inTime ?? 0);
+        $("cueEnd").value = formatTimecode(state.outTime ?? 2);
+        $("cueCategory").value = btn.dataset.cat;
+        $("cueChannel").value = btn.dataset.ch;
+        $("cueAction").value = btn.dataset.act;
+        $("cueDescription").value = $("markOutDesc").value.trim() || btn.dataset.desc;
+        syncInOutFromForm();
+        $("cueForm").requestSubmit();
+      });
+    });
+    $("btnMarkOutCustomSave").addEventListener("click", () => {
+      closeMarkOut();
+      const customDesc = $("markOutDesc").value.trim();
+      if (customDesc) $("cueDescription").value = customDesc;
+      $("cueAction").value = $("markOutAction").value;
+      $("cueForm").requestSubmit();
+    });
+
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
     $("btnTestFiltered").addEventListener("click", () => {
@@ -855,6 +881,12 @@
       $("cueStart").value = formatTimecode(state.inTime);
     }
     renderInOutRange();
+
+    if (!video.paused) video.pause();
+    $("markOutRangeLabel").textContent = `${formatTimecode(state.inTime)} \u2192 ${formatTimecode(state.outTime)}`;
+    $("markOutDesc").value = "";
+    $("markOutAction").value = $("cueAction").value;
+    $("markOutModal").classList.remove("hidden");
   }
 
   function syncInOutFromForm() {
@@ -1581,6 +1613,7 @@
     } else if (e.key === "Escape") {
       resetCueForm();
       $("hotkeysModal").classList.add("hidden");
+      $("markOutModal").classList.add("hidden");
       $("libraryModal").classList.add("hidden");
       $("loginModal").classList.add("hidden");
       $("wordPopover").classList.add("hidden");

@@ -379,6 +379,49 @@
     </div>
   </div>
 
+  <!-- Mark Out Filter Picker Modal -->
+  <div id="markOutModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" style="width: min(500px, 94vw);">
+      <div class="modal-header">
+        <h2>Select Filter Type</h2>
+        <button id="btnCloseMarkOutModal" class="btn-icon">&times;</button>
+      </div>
+      <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+        <div id="markOutRangeLabel" class="mono" style="font-size: 12px; color: var(--primary);">00:00:00.000 &rarr; 00:00:02.000</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <button type="button" class="btn btn-danger markout-preset" data-cat="SexAndNudity.FullNudity" data-ch="video" data-act="skip" data-desc="Full Nudity">Full Nudity (Skip)</button>
+          <button type="button" class="btn btn-danger markout-preset" data-cat="SexAndNudity.PartialNudity" data-ch="video" data-act="skip" data-desc="Partial Nudity">Partial Nudity (Skip)</button>
+          <button type="button" class="btn btn-danger markout-preset" data-cat="SexAndNudity.Graphic" data-ch="video" data-act="skip" data-desc="Graphic Sexual Content">Graphic Sex (Skip)</button>
+          <button type="button" class="btn btn-accent markout-preset" data-cat="SexAndNudity.FullNudity" data-ch="video" data-act="blur" data-desc="Nudity (Blur)">Nudity (Blur)</button>
+          <button type="button" class="btn btn-primary markout-preset" data-cat="Language.GeneralProfanity" data-ch="audio" data-act="mute" data-desc="Profanity">Profanity (Mute)</button>
+          <button type="button" class="btn btn-primary markout-preset" data-cat="SexualReferences.ExplicitWords" data-ch="audio" data-act="mute" data-desc="Explicit Word">Explicit Word (Mute)</button>
+          <button type="button" class="btn btn-warning markout-preset" data-cat="Violence.Graphic" data-ch="video" data-act="skip" data-desc="Graphic Violence">Graphic Violence (Skip)</button>
+          <button type="button" class="btn btn-warning markout-preset" data-cat="Violence.Gore" data-ch="video" data-act="skip" data-desc="Gore">Gore (Skip)</button>
+        </div>
+        <hr style="border: none; border-top: 1px solid var(--border); width: 100%; margin: 2px 0;" />
+        <div class="form-row">
+          <div class="form-field form-field-grow">
+            <label for="markOutDesc">Custom Description (optional)</label>
+            <input id="markOutDesc" type="text" placeholder="e.g. Objectionable scene or spoken word" />
+          </div>
+          <div class="form-field">
+            <label for="markOutAction">Action</label>
+            <select id="markOutAction">
+              <option value="skip">skip</option>
+              <option value="mute">mute</option>
+              <option value="blur">blur</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-submit-group" style="justify-content: flex-end;">
+          <button type="button" id="btnMarkOutCancel" class="btn btn-secondary">Cancel (Esc)</button>
+          <button type="button" id="btnMarkOutCustomSave" class="btn btn-success">Save with Form Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Word Quick-Mark Popover -->
   <div id="wordPopover" class="word-popover hidden">
     <div class="popover-title">Mark Word: <strong id="popoverWordText"></strong></div>
