@@ -297,3 +297,21 @@ public sealed class SingleNudityScanProgress
     /// <summary>Gets or sets the completion percentage (0 to 100).</summary>
     public int Percent { get; set; }
 }
+
+/// <summary>
+/// Live progress snapshot for an active or recently finished single-item Whisper SRT transcription.
+/// </summary>
+public sealed class SingleWhisperProgress
+{
+    /// <summary>Gets or sets the media item identifier.</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Gets or sets whether transcription is currently active.</summary>
+    public bool IsTranscribing { get; set; }
+
+    /// <summary>Gets or sets the current transcription stage description.</summary>
+    public string Stage { get; set; } = "Idle";
+
+    /// <summary>Gets or sets the completion percentage (0 to 100).</summary>
+    public int Percent { get; set; }
+}

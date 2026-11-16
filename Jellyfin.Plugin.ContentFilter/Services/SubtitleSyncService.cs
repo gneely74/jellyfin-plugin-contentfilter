@@ -123,6 +123,23 @@ public class SubtitleSyncService : IHostedService, IDisposable
     private CancellationTokenSource? _activeSyncCts;
 
     /// <summary>
+    /// Per-item progress tracking for active or recently completed single-video Whisper transcriptions.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, SingleWhisperProgress> _singleWhisperProgress = new();
+
+    /// <summary>
+    /// Gets the live progress snapshot for an on-demand single-item Whisper SRT transcription.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The current <see cref="SingleWhisperProgress"/> snapshot.</returns>
+    public SingleWhisperProgress GetSingleWhisperProgress(Guid itemId)
+    {
+        return _singleWhisperProgress.TryGetValue(itemId, out var progress)
+            ? progress
+            : new SingleWhisperProgress { ItemId = itemId, IsTranscribing = false, Stage = "Idle", Percent = 0 };
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SubtitleSyncService"/> class.
     /// </summary>
     public SubtitleSyncService(
@@ -945,6 +962,14 @@ public class SubtitleSyncService : IHostedService, IDisposable
         var (targetLang3, targetLang2) = ResolveTargetLanguage(overrideLanguage);
         var fileInfo = new FileInfo(video.Path);
 
+        _singleWhisperProgress[itemId] = new SingleWhisperProgress
+        {
+            ItemId = itemId,
+            IsTranscribing = true,
+            Stage = "Starting Whisper transcription...",
+            Percent = 5
+        };
+
         try
         {
             var transResult = await TranscribeAndCleanSingleVideoInternalAsync(video, targetLang3, targetLang2, fileInfo, cancellationToken, force).ConfigureAwait(false);
@@ -955,14 +980,35 @@ public class SubtitleSyncService : IHostedService, IDisposable
                 result.FilteredPath = transResult.FilteredPath;
                 result.UnfilteredPath = transResult.UnfilteredPath;
                 result.CuesAdded = transResult.CuesAdded;
+                _singleWhisperProgress[itemId] = new SingleWhisperProgress
+                {
+                    ItemId = itemId,
+                    IsTranscribing = false,
+                    Stage = $"Complete ({transResult.CuesAdded} cues)",
+                    Percent = 100
+                };
                 return result;
             }
 
             result.ErrorMessage = "Whisper transcription failed or produced no output.";
+            _singleWhisperProgress[itemId] = new SingleWhisperProgress
+            {
+                ItemId = itemId,
+                IsTranscribing = false,
+                Stage = "Failed (no output)",
+                Percent = 0
+            };
             return result;
         }
         catch (Exception ex)
         {
+            _singleWhisperProgress[itemId] = new SingleWhisperProgress
+            {
+                ItemId = itemId,
+                IsTranscribing = false,
+                Stage = $"Failed: {ex.Message}",
+                Percent = 0
+            };
             _logger.LogError(ex, "Failed on-demand transcription for item {ItemId} ({Name})", itemId, video.Name);
             result.ErrorMessage = ex.Message;
             return result;
@@ -993,7 +1039,20 @@ public class SubtitleSyncService : IHostedService, IDisposable
 
         AddLog($"[Whisper] Transcribing audio for \"{video.Name}\" via {config?.TranscriptionModel ?? "deepdml/faster-whisper-large-v3-turbo-ct2"}...");
 
-        var transcriptionResult = await _whisperTranscriptionService.TranscribeVideoAsync(video, targetLang3, ct).ConfigureAwait(false);
+        var transcriptionResult = await _whisperTranscriptionService.TranscribeVideoAsync(
+            video,
+            targetLang3,
+            ct,
+            (stage, pct) =>
+            {
+                _singleWhisperProgress[video.Id] = new SingleWhisperProgress
+                {
+                    ItemId = video.Id,
+                    IsTranscribing = true,
+                    Stage = stage,
+                    Percent = pct
+                };
+            }).ConfigureAwait(false);
         if (transcriptionResult == null || string.IsNullOrWhiteSpace(transcriptionResult.UnfilteredSrt))
         {
             return null;

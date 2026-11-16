@@ -1727,6 +1727,18 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Gets the live progress snapshot for an active single-item Whisper SRT transcription.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The current <see cref="SingleWhisperProgress"/> snapshot.</returns>
+    [HttpGet("subtitles/{itemId:guid}/transcribe/progress")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SingleWhisperProgress> GetSingleItemWhisperProgress(Guid itemId)
+    {
+        return Ok(_subtitleSyncService.GetSingleWhisperProgress(itemId));
+    }
+
+    /// <summary>
     /// Searches remote subtitle providers for an item and returns matching releases.
     /// </summary>
     [HttpGet("subtitles/{itemId:guid}/remote-search")]

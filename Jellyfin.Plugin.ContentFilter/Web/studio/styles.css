@@ -236,6 +236,15 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
   border-color: #991b1b;
 }
 
+.status-banner.whisper {
+  background: #1e1b4b;
+  border-color: #4338ca;
+}
+
+.status-progress-fill.whisper-fill {
+  background: linear-gradient(90deg, #a78bfa, #ec4899);
+}
+
 /* Main Workspace */
 .workspace {
   flex: 1;

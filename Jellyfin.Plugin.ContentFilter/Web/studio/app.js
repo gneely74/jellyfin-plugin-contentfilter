@@ -92,6 +92,7 @@
     });
 
     $("btnCloseStatus").addEventListener("click", () => $("statusBanner").classList.add("hidden"));
+    $("btnCloseWhisperStatus").addEventListener("click", () => $("whisperBanner").classList.add("hidden"));
     $("btnPullAll").addEventListener("click", () => pullAllFromJcf());
     $("btnBrowseLibrary").addEventListener("click", openLibraryModal);
     $("recentItemsSelect").addEventListener("change", (e) => {
@@ -384,13 +385,13 @@
     document.addEventListener("keydown", onKeyDown);
   }
 
-  function setStatus(msg, isError = false, progress = null) {
-    const banner = $("statusBanner");
-    $("statusText").textContent = msg;
+  function updateBannerState(bannerId, textId, wrapId, fillId, pctId, msg, isError = false, progress = null) {
+    const banner = $(bannerId);
+    $(textId).textContent = msg;
     banner.classList.toggle("error", isError);
-    const wrap = $("statusProgressWrap");
-    const fill = $("statusProgressFill");
-    const pctEl = $("statusProgressPct");
+    const wrap = $(wrapId);
+    const fill = $(fillId);
+    const pctEl = $(pctId);
     if (progress && typeof progress === "object") {
       wrap.classList.remove("hidden");
       if (progress.indeterminate) {
@@ -408,6 +409,14 @@
       fill.classList.remove("indeterminate");
     }
     banner.classList.remove("hidden");
+  }
+
+  function setStatus(msg, isError = false, progress = null) {
+    updateBannerState("statusBanner", "statusText", "statusProgressWrap", "statusProgressFill", "statusProgressPct", msg, isError, progress);
+  }
+
+  function setWhisperStatus(msg, isError = false, progress = null) {
+    updateBannerState("whisperBanner", "whisperText", "whisperProgressWrap", "whisperProgressFill", "whisperProgressPct", msg, isError, progress);
   }
 
   // --- API & Proxy Helpers ---
@@ -740,16 +749,37 @@
 
   async function runWhisperTranscribe() {
     if (!state.itemId) {
-      setStatus("Select a Jellyfin item first to run Whisper transcription.", true);
+      setWhisperStatus("Select a Jellyfin item first to run Whisper transcription.", true);
       return;
     }
+    const itemId = state.itemId;
+    let pollTimer = null;
+    const pollWhisperProgress = async () => {
+      try {
+        const prog = await apiFetch(`/ContentFilter/subtitles/${itemId}/transcribe/progress`);
+        if (!prog) return;
+        const stage = prog.stage ?? prog.Stage ?? "Transcribing...";
+        const pct = prog.percent ?? prog.Percent ?? 0;
+        const active = prog.isTranscribing ?? prog.IsTranscribing ?? false;
+        if (active) {
+          setWhisperStatus(`Whisper SRT: ${stage}`, false, pct > 0 ? { percent: pct } : { indeterminate: true, label: "Starting..." });
+        }
+      } catch (_) {
+        // Ignore transient poll errors while transcribing
+      }
+    };
     try {
-      setStatus("Running Whisper AI transcription on Jellyfin (this may take a moment)...");
-      await apiFetch(`/ContentFilter/subtitles/${state.itemId}/transcribe?force=false`, { method: "POST" });
-      await Promise.allSettled([fetchSrtSubtitles(state.itemId), fetchJcfWords(state.itemId)]);
-      setStatus("Whisper transcription complete. Subtitles & words refreshed.");
+      setWhisperStatus("Whisper SRT: Starting transcription on Jellyfin...", false, { indeterminate: true, label: "Starting..." });
+      pollTimer = setInterval(pollWhisperProgress, 1000);
+      const res = await apiFetch(`/ContentFilter/subtitles/${itemId}/transcribe?force=false`, { method: "POST" });
+      clearInterval(pollTimer);
+      pollTimer = null;
+      await Promise.allSettled([fetchSrtSubtitles(itemId), fetchJcfWords(itemId)]);
+      const count = res?.cuesAdded ?? res?.CuesAdded ?? "";
+      setWhisperStatus(`Whisper SRT: Complete${count !== "" ? ` (${count} cues added)` : ""}. Subtitles & words refreshed.`, false, { percent: 100 });
     } catch (err) {
-      setStatus(`Whisper transcription failed: ${err.message}`, true);
+      if (pollTimer) clearInterval(pollTimer);
+      setWhisperStatus(`Whisper SRT failed: ${err.message}`, true);
     }
   }
 

@@ -131,11 +131,13 @@ public class WhisperTranscriptionService
     /// <param name="video">The video media item.</param>
     /// <param name="targetLanguage">The target language ISO code (e.g. "en" or "eng").</param>
     /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="onProgress">Optional callback receiving <c>(stage, percent)</c>.</param>
     /// <returns>A <see cref="TranscriptionResult"/> on success, or <see langword="null"/> on failure.</returns>
     public async Task<TranscriptionResult?> TranscribeVideoAsync(
         Video video,
         string targetLanguage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, int>? onProgress = null)
     {
         if (video == null || string.IsNullOrWhiteSpace(video.Path) || !File.Exists(video.Path))
         {
@@ -175,6 +177,7 @@ public class WhisperTranscriptionService
         var tempWavPath = Path.Combine(Path.GetTempPath(), $"whisper_{video.Id:N}_{Guid.NewGuid():N}.wav");
         try
         {
+            onProgress?.Invoke("Extracting audio track (ffmpeg)...", 15);
             _logger.LogInformation("Extracting 16kHz mono audio from \"{VideoPath}\" audio track index {Index} ({Lang}) to \"{TempPath}\"...",
                 video.Path, audioTrackIndex, audioStream?.Language ?? "und", tempWavPath);
 
@@ -204,12 +207,15 @@ public class WhisperTranscriptionService
             }
 
             // 4. Post to OpenAI-compatible /v1/audio/transcriptions endpoint
+            onProgress?.Invoke("Transcribing audio with Whisper AI...", 50);
             var responseDto = await CallWhisperApiAsync(apiUrl, model, lang2, tempWavPath, config?.TranscriptionApiKey, cancellationToken).ConfigureAwait(false);
             if (responseDto == null)
             {
                 _logger.LogError("Whisper API returned an empty or invalid response for {ItemId}", video.Id);
                 return null;
             }
+
+            onProgress?.Invoke("Building SRT & word timestamps...", 85);
 
             sw.Stop();
             _logger.LogInformation("Whisper transcription completed in {ElapsedMs}ms for \"{ItemName}\"", sw.ElapsedMilliseconds, video.Name);
