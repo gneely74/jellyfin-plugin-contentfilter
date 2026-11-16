@@ -1729,6 +1729,12 @@
     } else if (e.code === "ArrowRight" || key === ".") {
       e.preventDefault();
       seekBy(e.shiftKey ? 1 : FRAME_STEP);
+    } else if (key === "a") {
+      e.preventDefault();
+      seekBy(-1);
+    } else if (key === "d") {
+      e.preventDefault();
+      seekBy(1);
     } else if (key === "j") {
       e.preventDefault();
       seekBy(-5);
