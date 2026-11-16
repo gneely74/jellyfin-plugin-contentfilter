@@ -45,6 +45,7 @@
     knownDuration: 0,
     lastActiveSrtIdx: null,
     undoStack: [],
+    detailCue: null,
     recentItems: (() => {
       try {
         return JSON.parse(localStorage.getItem("jcf_recentItems") || "[]");
@@ -63,6 +64,7 @@
     $("apiKey").value = state.apiKey;
     $("useProxy").checked = state.useProxy;
     $("itemIdInput").value = state.itemId;
+    $("detailCategory").innerHTML = $("cueCategory").innerHTML;
 
     bindEvents();
     renderRecentItems();
@@ -152,6 +154,58 @@
       $("cueAction").value = $("markOutAction").value;
       $("cueForm").requestSubmit();
     });
+
+    // Detailed Cue Scrubber Modal
+    const closeDetail = () => $("cueDetailModal").classList.add("hidden");
+    $("btnCloseDetailModal").addEventListener("click", closeDetail);
+    $("btnDetailCancel").addEventListener("click", closeDetail);
+    document.querySelector("#cueDetailModal .modal-backdrop").addEventListener("click", closeDetail);
+    $("detailStartSlider").addEventListener("input", (e) => {
+      if (!state.detailCue) return;
+      const val = Math.min(state.detailCue.endSec - 0.05, parseFloat(e.target.value));
+      state.detailCue.startSec = Math.max(0, val);
+      $("detailStartLabel").textContent = formatTimecode(state.detailCue.startSec);
+      seekTo(state.detailCue.startSec);
+    });
+    $("detailEndSlider").addEventListener("input", (e) => {
+      if (!state.detailCue) return;
+      const val = Math.max(state.detailCue.startSec + 0.05, parseFloat(e.target.value));
+      state.detailCue.endSec = val;
+      $("detailEndLabel").textContent = formatTimecode(state.detailCue.endSec);
+      seekTo(state.detailCue.endSec);
+    });
+    document.querySelectorAll(".detail-nudge").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!state.detailCue) return;
+        const delta = parseFloat(btn.dataset.delta);
+        if (btn.dataset.bound === "start") {
+          state.detailCue.startSec = Math.max(0, Math.min(state.detailCue.endSec - 0.05, state.detailCue.startSec + delta));
+          $("detailStartLabel").textContent = formatTimecode(state.detailCue.startSec);
+          $("detailStartSlider").value = String(state.detailCue.startSec);
+          seekTo(state.detailCue.startSec);
+        } else {
+          state.detailCue.endSec = Math.max(state.detailCue.startSec + 0.05, state.detailCue.endSec + delta);
+          $("detailEndLabel").textContent = formatTimecode(state.detailCue.endSec);
+          $("detailEndSlider").value = String(state.detailCue.endSec);
+          seekTo(state.detailCue.endSec);
+        }
+      });
+    });
+    $("btnDetailJumpStart").addEventListener("click", () => state.detailCue && seekTo(state.detailCue.startSec));
+    $("btnDetailJumpEnd").addEventListener("click", () => state.detailCue && seekTo(state.detailCue.endSec));
+    $("btnDetailPreview").addEventListener("click", () => {
+      if (!state.detailCue) return;
+      $("previewFilters").checked = true;
+      seekTo(Math.max(0, state.detailCue.startSec - 1.5));
+      video.play().catch(() => {});
+    });
+    $("btnDetailDelete").addEventListener("click", async () => {
+      if (!state.detailCue) return;
+      const key = state.detailCue.key;
+      closeDetail();
+      await deleteCueByKey(key);
+    });
+    $("btnDetailSave").addEventListener("click", saveDetailCue);
 
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
@@ -1266,10 +1320,19 @@
         </div>
         <div class="cue-item-desc">
           <span><strong>${escapeHtml(cue.category)}</strong>${cue.description ? ` — ${escapeHtml(cue.description)}` : ""}</span>
-          <button class="btn-link btn-del-cue" title="Delete cue">Delete</button>
+          <span style="display: inline-flex; gap: 8px;">
+            <button class="btn-link btn-edit-cue" title="Edit cue in detailed scrubber">Edit</button>
+            <button class="btn-link btn-del-cue" title="Delete cue">Delete</button>
+          </span>
         </div>
       `;
       card.addEventListener("click", (e) => {
+        if (e.target.classList.contains("btn-edit-cue")) {
+          e.stopPropagation();
+          seekTo(cue.startSec);
+          openDetailCueModal(cue);
+          return;
+        }
         if (e.target.classList.contains("btn-del-cue")) {
           e.stopPropagation();
           deleteCueByKey(cue.key);
@@ -1280,6 +1343,63 @@
       });
       list.appendChild(card);
     });
+  }
+
+  function openDetailCueModal(cue) {
+    state.detailCue = { ...cue };
+    const winMin = Math.max(0, cue.startSec - 15);
+    const winMax = Math.max(cue.endSec + 15, winMin + 30);
+
+    const startSlider = $("detailStartSlider");
+    const endSlider = $("detailEndSlider");
+    startSlider.min = String(winMin);
+    startSlider.max = String(winMax);
+    startSlider.value = String(cue.startSec);
+    endSlider.min = String(winMin);
+    endSlider.max = String(winMax);
+    endSlider.value = String(cue.endSec);
+
+    $("detailStartLabel").textContent = formatTimecode(cue.startSec);
+    $("detailEndLabel").textContent = formatTimecode(cue.endSec);
+    $("detailCategory").value = cue.category;
+    $("detailChannel").value = cue.channel;
+    $("detailAction").value = cue.action;
+    $("detailDescription").value = cue.description || "";
+    $("cueDetailModal").classList.remove("hidden");
+  }
+
+  async function saveDetailCue() {
+    if (!state.detailCue) return;
+    const origKey = state.detailCue.key;
+    const payload = {
+      start: formatTimecode(state.detailCue.startSec),
+      end: formatTimecode(state.detailCue.endSec),
+      category: $("detailCategory").value,
+      channel: $("detailChannel").value,
+      action: $("detailAction").value,
+      description: $("detailDescription").value.trim() || null,
+    };
+
+    try {
+      pushUndoSnapshot();
+      if (state.itemId) {
+        await apiFetch(`/ContentFilter/filters/${state.itemId}/segments/${encodeURIComponent(origKey)}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        await fetchJcfCues(state.itemId);
+      } else {
+        const updated = normalizeCue(payload);
+        state.cues = state.cues.map((c) => (c.key === origKey ? updated : c));
+        renderTimeline();
+        renderCuesList();
+        renderTranscript();
+      }
+      $("cueDetailModal").classList.add("hidden");
+      setStatus("Updated cue.");
+    } catch (err) {
+      setStatus(`Failed to update cue: ${err.message}`, true);
+    }
   }
 
   // --- Transcript & Word Marking ---
@@ -1614,6 +1734,7 @@
       resetCueForm();
       $("hotkeysModal").classList.add("hidden");
       $("markOutModal").classList.add("hidden");
+      $("cueDetailModal").classList.add("hidden");
       $("libraryModal").classList.add("hidden");
       $("loginModal").classList.add("hidden");
       $("wordPopover").classList.add("hidden");

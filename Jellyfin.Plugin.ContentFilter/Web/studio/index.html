@@ -422,6 +422,90 @@
     </div>
   </div>
 
+  <!-- Detailed Cue Scrubber Modal -->
+  <div id="cueDetailModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" style="width: min(580px, 95vw);">
+      <div class="modal-header">
+        <h2>Detailed Cue Scrubber</h2>
+        <button id="btnCloseDetailModal" class="btn-icon">&times;</button>
+      </div>
+      <div style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--primary);">Start: <span id="detailStartLabel" class="mono">00:00:00.000</span></span>
+            <button type="button" id="btnDetailJumpStart" class="btn btn-secondary btn-sm">Jump to Start</button>
+          </div>
+          <input id="detailStartSlider" type="range" min="0" max="100" step="0.05" style="width: 100%; accent-color: var(--primary);" />
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="-1">-1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="-0.5">-0.5s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="-0.1">-0.1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="0.1">+0.1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="0.5">+0.5s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="start" data-delta="1">+1s</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--accent);">End: <span id="detailEndLabel" class="mono">00:00:02.000</span></span>
+            <button type="button" id="btnDetailJumpEnd" class="btn btn-secondary btn-sm">Jump to End</button>
+          </div>
+          <input id="detailEndSlider" type="range" min="0" max="100" step="0.05" style="width: 100%; accent-color: var(--accent);" />
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="-1">-1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="-0.5">-0.5s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="-0.1">-0.1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="0.1">+0.1s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="0.5">+0.5s</button>
+            <button type="button" class="btn-nudge detail-nudge" data-bound="end" data-delta="1">+1s</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field form-field-grow">
+            <label for="detailCategory">Category</label>
+            <select id="detailCategory"></select>
+          </div>
+          <div class="form-field">
+            <label for="detailChannel">Channel</label>
+            <select id="detailChannel">
+              <option value="video">video</option>
+              <option value="audio">audio</option>
+              <option value="both">both</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="detailAction">Action</label>
+            <select id="detailAction">
+              <option value="skip">skip</option>
+              <option value="mute">mute</option>
+              <option value="blur">blur</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="detailDescription">Description</label>
+          <input id="detailDescription" type="text" />
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 6px;">
+            <button type="button" id="btnDetailPreview" class="btn btn-primary btn-sm">Preview Segment</button>
+            <button type="button" id="btnDetailDelete" class="btn btn-danger btn-sm">Delete Cue</button>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" id="btnDetailCancel" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="btnDetailSave" class="btn btn-success">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Word Quick-Mark Popover -->
   <div id="wordPopover" class="word-popover hidden">
     <div class="popover-title">Mark Word: <strong id="popoverWordText"></strong></div>
