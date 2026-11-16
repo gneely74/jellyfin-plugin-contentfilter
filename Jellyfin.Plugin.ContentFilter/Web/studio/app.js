@@ -384,10 +384,29 @@
     document.addEventListener("keydown", onKeyDown);
   }
 
-  function setStatus(msg, isError = false) {
+  function setStatus(msg, isError = false, progress = null) {
     const banner = $("statusBanner");
     $("statusText").textContent = msg;
     banner.classList.toggle("error", isError);
+    const wrap = $("statusProgressWrap");
+    const fill = $("statusProgressFill");
+    const pctEl = $("statusProgressPct");
+    if (progress && typeof progress === "object") {
+      wrap.classList.remove("hidden");
+      if (progress.indeterminate) {
+        fill.classList.add("indeterminate");
+        fill.style.width = "35%";
+        pctEl.textContent = progress.label || "Working...";
+      } else {
+        const pct = Math.max(0, Math.min(100, Number(progress.percent) || 0));
+        fill.classList.remove("indeterminate");
+        fill.style.width = `${pct}%`;
+        pctEl.textContent = `${pct}%`;
+      }
+    } else {
+      wrap.classList.add("hidden");
+      fill.classList.remove("indeterminate");
+    }
     banner.classList.remove("hidden");
   }
 
@@ -687,13 +706,34 @@
       setStatus("Select a Jellyfin item first to run NudeNet scan.", true);
       return;
     }
+    const itemId = state.itemId;
+    let pollTimer = null;
+    const pollProgress = async () => {
+      try {
+        const prog = await apiFetch(`/ContentFilter/nudity/${itemId}/scan/progress`);
+        if (!prog) return;
+        const stage = prog.stage ?? prog.Stage ?? "Scanning...";
+        const total = prog.totalFrames ?? prog.TotalFrames ?? 0;
+        const pct = prog.percent ?? prog.Percent ?? 0;
+        const active = prog.isScanning ?? prog.IsScanning ?? false;
+        if (active) {
+          setStatus(`NudeNet: ${stage}`, false, total > 0 ? { percent: pct } : { indeterminate: true, label: "Extracting..." });
+        }
+      } catch (_) {
+        // Ignore transient poll errors while scan runs
+      }
+    };
     try {
-      setStatus("Starting NudeNet visual nudity scan on Jellyfin...");
-      const res = await apiFetch(`/ContentFilter/nudity/${state.itemId}/scan?force=true`, { method: "POST" });
-      await fetchJcfCues(state.itemId);
-      const count = res?.cuesAdded ?? res?.CuesAdded ?? "";
-      setStatus(`NudeNet scan finished${count !== "" ? ` (${count} cues added)` : ""}. Timeline refreshed.`);
+      setStatus("Starting NudeNet visual nudity scan on Jellyfin...", false, { indeterminate: true, label: "Starting..." });
+      pollTimer = setInterval(pollProgress, 1000);
+      const res = await apiFetch(`/ContentFilter/nudity/${itemId}/scan?force=true`, { method: "POST" });
+      clearInterval(pollTimer);
+      pollTimer = null;
+      await fetchJcfCues(itemId);
+      const count = res?.cuesAdded ?? res?.CuesAdded ?? res?.cuesCreated ?? res?.CuesCreated ?? "";
+      setStatus(`NudeNet scan finished${count !== "" ? ` (${count} cues added)` : ""}. Timeline refreshed.`, false, { percent: 100 });
     } catch (err) {
+      if (pollTimer) clearInterval(pollTimer);
       setStatus(`NudeNet scan failed: ${err.message}`, true);
     }
   }

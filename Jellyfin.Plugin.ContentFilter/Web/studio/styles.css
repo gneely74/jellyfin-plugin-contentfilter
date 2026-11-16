@@ -176,10 +176,59 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 6px 14px;
   background: #172554;
   border-bottom: 1px solid #1e40af;
   font-size: 12px;
+}
+
+.status-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.status-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  max-width: 340px;
+  flex: 1;
+}
+
+.status-progress-wrap.hidden {
+  display: none;
+}
+
+.status-progress-track {
+  flex: 1;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.status-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.status-progress-fill.indeterminate {
+  width: 35% !important;
+  position: relative;
+  animation: statusIndeterminate 1.2s infinite ease-in-out;
+}
+
+@keyframes statusIndeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
 
 .status-banner.error {

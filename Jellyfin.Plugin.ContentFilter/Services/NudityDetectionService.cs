@@ -91,11 +91,13 @@ public class NudityDetectionService
     /// </summary>
     /// <param name="video">The Jellyfin video item to scan.</param>
     /// <param name="cancellationToken">Cancellation token to abort frame extraction or HTTP requests.</param>
+    /// <param name="onProgress">Optional callback receiving <c>(stage, processedFrames, totalFrames)</c>.</param>
     /// <returns>A list of merged <see cref="FilterCue"/> instances detected in the video.</returns>
     /// <exception cref="InvalidOperationException">Thrown when <c>ffmpeg</c> or the NudeNet API fails.</exception>
     public async Task<List<FilterCue>> DetectNudityCuesAsync(
         Video video,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, int, int>? onProgress = null)
     {
         if (video == null || string.IsNullOrWhiteSpace(video.Path) || !File.Exists(video.Path))
         {
@@ -128,6 +130,7 @@ public class NudityDetectionService
 
         try
         {
+            onProgress?.Invoke("Extracting video frames (ffmpeg)...", 0, 0);
             await ExtractFramesAsync(video.Path, tempDir, fps, maxDebugSeconds, cancellationToken).ConfigureAwait(false);
 
             var frameFiles = Directory.GetFiles(tempDir, "*.jpg")
@@ -141,6 +144,7 @@ public class NudityDetectionService
             }
 
             _logger.LogInformation("Extracted {Count} frames at {Fps} fps for NudeNet scan of \"{Name}\".", frameFiles.Length, fps, video.Name);
+            onProgress?.Invoke($"Scanning 0 / {frameFiles.Length} frames...", 0, frameFiles.Length);
 
             var rawCues = new List<FilterCue>();
             var frameDuration = TimeSpan.FromSeconds(1.0 / fps);
@@ -151,6 +155,9 @@ public class NudityDetectionService
 
                 var batchPaths = frameFiles.Skip(offset).Take(BatchSize).ToArray();
                 var batchResponse = await SendBatchAsync(apiUrl, config?.NudeNetApiKey, batchPaths, cancellationToken).ConfigureAwait(false);
+
+                var processed = Math.Min(offset + batchPaths.Length, frameFiles.Length);
+                onProgress?.Invoke($"Scanning {processed} / {frameFiles.Length} frames...", processed, frameFiles.Length);
 
                 for (int i = 0; i < batchResponse.Count; i++)
                 {

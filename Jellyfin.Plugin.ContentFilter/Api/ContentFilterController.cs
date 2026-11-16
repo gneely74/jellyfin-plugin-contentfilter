@@ -1695,6 +1695,18 @@ public class ContentFilterController : ControllerBase
     }
 
     /// <summary>
+    /// Gets the live progress snapshot for an active single-item NudeNet visual nudity scan.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The current <see cref="SingleNudityScanProgress"/> snapshot.</returns>
+    [HttpGet("nudity/{itemId:guid}/scan/progress")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SingleNudityScanProgress> GetSingleItemNudityProgress(Guid itemId)
+    {
+        return Ok(_nudityScanService.GetSingleScanProgress(itemId));
+    }
+
+    /// <summary>
     /// Transcribes a video using the local AI Whisper engine and generates both filtered (default) and unfiltered subtitle streams.
     /// </summary>
     /// <param name="itemId">The media item identifier.</param>

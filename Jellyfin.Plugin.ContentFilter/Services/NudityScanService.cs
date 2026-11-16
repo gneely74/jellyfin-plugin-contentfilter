@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.ContentFilter.Models;
@@ -88,6 +89,23 @@ public class NudityScanService
     /// Gets the live status of the library-wide NudeNet nudity scan.
     /// </summary>
     public NudityScanStatus Status { get; } = new();
+
+    /// <summary>
+    /// Per-item progress tracking for active or recently completed single-video NudeNet scans.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, SingleNudityScanProgress> _singleScanProgress = new();
+
+    /// <summary>
+    /// Gets the live progress of an on-demand single-item NudeNet scan.
+    /// </summary>
+    /// <param name="itemId">The media item identifier.</param>
+    /// <returns>The current <see cref="SingleNudityScanProgress"/> snapshot.</returns>
+    public SingleNudityScanProgress GetSingleScanProgress(Guid itemId)
+    {
+        return _singleScanProgress.TryGetValue(itemId, out var progress)
+            ? progress
+            : new SingleNudityScanProgress { ItemId = itemId, IsScanning = false, Stage = "Idle", Percent = 0 };
+    }
 
     /// <summary>
     /// Starts a background library-wide NudeNet nudity scan if one is not already running.
@@ -324,10 +342,29 @@ public class NudityScanService
             };
         }
 
+        _singleScanProgress[itemId] = new SingleNudityScanProgress
+        {
+            ItemId = itemId,
+            IsScanning = true,
+            Stage = "Waiting for GPU lock...",
+            ProcessedFrames = 0,
+            TotalFrames = 0,
+            Percent = 0
+        };
+
         var gpuLocked = await _whisperService.AcquireBatchGpuLockAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var count = await ScanVideoInternalAsync(video, fileInfo, cancellationToken).ConfigureAwait(false);
+            _singleScanProgress[itemId] = new SingleNudityScanProgress
+            {
+                ItemId = itemId,
+                IsScanning = false,
+                Stage = $"Complete ({count} cues)",
+                ProcessedFrames = _singleScanProgress.TryGetValue(itemId, out var prev) ? prev.TotalFrames : 0,
+                TotalFrames = prev?.TotalFrames ?? 0,
+                Percent = 100
+            };
             return new SingleNudityScanResult
             {
                 ItemId = itemId,
@@ -338,6 +375,13 @@ public class NudityScanService
         }
         catch (Exception ex)
         {
+            _singleScanProgress[itemId] = new SingleNudityScanProgress
+            {
+                ItemId = itemId,
+                IsScanning = false,
+                Stage = $"Failed: {ex.Message}",
+                Percent = 0
+            };
             _logger.LogError(ex, "Single-item NudeNet scan failed for {ItemId}", itemId);
             return new SingleNudityScanResult
             {
@@ -369,7 +413,22 @@ public class NudityScanService
         var fps = config?.NudityScanFps is > 0 ? config.NudityScanFps : 0.5;
         var threshold = config?.NudityConfidenceThreshold is > 0 and <= 1.0 ? config.NudityConfidenceThreshold : 0.60;
 
-        var cues = await _nudityDetectionService.DetectNudityCuesAsync(video, cancellationToken).ConfigureAwait(false);
+        var cues = await _nudityDetectionService.DetectNudityCuesAsync(
+            video,
+            cancellationToken,
+            (stage, processed, total) =>
+            {
+                var pct = total > 0 ? (int)Math.Round(processed * 100.0 / total) : 0;
+                _singleScanProgress[video.Id] = new SingleNudityScanProgress
+                {
+                    ItemId = video.Id,
+                    IsScanning = true,
+                    Stage = stage,
+                    ProcessedFrames = processed,
+                    TotalFrames = total,
+                    Percent = Math.Clamp(pct, 0, 100)
+                };
+            }).ConfigureAwait(false);
 
         await _filterStore.RemoveAutoNudityCuesAsync(video.Id, cancellationToken).ConfigureAwait(false);
 

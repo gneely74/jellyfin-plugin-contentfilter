@@ -273,3 +273,27 @@ public sealed class SingleNudityScanResult
     /// <summary>Gets or sets an optional status or error message.</summary>
     public string? Message { get; set; }
 }
+
+/// <summary>
+/// Live progress snapshot for an active or recently finished single-item NudeNet nudity scan.
+/// </summary>
+public sealed class SingleNudityScanProgress
+{
+    /// <summary>Gets or sets the media item identifier.</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Gets or sets whether the scan is currently active.</summary>
+    public bool IsScanning { get; set; }
+
+    /// <summary>Gets or sets the current scan stage description.</summary>
+    public string Stage { get; set; } = "Idle";
+
+    /// <summary>Gets or sets the number of frames processed so far.</summary>
+    public int ProcessedFrames { get; set; }
+
+    /// <summary>Gets or sets the total number of extracted frames (0 while extracting).</summary>
+    public int TotalFrames { get; set; }
+
+    /// <summary>Gets or sets the completion percentage (0 to 100).</summary>
+    public int Percent { get; set; }
+}
