@@ -209,6 +209,7 @@
     $("btnDetailSave").addEventListener("click", saveDetailCue);
     makeDraggable("cueDetailModal");
     makeDraggable("markOutModal");
+    makeDraggable("hotkeysModal");
 
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
@@ -1785,7 +1786,7 @@
       $("libraryModal").classList.add("hidden");
       $("loginModal").classList.add("hidden");
       $("wordPopover").classList.add("hidden");
-    } else if (e.key === "?") {
+    } else if (e.key === "/" || e.key === "?") {
       e.preventDefault();
       $("hotkeysModal").classList.toggle("hidden");
     }

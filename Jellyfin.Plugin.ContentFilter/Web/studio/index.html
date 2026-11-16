@@ -45,7 +45,7 @@
       <button id="btnUndo" class="btn btn-secondary" title="Undo last cue change (Ctrl/Cmd+Z)" disabled>Undo</button>
       <button id="btnSaveJcf" class="btn btn-primary" title="Save all current cues back to Jellyfin JCF server">Save to JCF</button>
       <button id="btnExportJcf" class="btn btn-success" title="Download WEBVTT JCF file">Export .JCF</button>
-      <button id="btnHotkeys" class="btn btn-secondary" title="Keyboard shortcuts (?)">?</button>
+      <button id="btnHotkeys" class="btn btn-secondary" title="Toggle HUD Helper (/ or ?)">/</button>
     </div>
   </header>
 
@@ -350,12 +350,12 @@
     </div>
   </div>
 
-  <!-- Hotkeys Modal -->
-  <div id="hotkeysModal" class="modal hidden">
+  <!-- Hotkeys HUD Modal -->
+  <div id="hotkeysModal" class="modal floating hidden">
     <div class="modal-backdrop"></div>
-    <div class="modal-dialog" style="width: min(520px, 92vw);">
+    <div class="modal-dialog" style="width: min(520px, 92vw); background: rgba(23, 26, 35, 0.92); backdrop-filter: blur(8px);">
       <div class="modal-header">
-        <h2>Editing Hotkeys</h2>
+        <h2>Editing HUD Helper (/ or ?)</h2>
         <button id="btnCloseHotkeysModal" class="btn-icon">&times;</button>
       </div>
       <div style="padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px;">

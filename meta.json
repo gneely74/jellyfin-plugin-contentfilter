@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Make Detailed Cue Scrubber and Filter Type popups floating and draggable without obscuring the video, and fix Recent dropdown selection so any item can be picked immediately.",
+  "changelog": "Make the Editing HUD Helper floating, translucent, and draggable, and toggle it with the / (or ?) key.",
   "description": "A Jellyfin plugin that scans media files for objectionable content using a local Ollama LLM instance. Scan results are stored as JCF sidecar files. During playback, flagged segments can be automatically skipped or muted based on per-category preferences.",
   "guid": "a62b2473-77e1-45c1-8470-57fb95a85394",
   "imageUrl": "",
@@ -9,5 +9,5 @@
   "owner": "gneely74",
   "targetAbi": "10.11.0.0",
   "timestamp": "2026-11-15T00:00:00Z",
-  "version": "1.0.58.0"
+  "version": "1.0.59.0"
 }
