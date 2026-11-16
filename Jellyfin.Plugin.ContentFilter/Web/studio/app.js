@@ -194,6 +194,37 @@
     });
     $("btnDetailJumpStart").addEventListener("click", () => state.detailCue && seekTo(state.detailCue.startSec));
     $("btnDetailJumpEnd").addEventListener("click", () => state.detailCue && seekTo(state.detailCue.endSec));
+    const syncDetailBoundToPlayhead = (bound) => {
+      if (!state.detailCue) return;
+      const t = Math.max(0, video.readyState >= 1 ? (video.currentTime || 0) : state.virtualTime);
+      if (bound === "start") {
+        state.detailCue.startSec = t;
+        if (state.detailCue.endSec <= t + 0.05) {
+          state.detailCue.endSec = t + 0.5;
+        }
+      } else {
+        state.detailCue.endSec = Math.max(0.05, t);
+        if (state.detailCue.startSec >= state.detailCue.endSec - 0.05) {
+          state.detailCue.startSec = Math.max(0, state.detailCue.endSec - 0.5);
+        }
+      }
+      const startSlider = $("detailStartSlider");
+      const endSlider = $("detailEndSlider");
+      const curMin = parseFloat(startSlider.min) || 0;
+      const curMax = parseFloat(startSlider.max) || 30;
+      const nextMin = Math.min(curMin, Math.max(0, state.detailCue.startSec - 15));
+      const nextMax = Math.max(curMax, state.detailCue.endSec + 15);
+      startSlider.min = String(nextMin);
+      startSlider.max = String(nextMax);
+      endSlider.min = String(nextMin);
+      endSlider.max = String(nextMax);
+      startSlider.value = String(state.detailCue.startSec);
+      endSlider.value = String(state.detailCue.endSec);
+      $("detailStartLabel").textContent = formatTimecode(state.detailCue.startSec);
+      $("detailEndLabel").textContent = formatTimecode(state.detailCue.endSec);
+    };
+    $("btnDetailSyncStart").addEventListener("click", () => syncDetailBoundToPlayhead("start"));
+    $("btnDetailSyncEnd").addEventListener("click", () => syncDetailBoundToPlayhead("end"));
     $("btnDetailPreview").addEventListener("click", () => {
       if (!state.detailCue) return;
       $("previewFilters").checked = true;

@@ -432,9 +432,12 @@
       </div>
       <div style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
         <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
             <span style="font-size: 12px; font-weight: 600; color: var(--primary);">Start: <span id="detailStartLabel" class="mono">00:00:00.000</span></span>
-            <button type="button" id="btnDetailJumpStart" class="btn btn-secondary btn-sm">Jump to Start</button>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnDetailSyncStart" class="btn btn-primary btn-sm" title="Set Start (In) to current playhead">Sync to Playhead</button>
+              <button type="button" id="btnDetailJumpStart" class="btn btn-secondary btn-sm">Jump to Start</button>
+            </div>
           </div>
           <input id="detailStartSlider" type="range" min="0" max="100" step="0.05" style="width: 100%; accent-color: var(--primary);" />
           <div style="display: flex; gap: 4px; flex-wrap: wrap;">
@@ -448,9 +451,12 @@
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
             <span style="font-size: 12px; font-weight: 600; color: var(--accent);">End: <span id="detailEndLabel" class="mono">00:00:02.000</span></span>
-            <button type="button" id="btnDetailJumpEnd" class="btn btn-secondary btn-sm">Jump to End</button>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnDetailSyncEnd" class="btn btn-primary btn-sm" title="Set End (Out) to current playhead">Sync to Playhead</button>
+              <button type="button" id="btnDetailJumpEnd" class="btn btn-secondary btn-sm">Jump to End</button>
+            </div>
           </div>
           <input id="detailEndSlider" type="range" min="0" max="100" step="0.05" style="width: 100%; accent-color: var(--accent);" />
           <div style="display: flex; gap: 4px; flex-wrap: wrap;">
