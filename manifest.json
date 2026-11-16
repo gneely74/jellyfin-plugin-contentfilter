@@ -8,6 +8,14 @@
     "owner": "gneely74",
     "versions": [
       {
+        "version": "1.0.58.0",
+        "changelog": "Make Detailed Cue Scrubber and Filter Type popups floating and draggable without obscuring the video, and fix Recent dropdown selection so any item can be picked immediately.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gneely74/jellyfin-plugin-contentfilter/releases/download/v1.0.58/Jellyfin.Plugin.ContentFilter_1.0.58.0.zip",
+        "checksum": "0c30d5a72cdba92e36d28a33681e98c1",
+        "timestamp": "2026-11-15T00:00:00Z"
+      },
+      {
         "version": "1.0.57.0",
         "changelog": "Add Edit button on every cue opening a Detailed Cue Scrubber modal with 0.1s/0.5s/1s nudges and sliders that live-seek the video.",
         "targetAbi": "10.11.0.0",

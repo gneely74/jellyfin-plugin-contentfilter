@@ -99,6 +99,7 @@
       if (!id) return;
       const match = state.recentItems.find((r) => r.id === id);
       if (match) state.title = match.title;
+      e.target.selectedIndex = 0;
       pullAllFromJcf(id);
     });
     $("btnCloseLibraryModal").addEventListener("click", closeLibraryModal);
@@ -206,6 +207,8 @@
       await deleteCueByKey(key);
     });
     $("btnDetailSave").addEventListener("click", saveDetailCue);
+    makeDraggable("cueDetailModal");
+    makeDraggable("markOutModal");
 
     // Transport controls
     $("btnPlayPause").addEventListener("click", togglePlay);
@@ -438,6 +441,50 @@
     renderRecentItems();
   }
 
+  function makeDraggable(modalId) {
+    const modal = $(modalId);
+    const dialog = modal?.querySelector(".modal-dialog");
+    const header = modal?.querySelector(".modal-header");
+    if (!dialog || !header) return;
+
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+
+    header.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      dragging = true;
+      const rect = dialog.getBoundingClientRect();
+      dialog.style.position = "fixed";
+      dialog.style.margin = "0";
+      dialog.style.left = `${rect.left}px`;
+      dialog.style.top = `${rect.top}px`;
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = rect.left;
+      origTop = rect.top;
+      header.setPointerCapture(e.pointerId);
+    });
+
+    header.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const nextLeft = Math.max(0, Math.min(window.innerWidth - 120, origLeft + (e.clientX - startX)));
+      const nextTop = Math.max(0, Math.min(window.innerHeight - 60, origTop + (e.clientY - startY)));
+      dialog.style.left = `${nextLeft}px`;
+      dialog.style.top = `${nextTop}px`;
+    });
+
+    const stopDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      try { header.releasePointerCapture(e.pointerId); } catch {}
+    };
+    header.addEventListener("pointerup", stopDrag);
+    header.addEventListener("pointercancel", stopDrag);
+  }
+
   function renderRecentItems() {
     const sel = $("recentItemsSelect");
     if (!sel) return;
@@ -446,9 +493,9 @@
       const opt = document.createElement("option");
       opt.value = item.id;
       opt.textContent = item.title;
-      if (item.id === state.itemId) opt.selected = true;
       sel.appendChild(opt);
     });
+    sel.selectedIndex = 0;
   }
 
   function destroyHls() {

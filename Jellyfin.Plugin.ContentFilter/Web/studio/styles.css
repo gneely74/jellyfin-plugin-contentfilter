@@ -814,6 +814,28 @@ input[type="text"]:focus, input[type="password"]:focus, select:focus {
   justify-content: center;
 }
 
+.modal.floating {
+  pointer-events: none;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 18px;
+}
+
+.modal.floating .modal-backdrop {
+  display: none;
+}
+
+.modal.floating .modal-dialog {
+  pointer-events: auto;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75);
+  border-color: var(--primary);
+}
+
+.modal.floating .modal-header {
+  cursor: move;
+  user-select: none;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;
