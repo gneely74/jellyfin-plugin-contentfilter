@@ -1,4 +1,4 @@
-VERSION     ?= 1.0.61.0
+VERSION     ?= 1.0.62.0
 PLUGIN_ASM  := Jellyfin.Plugin.ContentFilter
 PLUGIN_DIR  := ContentFilter_$(VERSION)
 DIST        := dist

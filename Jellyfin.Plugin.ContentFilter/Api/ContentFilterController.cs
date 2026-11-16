@@ -1132,15 +1132,19 @@ public class ContentFilterController : ControllerBase
         {
             await using var stream = file.OpenReadStream();
             using var reader = new StreamReader(stream);
-            return JcfParser.Parse(reader);
+            var text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            using var stringReader = new StringReader(text);
+            return JcfParser.Parse(stringReader);
         }
 
         if (Request.ContentLength is > 0 &&
             Request.ContentType is not null &&
             !Request.ContentType.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase))
         {
-            using var reader = new StreamReader(Request.Body);
-            return JcfParser.Parse(reader);
+            using var reader = new StreamReader(Request.Body, leaveOpen: true);
+            var text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            using var stringReader = new StringReader(text);
+            return JcfParser.Parse(stringReader);
         }
 
         throw new FormatException("A JCF file is required. Send multipart form field 'file' or raw text starting with WEBVTT.");
